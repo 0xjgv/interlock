@@ -18,6 +18,7 @@ from harness.tasks.crap import cmd_crap
 from harness.tasks.fix import cmd_fix
 from harness.tasks.format import cmd_format
 from harness.tasks.lint import cmd_lint
+from harness.tasks.mutation import cmd_mutation
 from harness.tasks.test import cmd_test
 from harness.tasks.typecheck import cmd_typecheck
 
@@ -38,6 +39,7 @@ TASKS: dict[str, tuple[Callable[..., None], str]] = {
     "audit": (cmd_audit, "Audit dependencies for known vulnerabilities"),
     "coverage": (cmd_coverage, "Tests with coverage threshold (--min=N)"),
     "crap": (cmd_crap, "CRAP complexity x coverage gate (advisory)"),
+    "mutation": (cmd_mutation, "Mutation testing via mutmut (advisory)"),
     "post-edit": (cmd_post_edit, "Format if source files changed (Claude Code hook)"),
     "setup-hooks": (cmd_hooks, "Install git pre-commit hook"),
     "clean": (cmd_clean, "Remove cache and build artifacts"),

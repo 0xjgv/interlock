@@ -17,6 +17,9 @@ coverage.xml
 htmlcov/
 build/
 dist/
+mutants/
+.mutmut-cache/
+mutmut-junit.xml
 # <<< harness managed <<<
 
 # AI
