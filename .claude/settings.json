@@ -2,7 +2,12 @@
   "hooks": {
     "Stop": [
       {
-        "command": "uv run harness post-edit"
+        "hooks": [
+          {
+            "type": "command",
+            "command": "uv run harness post-edit"
+          }
+        ]
       }
     ]
   }
