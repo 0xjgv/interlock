@@ -68,6 +68,7 @@ ignore = [
 "harness/runner.py" = [
     "S404",     # subprocess module import (intentional — task runner)
     "S603",     # subprocess call without shell=true check (intentional)
+    "S607",     # partial executable path (intentional — uv on PATH)
 ]
 "harness/git.py" = [
     "S404",     # subprocess module import (intentional — git wrapper)

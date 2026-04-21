@@ -6,27 +6,16 @@ import re
 import subprocess
 import sys
 import xml.etree.ElementTree as ET
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from harness.git import changed_py_files_vs_main
 from harness.paths import SRC_DIR
-from harness.runner import GREEN, RED, RESET, arg_value, fail_skip
+from harness.runner import GREEN, RED, RESET, arg_value, fail_skip, generate_coverage_xml
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 _LIZARD_LINE = re.compile(r"^\s*(\d+)\s+(\d+)\s+\d+\s+\d+\s+\d+\s+(\S+)@(\d+)-(\d+)@(.+)$")
-
-
-def _generate_coverage_xml() -> Path:
-    """Regenerate coverage.xml from .coverage; exit 1 if no .coverage data exists."""
-    subprocess.run(
-        ["uv", "run", "coverage", "xml", "-o", "coverage.xml", "-q"],
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-    cov_file = Path("coverage.xml")
-    if not cov_file.exists():
-        fail_skip("CRAP: coverage.xml not generated — run `harness coverage` first")
-    return cov_file
 
 
 def _parse_coverage(cov_file: Path) -> dict[str, dict[int, int]]:
@@ -76,7 +65,10 @@ def cmd_crap() -> None:
     max_crap = float(arg_value("--max=", "30"))
     changed = changed_py_files_vs_main() if "--changed-only" in sys.argv else None
 
-    cov_map = _parse_coverage(_generate_coverage_xml())
+    cov_file = generate_coverage_xml()
+    if not cov_file.exists():
+        fail_skip("CRAP: coverage.xml not generated — run `harness coverage` first")
+    cov_map = _parse_coverage(cov_file)
     lizard_res = subprocess.run(
         ["uv", "run", "lizard", SRC_DIR],
         capture_output=True,

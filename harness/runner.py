@@ -5,11 +5,23 @@ from __future__ import annotations
 import re
 import subprocess
 import sys
+from pathlib import Path
 
 GREEN = "\033[32m"
 RED = "\033[31m"
 RESET = "\033[0m"
 VERBOSE = "--verbose" in sys.argv
+
+
+def generate_coverage_xml() -> Path:
+    """Regenerate coverage.xml from .coverage. Returns the path whether or not it exists."""
+    subprocess.run(
+        ["uv", "run", "coverage", "xml", "-o", "coverage.xml", "-q"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    return Path("coverage.xml")
 
 
 def warn_skip(message: str) -> None:

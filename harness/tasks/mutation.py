@@ -5,13 +5,11 @@ from __future__ import annotations
 import subprocess
 import sys
 import xml.etree.ElementTree as ET
-from pathlib import Path
 
 from harness.git import changed_py_files_vs_main
-from harness.runner import GREEN, RED, RESET, arg_value, warn_skip
+from harness.runner import GREEN, RED, RESET, arg_value, generate_coverage_xml, warn_skip
 
 _MUTMUT = ["uv", "run", "--with", "mutmut", "mutmut"]
-_RESULT_LINE_PREFIX = "    "
 
 
 def _mutmut_available() -> bool:
@@ -24,14 +22,8 @@ def _mutmut_available() -> bool:
 
 
 def _coverage_line_rate() -> float | None:
-    """Regenerate coverage.xml from .coverage and return overall line-rate (0..1)."""
-    subprocess.run(
-        ["uv", "run", "coverage", "xml", "-o", "coverage.xml", "-q"],
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-    cov_file = Path("coverage.xml")
+    """Overall coverage.xml line-rate (0..1), or None if unreadable."""
+    cov_file = generate_coverage_xml()
     if not cov_file.exists():
         return None
     try:
@@ -46,9 +38,9 @@ def _parse_results(stdout: str) -> dict[str, list[str]]:
     """Group mutant keys by status from `mutmut results --all=true` output."""
     by_status: dict[str, list[str]] = {}
     for line in stdout.splitlines():
-        if not line.startswith(_RESULT_LINE_PREFIX) or ": " not in line:
+        key, sep, status = line.strip().partition(": ")
+        if not sep or "__mutmut_" not in key:
             continue
-        key, _, status = line.strip().partition(": ")
         by_status.setdefault(status, []).append(key)
     return by_status
 
@@ -62,18 +54,27 @@ def _mutant_in_changed(mutant_key: str, changed: set[str]) -> bool:
 
 def _run_mutmut(timeout: int) -> bool:
     """Run `mutmut run`, SIGTERM after `timeout`. Return True if it completed on its own."""
-    proc = subprocess.Popen([*_MUTMUT, "run"])
-    try:
-        proc.wait(timeout=timeout)
-    except subprocess.TimeoutExpired:
-        proc.terminate()
+    with subprocess.Popen([*_MUTMUT, "run"]) as proc:
         try:
-            proc.wait(timeout=10)
+            proc.wait(timeout=timeout)
         except subprocess.TimeoutExpired:
-            proc.kill()
-            proc.wait()
-        return False
-    return True
+            proc.terminate()
+            try:
+                proc.wait(timeout=10)
+            except subprocess.TimeoutExpired:
+                proc.kill()
+                proc.wait()
+            return False
+        return True
+
+
+def _print_survivors(survived: list[str], changed: set[str] | None) -> None:
+    shown = [s for s in survived if changed is None or _mutant_in_changed(s, changed)][:20]
+    if not shown:
+        return
+    print(f"    surviving mutants ({len(shown)} shown):")
+    for key in shown:
+        print(f"      {key}")
 
 
 def cmd_mutation() -> None:
@@ -89,7 +90,8 @@ def cmd_mutation() -> None:
         return
 
     timeout = int(arg_value("--max-runtime=", "600"))
-    min_score_str = arg_value("--min-score=", "")
+    min_score_arg = arg_value("--min-score=", "")
+    min_score = float(min_score_arg) if min_score_arg else None
     changed = changed_py_files_vs_main() if "--changed-only" in sys.argv else None
 
     completed = _run_mutmut(timeout)
@@ -104,31 +106,14 @@ def cmd_mutation() -> None:
 
     killed = len(by_status.get("killed", []))
     survived = by_status.get("survived", [])
-    timed_out = len(by_status.get("timeout", []))
-    total = killed + len(survived) + timed_out
+    total = killed + len(survived) + len(by_status.get("timeout", []))
     score = (killed / total * 100) if total else 0.0
 
+    failed = min_score is not None and score < min_score
+    sigil = f"{RED}✗{RESET}" if failed else f"{GREEN}✓{RESET}"
+    detail = f"below threshold {min_score:.1f}%" if failed else f"(killed {killed}/{total})"
     partial = "" if completed else " (partial — timeout)"
-    if min_score_str:
-        threshold = float(min_score_str)
-        if score < threshold:
-            print(
-                f"  {RED}✗{RESET} Mutation: score {score:.1f}% "
-                f"below threshold {threshold:.1f}%{partial}"
-            )
-            _print_survivors(survived, changed)
-            sys.exit(1)
-
-    print(f"  {GREEN}✓{RESET} Mutation: score {score:.1f}% (killed {killed}/{total}){partial}")
+    print(f"  {sigil} Mutation: score {score:.1f}% {detail}{partial}")
     _print_survivors(survived, changed)
-
-
-def _print_survivors(survived: list[str], changed: set[str] | None) -> None:
-    if not survived:
-        return
-    shown = [s for s in survived if changed is None or _mutant_in_changed(s, changed)]
-    if not shown:
-        return
-    print(f"    surviving mutants ({len(shown)} shown):")
-    for key in shown[:20]:
-        print(f"      {key}")
+    if failed:
+        sys.exit(1)
