@@ -15,63 +15,21 @@ from harness.git import changed_py_files, staged_py_files
 from harness.paths import SRC_DIR, TEST_DIR
 from harness.reports.suppressions import print_suppressions_report
 from harness.runner import GREEN, RED, RESET, run
+from harness.tasks.acceptance import cmd_acceptance
+from harness.tasks.arch import cmd_arch
+from harness.tasks.coverage import cmd_coverage
 from harness.tasks.fix import cmd_fix
 from harness.tasks.format import cmd_format
 from harness.tasks.format_check import cmd_format_check
 from harness.tasks.lint import cmd_lint
+from harness.tasks.mutation import cmd_mutation
+from harness.tasks.test import cmd_test
 from harness.tasks.typecheck import cmd_typecheck
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
 # ── Commands ──────────────────────────────────────────────────────
-
-
-def cmd_test() -> None:
-    run("Run tests", ["uv", "run", "python", "-m", "unittest", "discover", "-s", TEST_DIR, "-q"])
-
-
-def cmd_coverage() -> None:
-    """Run tests under coverage with threshold + uncovered listing."""
-    min_pct = int(next((a.split("=", 1)[1] for a in sys.argv[1:] if a.startswith("--min=")), "0"))
-    run(
-        "Coverage (run)",
-        ["uv", "run", "coverage", "run", "-m", "unittest", "discover", "-s", TEST_DIR, "-q"],
-    )
-    run(
-        f"Coverage >= {min_pct}%",
-        ["uv", "run", "coverage", "report", "--show-missing", f"--fail-under={min_pct}"],
-    )
-
-
-def cmd_acceptance() -> None:
-    """Run behave scenarios. Empty features dir warns + exits 0."""
-    features_dir = Path(TEST_DIR) / "features"
-    if not features_dir.exists() or not list(features_dir.rglob("*.feature")):
-        print(
-            f"  {GREEN}⚠{RESET} Acceptance: no .feature files in "
-            f"{features_dir}/ (add one to enable this gate)"
-        )
-        return
-    run("Acceptance (behave)", ["uv", "run", "behave", str(features_dir), "--no-color"])
-
-
-def cmd_mutation() -> None:
-    """Run mutmut. Advisory — not wired into ci.
-
-    mutmut 3.x takes no --paths-to-mutate flag; it defaults to `src/` and reads
-    `[tool.mutmut]` in pyproject.toml for customization.
-    """
-    run("Mutation (mutmut)", ["uv", "run", "mutmut", "run"], no_exit=True)
-    run("Mutation results", ["uv", "run", "mutmut", "results"], no_exit=True)
-
-
-def cmd_arch() -> None:
-    """Run import-linter against .importlinter."""
-    if not Path(".importlinter").exists():
-        print(f"  {GREEN}⚠{RESET} Arch: no .importlinter — skipped")
-        return
-    run("Arch (import-linter)", ["uv", "run", "lint-imports"])
 
 
 def cmd_crap() -> None:
