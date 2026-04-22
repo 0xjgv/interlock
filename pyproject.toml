@@ -25,6 +25,11 @@ build-backend = "uv_build"
 [tool.uv.build-backend]
 module-root = ""
 module-name = "harness"
+# Ensure bundled default configs (ruff.toml, coveragerc, pyrightconfig.json,
+# deptry.toml, importlinter_template.ini, mutmut.toml) ship in the sdist.
+# uv_build already includes non-.py files under the module dir in wheels; this
+# line makes the sdist behaviour explicit too.
+source-include = ["harness/defaults/**"]
 
 [dependency-groups]
 dev = [

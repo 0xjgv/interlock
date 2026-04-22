@@ -74,6 +74,72 @@ def test_load_config_uv_lock_flips_invoker(tmp_project: Path) -> None:
     assert load_config().test_invoker == "uv"
 
 
+# ─────────────── threshold defaults + overrides ─────────────────────
+
+
+def test_threshold_defaults_when_absent(tmp_project: Path) -> None:
+    cfg = load_config()
+    assert cfg.coverage_min == 80
+    assert cfg.crap_max == 30.0
+    assert cfg.complexity_max_ccn == 15
+    assert cfg.complexity_max_loc == 100
+    assert cfg.complexity_max_args == 7
+    assert cfg.mutation_min_coverage == 70.0
+    assert cfg.mutation_max_runtime == 600
+
+
+def test_threshold_overrides_apply(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    (tmp_path / "tests").mkdir()
+    _write(
+        tmp_path / "pyproject.toml",
+        """
+        [project]
+        name = "thresh"
+        version = "0.0.0"
+
+        [tool.harness]
+        coverage_min = 90
+        crap_max = 25.5
+        complexity_max_ccn = 12
+        complexity_max_loc = 80
+        complexity_max_args = 5
+        mutation_min_coverage = 85.0
+        mutation_max_runtime = 300
+        """,
+    )
+    monkeypatch.chdir(tmp_path)
+    cfg = load_config()
+    assert cfg.coverage_min == 90
+    assert cfg.crap_max == 25.5
+    assert cfg.complexity_max_ccn == 12
+    assert cfg.complexity_max_loc == 80
+    assert cfg.complexity_max_args == 5
+    assert cfg.mutation_min_coverage == 85.0
+    assert cfg.mutation_max_runtime == 300
+
+
+def test_invalid_threshold_types_fall_back_to_defaults(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    (tmp_path / "tests").mkdir()
+    _write(
+        tmp_path / "pyproject.toml",
+        """
+        [project]
+        name = "badthresh"
+        version = "0.0.0"
+
+        [tool.harness]
+        coverage_min = "eighty"
+        crap_max = true
+        """,
+    )
+    monkeypatch.chdir(tmp_path)
+    cfg = load_config()
+    assert cfg.coverage_min == 80
+    assert cfg.crap_max == 30.0
+
+
 # ─────────────── load_config overrides ──────────────────────────────
 
 

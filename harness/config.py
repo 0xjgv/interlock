@@ -81,6 +81,15 @@ class HarnessConfig:
     test_runner: TestRunner
     test_invoker: TestInvoker
     pytest_args: tuple[str, ...] = ()
+    # Thresholds — overridable via `[tool.harness]`. Single source of truth for
+    # every gate; individual tasks never hardcode these.
+    coverage_min: int = 80
+    crap_max: float = 30.0
+    complexity_max_ccn: int = 15
+    complexity_max_loc: int = 100
+    complexity_max_args: int = 7
+    mutation_min_coverage: float = 70.0
+    mutation_max_runtime: int = 600
 
     @property
     def src_dir_arg(self) -> str:
@@ -154,6 +163,7 @@ def _load_config_cached(project_root: Path) -> HarnessConfig:
         project_root, pyproject, test_dir
     )
     test_invoker: TestInvoker = invoker_override or detect_test_invoker(project_root)
+    thresholds = _threshold_overrides(table)
 
     return HarnessConfig(
         project_root=project_root,
@@ -162,7 +172,54 @@ def _load_config_cached(project_root: Path) -> HarnessConfig:
         test_runner=test_runner,
         test_invoker=test_invoker,
         pytest_args=pytest_args,
+        **thresholds,
     )
+
+
+_INT_THRESHOLDS = (
+    "coverage_min",
+    "complexity_max_ccn",
+    "complexity_max_loc",
+    "complexity_max_args",
+    "mutation_max_runtime",
+)
+_FLOAT_THRESHOLDS = ("crap_max", "mutation_min_coverage")
+
+
+def _threshold_overrides(table: dict[str, Any]) -> dict[str, Any]:
+    """Parse known threshold keys from ``[tool.harness]`` with type coercion.
+
+    Invalid values (non-numeric, wrong type) fall through silently — the
+    dataclass default applies. Keeps config parsing permissive.
+    """
+    overrides: dict[str, Any] = {}
+    for key in _INT_THRESHOLDS:
+        value = _coerce_int(table.get(key))
+        if value is not None:
+            overrides[key] = value
+    for key in _FLOAT_THRESHOLDS:
+        value = _coerce_float(table.get(key))
+        if value is not None:
+            overrides[key] = value
+    return overrides
+
+
+def _coerce_int(raw: object) -> int | None:
+    if raw is None or isinstance(raw, bool):
+        return None
+    if isinstance(raw, int):
+        return raw
+    if isinstance(raw, float):
+        return int(raw)
+    return None
+
+
+def _coerce_float(raw: object) -> float | None:
+    if raw is None or isinstance(raw, bool):
+        return None
+    if isinstance(raw, (int, float)):
+        return float(raw)
+    return None
 
 
 def clear_cache() -> None:
