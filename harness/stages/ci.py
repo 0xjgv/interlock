@@ -1,4 +1,4 @@
-"""CI stage — full verification pipeline (all read-only gates in parallel)."""
+"""CI stage."""
 
 from __future__ import annotations
 

@@ -15,3 +15,7 @@
 - Mutation (advisory): `harness mutation --min-coverage=70 --max-runtime=600` — mutmut
 - Setup: `harness setup-hooks` to install git pre-commit hook
 - Auto-format: runs automatically after Claude edits via `Stop` hook (post-edit)
+
+## Context
+
+- This project is a CLI tool for managing Python projects (we use it internally to dogfood the tool).

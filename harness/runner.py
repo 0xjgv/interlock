@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import io
+import os
 import re
 import shutil
 import subprocess
@@ -120,7 +121,8 @@ def run_tasks(tasks: list[Task]) -> None:
     if not tasks:
         return
     results: list[RunResult | None] = [None] * len(tasks)
-    with ThreadPoolExecutor(max_workers=len(tasks)) as executor:
+    max_workers = min(len(tasks), (os.cpu_count() or 4) * 2)
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
         futures = {executor.submit(_execute, t): idx for idx, t in enumerate(tasks)}
         for fut in as_completed(futures):
             result = fut.result()

@@ -1,4 +1,4 @@
-"""Check stage — fix, format, then {typecheck, test} in parallel; suppressions in finally."""
+"""Check stage."""
 
 from __future__ import annotations
 
