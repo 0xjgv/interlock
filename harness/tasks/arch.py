@@ -6,10 +6,10 @@ Default catches production code accidentally importing test helpers — a real b
 from __future__ import annotations
 
 import tempfile
-import textwrap
 from pathlib import Path
 
 from harness.config import HarnessConfig, _load_pyproject, load_config
+from harness.defaults_path import path as defaults_path
 from harness.runner import Task, run, tool, warn_skip
 
 
@@ -49,24 +49,10 @@ def _write_default_config(cfg: HarnessConfig) -> Path | None:
     src_pkg, test_pkg = cfg.src_dir.name, cfg.test_dir.name
     if not (src_init.is_file() and test_init.is_file() and src_pkg != test_pkg):
         return None
-    body = textwrap.dedent(
-        f"""\
-        [importlinter]
-        root_packages =
-            {src_pkg}
-            {test_pkg}
-
-        [importlinter:contract:production-no-tests]
-        name = Production does not import tests
-        type = forbidden
-        source_modules =
-            {src_pkg}
-        forbidden_modules =
-            {test_pkg}
-        """
-    )
+    template = defaults_path("importlinter_template.ini").read_text(encoding="utf-8")
+    body = template.format(src_pkg=src_pkg, test_pkg=test_pkg)
     # Stable path — content depends only on (src_pkg, test_pkg), so projects sharing
     # those names share the file safely, and import-linter's graph cache survives runs.
-    path = Path(tempfile.gettempdir()) / f"harness-arch-{src_pkg}-{test_pkg}.ini"
-    path.write_text(body, encoding="utf-8")
-    return path
+    out = Path(tempfile.gettempdir()) / f"harness-arch-{src_pkg}-{test_pkg}.ini"
+    out.write_text(body, encoding="utf-8")
+    return out
