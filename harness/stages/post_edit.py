@@ -11,5 +11,6 @@ def cmd_post_edit() -> None:
     files = changed_py_files()
     if not files:
         return
-    run("Fix lint errors", tool("ruff", "check", "--fix", *files), no_exit=True, quiet=True)
-    run("Format code", tool("ruff", "format", *files), no_exit=True, quiet=True)
+    print("\n=== Post-edit ===\n")
+    run("Fix lint errors", tool("ruff", "check", "--fix", *files), no_exit=True)
+    run("Format code", tool("ruff", "format", *files), no_exit=True)

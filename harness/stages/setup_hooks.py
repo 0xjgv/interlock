@@ -54,6 +54,7 @@ def _ensure_stop_hook(settings: dict[str, object], command: str) -> dict[str, ob
 
 
 def cmd_hooks() -> None:
+    print("\n=== Setup Hooks ===\n")
     python = shlex.quote(sys.executable)
 
     hook = Path(".git/hooks/pre-commit")
