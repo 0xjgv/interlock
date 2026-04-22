@@ -7,7 +7,7 @@ import sys
 import xml.etree.ElementTree as ET
 
 from harness.git import changed_py_files_vs_main
-from harness.runner import GREEN, RED, RESET, arg_value, generate_coverage_xml, python_m, warn_skip
+from harness.runner import arg_value, fail, generate_coverage_xml, ok, python_m, warn_skip
 
 _MUTMUT = python_m("mutmut")
 
@@ -97,10 +97,11 @@ def cmd_mutation() -> None:
     score = (killed / total * 100) if total else 0.0
 
     failed = min_score is not None and score < min_score
-    sigil = f"{RED}✗{RESET}" if failed else f"{GREEN}✓{RESET}"
-    detail = f"below threshold {min_score:.1f}%" if failed else f"(killed {killed}/{total})"
     partial = "" if completed else " (partial — timeout)"
-    print(f"  {sigil} Mutation: score {score:.1f}% {detail}{partial}")
+    if failed:
+        fail(f"Mutation: score {score:.1f}% below threshold {min_score:.1f}%{partial}")
+    else:
+        ok(f"Mutation: score {score:.1f}% (killed {killed}/{total}){partial}")
     _print_survivors(survived, changed)
     if failed:
         sys.exit(1)

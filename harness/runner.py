@@ -43,6 +43,21 @@ def generate_coverage_xml() -> Path:
     return Path("coverage.xml")
 
 
+def section(name: str) -> None:
+    """Emit a blank-padded ``=== name ===`` stage header."""
+    print(f"\n=== {name} ===\n")
+
+
+def ok(message: str) -> None:
+    """Emit a success line for a completed action."""
+    print(f"  {GREEN}✓{RESET} {message}")
+
+
+def fail(message: str) -> None:
+    """Emit a failure line without exiting (advisory gates)."""
+    print(f"  {RED}✗{RESET} {message}")
+
+
 def warn_skip(message: str) -> None:
     """Emit a 'skipped' status line for optional/absent gates."""
     print(f"  {GREEN}⚠{RESET} {message}")
@@ -64,10 +79,9 @@ def run(
     cmd: list[str],
     *,
     no_exit: bool = False,
-    quiet: bool = False,
     test_summary: bool = False,
 ) -> None:
-    """Run ``cmd`` silently; print ✓/✗ on completion. ``quiet=True`` suppresses ✓."""
+    """Run ``cmd`` silently; print ✓/✗ on completion."""
     if VERBOSE:
         print(f"  -> {' '.join(cmd)}")
         result = subprocess.run(cmd, check=False)
@@ -79,8 +93,6 @@ def run(
 
     result = subprocess.run(cmd, capture_output=True, text=True, check=False)
     if result.returncode == 0:
-        if quiet:
-            return
         extra = _parse_test_summary(result.stdout + result.stderr) if test_summary else ""
         print(f"  {GREEN}✓{RESET} {description}{extra}")
     else:

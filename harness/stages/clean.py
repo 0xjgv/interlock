@@ -5,12 +5,12 @@ from __future__ import annotations
 import shutil
 from pathlib import Path
 
-from harness.runner import run, tool
+from harness.runner import run, section, tool
 
 
 def cmd_clean() -> None:
     """Remove cache and build artifacts."""
-    print("\n=== Cleaning Up ===\n")
+    section("Cleaning Up")
     for name in [
         ".ruff_cache",
         "build",

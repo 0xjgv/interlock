@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from harness.git import stage, staged_py_files
 from harness.paths import SRC_DIR
+from harness.runner import section
 from harness.tasks.fix import cmd_fix
 from harness.tasks.format import cmd_format
 from harness.tasks.test import cmd_test
@@ -17,7 +18,7 @@ def cmd_pre_commit() -> None:
         print("No staged Python files — skipping checks")
         return
 
-    print("\n=== Pre-commit Checks ===\n")
+    section("Pre-commit Checks")
     cmd_fix(files)
     cmd_format(files)
     stage(files)

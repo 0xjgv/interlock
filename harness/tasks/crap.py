@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING
 
 from harness.git import changed_py_files_vs_main
 from harness.paths import SRC_DIR
-from harness.runner import GREEN, RED, RESET, arg_value, fail_skip, generate_coverage_xml, tool
+from harness.runner import arg_value, fail, fail_skip, generate_coverage_xml, ok, tool
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -78,9 +78,9 @@ def cmd_crap() -> None:
     offenders = _compute_offenders(lizard_res.stdout, cov_map, changed, max_crap)
 
     if not offenders:
-        print(f"  {GREEN}✓{RESET} CRAP: all functions below {max_crap}")
+        ok(f"CRAP: all functions below {max_crap}")
         return
     offenders.sort(reverse=True)
-    print(f"  {RED}✗{RESET} CRAP: {len(offenders)} function(s) exceed {max_crap}")
+    fail(f"CRAP: {len(offenders)} function(s) exceed {max_crap}")
     for crap, ccn, cov, loc in offenders[:20]:
         print(f"    CRAP={crap:6.1f}  CCN={ccn:3d}  cov={cov * 100:5.1f}%  {loc}")

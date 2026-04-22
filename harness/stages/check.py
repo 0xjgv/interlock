@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from harness.reports.suppressions import print_suppressions_report
+from harness.runner import section
 from harness.tasks.fix import cmd_fix
 from harness.tasks.format import cmd_format
 from harness.tasks.test import cmd_test
@@ -11,7 +12,7 @@ from harness.tasks.typecheck import cmd_typecheck
 
 def cmd_check() -> None:
     """Fix, format, typecheck, and test the full repo."""
-    print("\n=== Quality Checks ===\n")
+    section("Quality Checks")
     try:
         cmd_fix()
         cmd_format()
