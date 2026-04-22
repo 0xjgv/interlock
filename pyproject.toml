@@ -103,6 +103,8 @@ ignore = [
     "PLR2004",  # magic values fine in tests
     "RUF069",   # float equality comparisons fine in tests
     "S101",     # assert usage (unittest uses self.assert*, but keep for flexibility)
+    "S404",     # subprocess import (intentional — integration tests invoke the CLI)
+    "S603",     # subprocess call without shell=true check (intentional)
     "SIM105",   # contextlib.suppress suggestion
     "TCH",      # type-checking imports (fixtures need runtime types)
 ]
