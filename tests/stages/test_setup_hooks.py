@@ -11,10 +11,11 @@ from harness.stages.setup_hooks import _ensure_stop_hook
 
 class TestSetupHooks(unittest.TestCase):
     def test_ensure_stop_hook_creates_stop_hook_settings(self) -> None:
-        settings = _ensure_stop_hook({}, "python -m harness.cli post-edit")
+        initial: dict[str, object] = {}
+        settings = _ensure_stop_hook(initial, "python -m harness.cli post-edit")
 
         self.assertEqual(
-            settings["hooks"]["Stop"],
+            settings["hooks"]["Stop"],  # pyright: ignore[reportIndexIssue]
             [
                 {
                     "hooks": [
@@ -60,7 +61,7 @@ class TestSetupHooks(unittest.TestCase):
         self.assertEqual(len(stop_entries), 1)
 
     def test_ensure_stop_hook_appends_into_existing_nested_hooks_array(self) -> None:
-        settings = {
+        settings: dict[str, object] = {
             "hooks": {
                 "Stop": [
                     {
@@ -78,7 +79,7 @@ class TestSetupHooks(unittest.TestCase):
         _ensure_stop_hook(settings, "python -m harness.cli post-edit")
 
         self.assertEqual(
-            settings["hooks"]["Stop"],
+            settings["hooks"]["Stop"],  # pyright: ignore[reportIndexIssue]
             [
                 {
                     "hooks": [
@@ -96,7 +97,7 @@ class TestSetupHooks(unittest.TestCase):
         )
 
     def test_ensure_stop_hook_normalizes_duplicate_post_edit_hooks(self) -> None:
-        settings = {
+        settings: dict[str, object] = {
             "hooks": {
                 "Stop": [
                     {
@@ -130,7 +131,7 @@ class TestSetupHooks(unittest.TestCase):
         _ensure_stop_hook(settings, "python -m harness.cli post-edit")
 
         self.assertEqual(
-            settings["hooks"]["Stop"],
+            settings["hooks"]["Stop"],  # pyright: ignore[reportIndexIssue]
             [
                 {
                     "hooks": [
