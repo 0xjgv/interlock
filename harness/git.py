@@ -48,15 +48,20 @@ def changed_py_files() -> list[str]:
     ]
 
 
-def changed_py_files_vs_main() -> set[str]:
-    """Return .py files changed vs origin/main on the current branch."""
+def changed_py_files_vs(ref: str) -> set[str]:
+    """Return .py files changed vs ``ref`` on the current branch (renames followed)."""
     res = subprocess.run(
-        ["git", "diff", "--name-only", "origin/main...HEAD"],
+        ["git", "diff", "--name-only", "--find-renames=90%", f"{ref}...HEAD"],
         capture_output=True,
         text=True,
         check=False,
     )
     return {f.strip() for f in res.stdout.splitlines() if f.strip().endswith(".py")}
+
+
+def changed_py_files_vs_main() -> set[str]:
+    """Return .py files changed vs origin/main on the current branch."""
+    return changed_py_files_vs("origin/main")
 
 
 def stage(files: list[str]) -> None:
