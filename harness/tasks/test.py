@@ -2,19 +2,13 @@
 
 from __future__ import annotations
 
-from harness.detect import detect_test_runner
-from harness.paths import TEST_DIR
-from harness.runner import Task, python_m, run
+from harness.config import build_test_command, load_config
+from harness.runner import Task, run
 
 
 def task_test() -> Task:
-    if detect_test_runner() == "pytest":
-        return Task("Run tests", python_m("pytest", TEST_DIR, "-q"), test_summary=True)
-    return Task(
-        "Run tests",
-        python_m("unittest", "discover", "-s", TEST_DIR, "-q"),
-        test_summary=True,
-    )
+    cfg = load_config()
+    return Task("Run tests", build_test_command(cfg), test_summary=True)
 
 
 def cmd_test() -> None:

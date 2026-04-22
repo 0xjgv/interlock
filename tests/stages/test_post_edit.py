@@ -17,6 +17,9 @@ requires-python = ">=3.13"
 [tool.ruff]
 target-version = "py313"
 line-length = 99
+
+[tool.harness]
+src_dir = "app"
 """
 
 
@@ -27,7 +30,7 @@ def _git(cwd: Path, *args: str) -> None:
 @pytest.fixture
 def tmp_project(tmp_path: Path) -> Path:
     (tmp_path / "pyproject.toml").write_text(PYPROJECT, encoding="utf-8")
-    (tmp_path / "harness").mkdir()
+    (tmp_path / "app").mkdir()
     _git(tmp_path, "init", "-q")
     _git(tmp_path, "config", "user.email", "t@e.co")
     _git(tmp_path, "config", "user.name", "t")
@@ -45,13 +48,13 @@ def _run_post_edit(cwd: Path) -> subprocess.CompletedProcess[str]:
 
 
 def test_post_edit_formats_uncommitted_file(tmp_project: Path) -> None:
-    target = tmp_project / "harness" / "mod.py"
+    target = tmp_project / "app" / "mod.py"
     target.write_text("x = 0\n", encoding="utf-8")
     _git(tmp_project, "add", "-A")
     _git(tmp_project, "commit", "-q", "-m", "init")
     # stage a modification, then modify again so porcelain status is "MM"
     target.write_text("x=1\n", encoding="utf-8")
-    _git(tmp_project, "add", "harness/mod.py")
+    _git(tmp_project, "add", "app/mod.py")
     target.write_text("x=1\ny   =   2\nz=3\n", encoding="utf-8")
 
     result = _run_post_edit(tmp_project)
@@ -62,7 +65,7 @@ def test_post_edit_formats_uncommitted_file(tmp_project: Path) -> None:
 
 def test_post_edit_noop_when_no_changes(tmp_project: Path) -> None:
     # committed clean file -> no uncommitted changes
-    clean = tmp_project / "harness" / "clean.py"
+    clean = tmp_project / "app" / "clean.py"
     clean.write_text("x = 1\n", encoding="utf-8")
     _git(tmp_project, "add", "-A")
     _git(tmp_project, "commit", "-q", "-m", "init")
@@ -92,7 +95,7 @@ def test_post_edit_in_process_runs_ruff_on_changed_files(
     """Changed files -> cmd_post_edit dispatches two run() calls (fix + format)."""
     from harness.stages import post_edit as post_edit_mod
 
-    monkeypatch.setattr(post_edit_mod, "changed_py_files", lambda: ["harness/mod.py"])
+    monkeypatch.setattr(post_edit_mod, "changed_py_files", lambda: ["app/mod.py"])
     tasks_ran: list[str] = []
     monkeypatch.setattr(post_edit_mod, "run", lambda task, **_: tasks_ran.append(task.description))
 
@@ -103,12 +106,12 @@ def test_post_edit_in_process_runs_ruff_on_changed_files(
 
 def test_post_edit_tolerates_unfixable_lint(tmp_project: Path) -> None:
     # file with lint issues ruff can't auto-fix (undefined name) -> no_exit
-    target = tmp_project / "harness" / "bad.py"
+    target = tmp_project / "app" / "bad.py"
     target.write_text("x = 0\n", encoding="utf-8")
     _git(tmp_project, "add", "-A")
     _git(tmp_project, "commit", "-q", "-m", "init")
     target.write_text("y=undefined_name\n", encoding="utf-8")
-    _git(tmp_project, "add", "harness/bad.py")
+    _git(tmp_project, "add", "app/bad.py")
     target.write_text("y=undefined_name\nz=also_undefined\n", encoding="utf-8")
 
     result = _run_post_edit(tmp_project)

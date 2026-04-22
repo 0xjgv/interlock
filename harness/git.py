@@ -4,38 +4,47 @@ from __future__ import annotations
 
 import subprocess
 
-from harness.paths import SRC_DIR, TEST_DIR
+from harness.config import load_config
+
+
+def _src_test_prefixes() -> tuple[str, ...]:
+    cfg = load_config()
+    prefixes: list[str] = []
+    for name in (cfg.src_dir_arg, cfg.test_dir_arg):
+        if name and name != ".":
+            prefixes.append(f"{name}/")
+    return tuple(prefixes) or ("",)
 
 
 def staged_py_files() -> list[str]:
-    """Return staged .py files under src/ and tests/, excluding deleted files."""
+    """Return staged .py files under the project's src/test dirs, excluding deletions."""
     result = subprocess.run(
         ["git", "diff", "--cached", "--name-only", "--diff-filter=d", "--relative"],
         capture_output=True,
         text=True,
         check=False,
     )
+    prefixes = _src_test_prefixes()
     return [
         f
         for f in result.stdout.strip().splitlines()
-        if f.endswith(".py") and f.startswith((f"{SRC_DIR}/", f"{TEST_DIR}/"))
+        if f.endswith(".py") and f.startswith(prefixes)
     ]
 
 
 def changed_py_files() -> list[str]:
-    """Return .py files with uncommitted changes under src/ and tests/."""
+    """Return .py files with uncommitted changes under the project's src/test dirs."""
     result = subprocess.run(
         ["git", "status", "--porcelain"],
         capture_output=True,
         text=True,
         check=False,
     )
+    prefixes = _src_test_prefixes()
     return [
         line[3:]
         for line in result.stdout.strip().splitlines()
-        if len(line) > 3
-        and line[3:].endswith(".py")
-        and line[3:].startswith((f"{SRC_DIR}/", f"{TEST_DIR}/"))
+        if len(line) > 3 and line[3:].endswith(".py") and line[3:].startswith(prefixes)
     ]
 
 

@@ -70,7 +70,7 @@ def _print_survivors(survived: list[str], changed: set[str] | None) -> None:
 
 
 def cmd_mutation() -> None:
-    """Mutation score on `harness/`. Advisory unless --min-score is set."""
+    """Mutation score via mutmut (reads ``[tool.mutmut]``). Advisory unless --min-score is set."""
     min_cov = float(arg_value("--min-coverage=", "70"))
     rate = _coverage_line_rate()
     if rate is None:

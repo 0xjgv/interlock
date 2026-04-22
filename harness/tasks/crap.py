@@ -8,8 +8,8 @@ import sys
 import xml.etree.ElementTree as ET
 from typing import TYPE_CHECKING
 
+from harness.config import load_config
 from harness.git import changed_py_files_vs_main
-from harness.paths import SRC_DIR
 from harness.runner import arg_value, fail, fail_skip, generate_coverage_xml, ok, tool
 
 if TYPE_CHECKING:
@@ -64,13 +64,14 @@ def cmd_crap() -> None:
     """CRAP = ccn^2 * (1-cov)^3 + ccn per function. Advisory — lizard + coverage XML."""
     max_crap = float(arg_value("--max=", "30"))
     changed = changed_py_files_vs_main() if "--changed-only" in sys.argv else None
+    cfg = load_config()
 
     cov_file = generate_coverage_xml()
     if not cov_file.exists():
         fail_skip("CRAP: coverage.xml not generated — run `harness coverage` first")
     cov_map = _parse_coverage(cov_file)
     lizard_res = subprocess.run(
-        tool("lizard", SRC_DIR),
+        tool("lizard", cfg.src_dir_arg),
         capture_output=True,
         text=True,
         check=False,

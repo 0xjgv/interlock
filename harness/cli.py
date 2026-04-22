@@ -6,6 +6,7 @@ from __future__ import annotations
 import sys
 from typing import TYPE_CHECKING
 
+from harness.config import load_config
 from harness.stages.check import cmd_check
 from harness.stages.ci import cmd_ci
 from harness.stages.clean import cmd_clean
@@ -34,6 +35,23 @@ def cmd_help() -> None:
         print(f"{group_name}:")
         for name, (_, description) in group.items():
             print(f"  {name:<{width}}  {description}")
+    _print_detected_block()
+
+
+def _print_detected_block() -> None:
+    try:
+        cfg = load_config()
+    except OSError:
+        return
+    print()
+    print("Detected:")
+    print(f"  project_root   {cfg.project_root}")
+    print(f"  src_dir        {cfg.src_dir_arg}")
+    print(f"  test_dir       {cfg.test_dir_arg}")
+    print(f"  test_runner    {cfg.test_runner}")
+    print(f"  test_invoker   {cfg.test_invoker}")
+    if cfg.pytest_args:
+        print(f"  pytest_args    {list(cfg.pytest_args)}")
 
 
 TASK_GROUPS: list[tuple[str, dict[str, tuple[Callable[..., None], str]]]] = [

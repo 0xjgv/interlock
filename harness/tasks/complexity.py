@@ -2,14 +2,18 @@
 
 from __future__ import annotations
 
-from harness.paths import SRC_DIR, TEST_DIR
+from harness.config import load_config
 from harness.runner import Task, run, tool
 
 
 def task_complexity() -> Task:
+    cfg = load_config()
+    targets = [cfg.src_dir_arg]
+    if cfg.test_dir_arg and cfg.test_dir_arg != cfg.src_dir_arg:
+        targets.append(cfg.test_dir_arg)
     return Task(
         "Complexity (lizard)",
-        tool("lizard", SRC_DIR, TEST_DIR, "-C", "15", "-a", "7", "-L", "100", "-i", "0"),
+        tool("lizard", *targets, "-C", "15", "-a", "7", "-L", "100", "-i", "0"),
     )
 
 

@@ -29,6 +29,15 @@ dev = [
     "pytest>=9.0.3",
 ]
 
+# ── Harness (self-config; all keys optional — defaults come from auto-detect) ──
+
+[tool.harness]
+src_dir = "harness"
+test_dir = "tests"
+test_runner = "pytest"
+test_invoker = "python"
+pytest_args = ["-q"]
+
 # ── Ruff (lint + format) ────────────────────────────────────────────
 
 [tool.pytest.ini_options]

@@ -6,7 +6,7 @@ import re
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from harness.paths import SRC_DIR, TEST_DIR
+from harness.config import load_config
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
@@ -38,7 +38,11 @@ def _parse_line_for_suppressions(line: str) -> list[tuple[str, list[str]]]:
 def _scan_suppressions(roots: Iterable[str] | None = None) -> dict[str, list[list[str]]]:
     """Scan Python files for suppression comments. Returns {kind: [rules...]}."""
     results: dict[str, list[list[str]]] = {}
-    actual_roots = roots if roots is not None else (SRC_DIR, TEST_DIR)
+    if roots is None:
+        cfg = load_config()
+        actual_roots = (cfg.src_dir_arg, cfg.test_dir_arg)
+    else:
+        actual_roots = roots
     for dir_name in actual_roots:
         for py_file in sorted(Path(dir_name).rglob("*.py")):
             try:

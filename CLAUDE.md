@@ -19,3 +19,18 @@
 ## Context
 
 - This project is a CLI tool for managing Python projects (we use it internally to dogfood the tool).
+
+## Configuration
+
+`harness` walks up from CWD to find the nearest `pyproject.toml` (pytest-style rootdir) and auto-detects source/test dirs, test runner, and invoker. All keys under `[tool.harness]` are optional overrides:
+
+```toml
+[tool.harness]
+src_dir = "harness"       # auto: src/<pkg>, top-level pkg, or [tool.uv.build-backend]
+test_dir = "tests"        # auto: first existing of tests/, test/, src/tests/
+test_runner = "pytest"    # "pytest" | "unittest" — auto from pytest config/deps/import
+test_invoker = "python"   # "python" | "uv" — auto "uv" when uv.lock present
+pytest_args = ["-q"]      # extra args appended to pytest commands
+```
+
+- `harness help` prints the detected values — a quick sanity check in any repo.

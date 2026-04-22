@@ -6,12 +6,24 @@ from pathlib import Path
 
 import pytest
 
-from harness.paths import SRC_DIR, TEST_DIR
 from harness.reports.suppressions import (
     _parse_line_for_suppressions,
     _scan_suppressions,
     print_suppressions_report,
 )
+
+# Layout the default-roots tests expect `load_config` to detect.
+SRC_NAME = "pkg"
+TEST_NAME = "tests"
+_PYPROJECT = f"""\
+[tool.harness]
+src_dir = "{SRC_NAME}"
+test_dir = "{TEST_NAME}"
+"""
+
+
+def _write_project_scaffold(tmp_path: Path) -> None:
+    (tmp_path / "pyproject.toml").write_text(_PYPROJECT, encoding="utf-8")
 
 
 @pytest.mark.parametrize(
@@ -75,10 +87,11 @@ def test_scan_suppressions_skips_unreadable_files(
 
 
 def test_scan_suppressions_default_roots(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    (tmp_path / SRC_DIR).mkdir()
-    (tmp_path / SRC_DIR / "a.py").write_text("x = 1  # noqa: E501\n", encoding="utf-8")
-    (tmp_path / TEST_DIR).mkdir()
-    (tmp_path / TEST_DIR / "b.py").write_text("y = 2  # type: ignore\n", encoding="utf-8")
+    _write_project_scaffold(tmp_path)
+    (tmp_path / SRC_NAME).mkdir()
+    (tmp_path / SRC_NAME / "a.py").write_text("x = 1  # noqa: E501\n", encoding="utf-8")
+    (tmp_path / TEST_NAME).mkdir()
+    (tmp_path / TEST_NAME / "b.py").write_text("y = 2  # type: ignore\n", encoding="utf-8")
     monkeypatch.chdir(tmp_path)
 
     results = _scan_suppressions()
@@ -89,8 +102,9 @@ def test_scan_suppressions_default_roots(tmp_path: Path, monkeypatch: pytest.Mon
 def test_print_report_empty(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    (tmp_path / SRC_DIR).mkdir()
-    (tmp_path / TEST_DIR).mkdir()
+    _write_project_scaffold(tmp_path)
+    (tmp_path / SRC_NAME).mkdir()
+    (tmp_path / TEST_NAME).mkdir()
     monkeypatch.chdir(tmp_path)
 
     print_suppressions_report()
@@ -102,13 +116,14 @@ def test_print_report_empty(
 def test_print_report_totals_and_breakdown(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    (tmp_path / SRC_DIR).mkdir()
-    (tmp_path / SRC_DIR / "a.py").write_text(
+    _write_project_scaffold(tmp_path)
+    (tmp_path / SRC_NAME).mkdir()
+    (tmp_path / SRC_NAME / "a.py").write_text(
         "x = 1  # noqa: E501\ny = 2  # noqa: E501\nz = 3  # noqa: F401\n",
         encoding="utf-8",
     )
-    (tmp_path / TEST_DIR).mkdir()
-    (tmp_path / TEST_DIR / "b.py").write_text(
+    (tmp_path / TEST_NAME).mkdir()
+    (tmp_path / TEST_NAME / "b.py").write_text(
         "q = 4  # type: ignore[arg-type]\n", encoding="utf-8"
     )
     monkeypatch.chdir(tmp_path)

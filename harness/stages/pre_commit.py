@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
+from harness.config import load_config
 from harness.git import stage, staged_py_files
-from harness.paths import SRC_DIR
 from harness.runner import run_tasks, section
 from harness.tasks.fix import cmd_fix
 from harness.tasks.format import cmd_format
@@ -23,7 +23,9 @@ def cmd_pre_commit() -> None:
     cmd_format(files)
     stage(files)
 
+    cfg = load_config()
+    src_prefix = f"{cfg.src_dir_arg}/"
     tasks = [task_typecheck()]
-    if any(f.startswith(f"{SRC_DIR}/") for f in files):
+    if any(f.startswith(src_prefix) for f in files):
         tasks.append(task_test())
     run_tasks(tasks)

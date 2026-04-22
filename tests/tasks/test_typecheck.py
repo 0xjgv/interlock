@@ -1,9 +1,10 @@
 """Integration tests for harness.tasks.typecheck.
 
-``cmd_typecheck`` targets the hardcoded ``SRC_DIR == "harness"``. A subprocess
-with ``cwd=tmp_project`` would find the tmp dir's ``harness/`` before the
-installed package (ModuleNotFoundError on ``harness.cli``), so we invoke the
-function directly under ``monkeypatch.chdir``.
+``cmd_typecheck`` targets whatever ``load_config().src_dir`` resolves to. The
+fixture here creates a flat ``harness/`` package so autodetect picks it up. A
+subprocess with ``cwd=tmp_project`` would find the tmp dir's ``harness/``
+before the installed package (ModuleNotFoundError on ``harness.cli``), so we
+invoke the function directly under ``monkeypatch.chdir``.
 """
 
 from __future__ import annotations
