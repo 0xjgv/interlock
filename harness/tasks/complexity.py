@@ -13,7 +13,18 @@ def task_complexity() -> Task:
         targets.append(cfg.test_dir_arg)
     return Task(
         "Complexity (lizard)",
-        tool("lizard", *targets, "-C", "15", "-a", "7", "-L", "100", "-i", "0"),
+        tool(
+            "lizard",
+            *targets,
+            "-C",
+            str(cfg.complexity_max_ccn),
+            "-a",
+            str(cfg.complexity_max_args),
+            "-L",
+            str(cfg.complexity_max_loc),
+            "-i",
+            "0",
+        ),
     )
 
 

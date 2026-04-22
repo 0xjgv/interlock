@@ -71,3 +71,45 @@ def test_complexity_fails_on_tangled_function(
     with pytest.raises(SystemExit) as exc:
         cmd_complexity()
     assert exc.value.code not in (0, None)
+
+
+# ─────────────── threshold cascade ─────────────────────
+
+
+def _flag_value(cmd: list[str], flag: str) -> str:
+    return cmd[cmd.index(flag) + 1]
+
+
+def test_complexity_uses_default_thresholds_from_config(
+    tmp_project: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Default HarnessConfig thresholds (15/7/100) appear in the lizard argv."""
+    monkeypatch.chdir(tmp_project)
+    from harness.tasks.complexity import task_complexity
+
+    cmd = task_complexity().cmd
+    assert _flag_value(cmd, "-C") == "15"
+    assert _flag_value(cmd, "-a") == "7"
+    assert _flag_value(cmd, "-L") == "100"
+
+
+def test_complexity_honors_tool_harness_overrides(
+    tmp_project: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """`[tool.harness]` threshold keys flow into lizard argv."""
+    (tmp_project / "pyproject.toml").write_text(
+        textwrap.dedent("""\
+            [tool.harness]
+            complexity_max_ccn = 20
+            complexity_max_args = 5
+            complexity_max_loc = 150
+        """),
+        encoding="utf-8",
+    )
+    monkeypatch.chdir(tmp_project)
+    from harness.tasks.complexity import task_complexity
+
+    cmd = task_complexity().cmd
+    assert _flag_value(cmd, "-C") == "20"
+    assert _flag_value(cmd, "-a") == "5"
+    assert _flag_value(cmd, "-L") == "150"
