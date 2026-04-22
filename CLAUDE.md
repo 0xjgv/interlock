@@ -28,11 +28,32 @@
 
 ```toml
 [tool.harness]
-src_dir = "harness"       # auto: src/<pkg>, top-level pkg, or [tool.uv.build-backend]
-test_dir = "tests"        # auto: first existing of tests/, test/, src/tests/
-test_runner = "pytest"    # "pytest" | "unittest" — auto from pytest config/deps/import
-test_invoker = "python"   # "python" | "uv" — auto "uv" when uv.lock present
-pytest_args = ["-q"]      # extra args appended to pytest commands
+# Paths / runners
+src_dir = "harness"            # auto: src/<pkg>, top-level pkg, or [tool.uv.build-backend]
+test_dir = "tests"             # auto: first existing of tests/, test/, src/tests/
+test_runner = "pytest"         # "pytest" | "unittest" — auto from pytest config/deps/import
+test_invoker = "python"        # "python" | "uv" — auto "uv" when uv.lock present
+pytest_args = ["-q"]           # extra args appended to pytest commands
+
+# Thresholds — single source of truth for every gate
+coverage_min = 80              # `coverage` fail-under
+crap_max = 30.0                # `crap` CRAP ceiling
+complexity_max_ccn = 15        # lizard CCN cap
+complexity_max_args = 7        # lizard argument count cap
+complexity_max_loc = 100       # lizard LOC cap
+mutation_min_coverage = 70.0   # `mutation` skip when suite coverage is lower
+mutation_max_runtime = 600     # `mutation` seconds before SIGTERM
 ```
 
-- `harness help` prints the detected values — a quick sanity check in any repo.
+- `harness help` prints detected paths + resolved thresholds.
+
+### Precedence cascade
+
+Highest wins:
+
+1. CLI flags (`--min=`, `--max=`, `--max-runtime=`, …)
+2. Project `[tool.harness]` in the nearest `pyproject.toml`
+3. User-global `~/.config/harness/config.toml` (respects `$XDG_CONFIG_HOME`) — same keys, no `[tool.harness]` wrapper
+4. Bundled defaults (above) + bundled tool configs under `harness/defaults/` — `ruff.toml`, `pyrightconfig.json`, `coveragerc`, `importlinter_template.ini`
+
+When a target project declares its own `[tool.<tool>]` (or a sidecar like `ruff.toml`/`.coveragerc`/`pyrightconfig.json`/`.importlinter`), the bundled default is skipped and the project's config applies directly.

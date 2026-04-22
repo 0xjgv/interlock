@@ -41,11 +41,50 @@ Override any of these via `[tool.harness]` in your `pyproject.toml` (all keys op
 
 ```toml
 [tool.harness]
+# Paths / runners
 src_dir = "mypkg"
 test_dir = "tests"
-test_runner = "pytest"     # or "unittest"
-test_invoker = "python"    # or "uv"
+test_runner = "pytest"         # or "unittest"
+test_invoker = "python"        # or "uv"
 pytest_args = ["-q", "-x"]
+
+# Thresholds (single source of truth — every gate reads these)
+coverage_min = 80              # `harness coverage` fail-under
+crap_max = 30.0                # `harness crap` CRAP ceiling
+complexity_max_ccn = 15        # lizard CCN cap
+complexity_max_args = 7        # lizard argument count cap
+complexity_max_loc = 100       # lizard LOC cap
+mutation_min_coverage = 70.0   # `harness mutation` skip if suite coverage is lower
+mutation_max_runtime = 600     # `harness mutation` seconds before SIGTERM
 ```
 
-Run `harness help` to see what was auto-detected in your repo.
+Run `harness help` to see what was auto-detected and which thresholds are in effect.
+
+### Precedence cascade
+
+Every setting is resolved in this order, highest wins:
+
+1. **CLI flags** — `--min=`, `--max=`, `--max-runtime=`, etc.
+2. **Project `[tool.harness]`** in the nearest `pyproject.toml`
+3. **User-global `~/.config/harness/config.toml`** (respects `$XDG_CONFIG_HOME`) — same keys as `[tool.harness]` but at the root (no `[tool.harness]` wrapper)
+4. **Bundled defaults** — the values shown above, plus `harness/defaults/` configs for ruff, coverage, basedpyright, and import-linter when the target project has none of its own
+
+Example `~/.config/harness/config.toml`:
+
+```toml
+coverage_min = 85
+crap_max = 25.0
+```
+
+### Bundled tool defaults
+
+When the target project has no configuration for a given tool, harness injects its bundled default. This lets `harness lint`, `harness typecheck`, `harness coverage`, and `harness arch` work in a brand-new repo with no setup.
+
+| Task | Detected via | Bundled fallback | Injected flag |
+|------|-------------|------------------|---------------|
+| `lint` / `fix` / `format` / `format-check` | `[tool.ruff]` or `ruff.toml` / `.ruff.toml` | `harness/defaults/ruff.toml` | `--config` |
+| `typecheck` | `[tool.basedpyright]` or `pyrightconfig.{json,toml}` | `harness/defaults/pyrightconfig.json` | `--project` |
+| `coverage` | `[tool.coverage.*]` or `.coveragerc` | `harness/defaults/coveragerc` | `--rcfile=` |
+| `arch` | `[tool.importlinter]` or `.importlinter` / `setup.cfg` | `harness/defaults/importlinter_template.ini` (default src ↛ tests contract) | `--config` |
+| `deps` | `[tool.deptry]` | none — deptry's built-ins apply | — |
+| `mutation` | `[tool.mutmut]` | none — mutmut reads project `pyproject.toml` only | — |

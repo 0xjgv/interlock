@@ -140,6 +140,84 @@ def test_invalid_threshold_types_fall_back_to_defaults(
     assert cfg.crap_max == 30.0
 
 
+# ─────────────── user-global cascade ────────────────────────────────
+
+
+def test_user_global_config_overrides_bundled_defaults(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """``~/.config/harness/config.toml`` (root keys) applies when project has none."""
+    (tmp_path / "tests").mkdir()
+    _write(
+        tmp_path / "pyproject.toml",
+        """
+        [project]
+        name = "ug"
+        version = "0.0.0"
+        """,
+    )
+    home = tmp_path / "fake_home"
+    (home / ".config" / "harness").mkdir(parents=True)
+    (home / ".config" / "harness" / "config.toml").write_text(
+        "coverage_min = 88\ncrap_max = 20.0\n", encoding="utf-8"
+    )
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(home / ".config"))
+    monkeypatch.chdir(tmp_path)
+    cfg = load_config()
+    assert cfg.coverage_min == 88
+    assert cfg.crap_max == 20.0
+
+
+def test_project_tool_harness_overrides_user_global(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Project `[tool.harness]` wins over ``~/.config/harness/config.toml``."""
+    (tmp_path / "tests").mkdir()
+    _write(
+        tmp_path / "pyproject.toml",
+        """
+        [project]
+        name = "pwins"
+        version = "0.0.0"
+
+        [tool.harness]
+        coverage_min = 95
+        """,
+    )
+    home = tmp_path / "fake_home"
+    (home / ".config" / "harness").mkdir(parents=True)
+    (home / ".config" / "harness" / "config.toml").write_text(
+        "coverage_min = 88\ncrap_max = 20.0\n", encoding="utf-8"
+    )
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(home / ".config"))
+    monkeypatch.chdir(tmp_path)
+    cfg = load_config()
+    assert cfg.coverage_min == 95  # project wins
+    assert cfg.crap_max == 20.0  # user-global fills in for missing keys
+
+
+def test_malformed_user_global_is_ignored(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """A broken user-global file must not crash load_config — just use defaults."""
+    (tmp_path / "tests").mkdir()
+    _write(
+        tmp_path / "pyproject.toml",
+        """
+        [project]
+        name = "broken-ug"
+        version = "0.0.0"
+        """,
+    )
+    home = tmp_path / "fake_home"
+    (home / ".config" / "harness").mkdir(parents=True)
+    (home / ".config" / "harness" / "config.toml").write_text(
+        "not = [valid toml\n", encoding="utf-8"
+    )
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(home / ".config"))
+    monkeypatch.chdir(tmp_path)
+    cfg = load_config()  # must not raise
+    assert cfg.coverage_min == 80
+
+
 # ─────────────── load_config overrides ──────────────────────────────
 
 

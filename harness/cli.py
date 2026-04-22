@@ -48,13 +48,22 @@ def _print_detected_block() -> None:
         return
     print()
     print("Detected:")
-    print(f"  project_root   {cfg.project_root}")
-    print(f"  src_dir        {cfg.src_dir_arg}")
-    print(f"  test_dir       {cfg.test_dir_arg}")
-    print(f"  test_runner    {cfg.test_runner}")
-    print(f"  test_invoker   {cfg.test_invoker}")
+    print(f"  project_root           {cfg.project_root}")
+    print(f"  src_dir                {cfg.src_dir_arg}")
+    print(f"  test_dir               {cfg.test_dir_arg}")
+    print(f"  test_runner            {cfg.test_runner}")
+    print(f"  test_invoker           {cfg.test_invoker}")
     if cfg.pytest_args:
-        print(f"  pytest_args    {list(cfg.pytest_args)}")
+        print(f"  pytest_args            {list(cfg.pytest_args)}")
+    print()
+    print("Thresholds (override via [tool.harness] or ~/.config/harness/config.toml):")
+    print(f"  coverage_min           {cfg.coverage_min}")
+    print(f"  crap_max               {cfg.crap_max}")
+    print(f"  complexity_max_ccn     {cfg.complexity_max_ccn}")
+    print(f"  complexity_max_args    {cfg.complexity_max_args}")
+    print(f"  complexity_max_loc     {cfg.complexity_max_loc}")
+    print(f"  mutation_min_coverage  {cfg.mutation_min_coverage}")
+    print(f"  mutation_max_runtime   {cfg.mutation_max_runtime}")
 
 
 TASK_GROUPS: list[tuple[str, dict[str, tuple[Callable[..., None], str]]]] = [

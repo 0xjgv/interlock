@@ -7,6 +7,7 @@ autodetected defaults. Stdlib-only.
 
 from __future__ import annotations
 
+import os
 import sys
 import tomllib
 from dataclasses import dataclass
@@ -53,6 +54,31 @@ def _load_pyproject(project_root: Path) -> dict[str, Any]:
 def _harness_table(pyproject: dict[str, Any]) -> dict[str, Any]:
     table = pyproject.get("tool", {}).get("harness", {})
     return table if isinstance(table, dict) else {}
+
+
+def _user_global_config_path() -> Path:
+    """``~/.config/harness/config.toml`` — respects ``$XDG_CONFIG_HOME``."""
+    root = os.environ.get("XDG_CONFIG_HOME") or str(Path.home() / ".config")
+    return Path(root) / "harness" / "config.toml"
+
+
+def _user_global_table() -> dict[str, Any]:
+    """Root-level keys from ``~/.config/harness/config.toml``, or ``{}`` on any failure.
+
+    The file is dedicated to harness, so keys live at the root (no ``[tool.harness]``
+    wrapper). Intended mainly for threshold overrides — same keys as pyproject's
+    ``[tool.harness]``. Path fields (``src_dir``/``test_dir``) are project-specific
+    and should not be set here.
+    """
+    path = _user_global_config_path()
+    if not path.is_file():
+        return {}
+    try:
+        with path.open("rb") as f:
+            data = tomllib.load(f)
+    except (OSError, tomllib.TOMLDecodeError):
+        return {}
+    return data if isinstance(data, dict) else {}
 
 
 def _runner_override(table: dict[str, Any]) -> TestRunner | None:
@@ -141,7 +167,9 @@ def load_config(start: Path | None = None) -> HarnessConfig:
 @cache
 def _load_config_cached(project_root: Path) -> HarnessConfig:
     pyproject = _load_pyproject(project_root)
-    table = _harness_table(pyproject)
+    # Precedence (high → low): project [tool.harness] > ~/.config/harness/config.toml
+    # > bundled dataclass defaults. `dict(user | project)` lets project keys override.
+    table = {**_user_global_table(), **_harness_table(pyproject)}
 
     test_dir_override = table.get("test_dir")
     src_dir_override = table.get("src_dir")
