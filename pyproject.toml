@@ -25,7 +25,9 @@ module-root = ""
 module-name = "harness"
 
 [dependency-groups]
-dev = []
+dev = [
+    "pytest>=9.0.3",
+]
 
 # ── Ruff (lint + format) ────────────────────────────────────────────
 
