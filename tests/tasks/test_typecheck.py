@@ -57,3 +57,56 @@ def test_typecheck_violating_exits_nonzero(
     with pytest.raises(SystemExit) as excinfo:
         cmd_typecheck()
     assert excinfo.value.code != 0
+
+
+# ─────────────── bundled pyrightconfig fallback ─────────────────────
+
+_BARE_PYPROJECT = textwrap.dedent("""\
+    [project]
+    name = "bare"
+    version = "0.0.0"
+    requires-python = ">=3.13"
+""")
+
+
+def test_typecheck_injects_bundled_config_in_bare_project(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Bare project: task must pass --project <bundled-pyrightconfig>."""
+    from harness.tasks.typecheck import task_typecheck
+
+    (tmp_path / "pyproject.toml").write_text(_BARE_PYPROJECT, encoding="utf-8")
+    pkg = tmp_path / "harness"
+    pkg.mkdir()
+    (pkg / "__init__.py").write_text("", encoding="utf-8")
+    monkeypatch.chdir(tmp_path)
+    cmd = task_typecheck().cmd
+    assert "--project" in cmd
+    cfg_path = Path(cmd[cmd.index("--project") + 1])
+    assert cfg_path.name == "pyrightconfig.json"
+    assert cfg_path.is_file()
+
+
+def test_typecheck_omits_config_when_project_has_tool_basedpyright(
+    tmp_project: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """[tool.basedpyright] in project pyproject: task must NOT inject --project."""
+    from harness.tasks.typecheck import task_typecheck
+
+    monkeypatch.chdir(tmp_project)
+    assert "--project" not in task_typecheck().cmd
+
+
+def test_typecheck_omits_config_when_project_has_pyrightconfig_sidecar(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """pyrightconfig.json in project root: task must NOT inject --project."""
+    from harness.tasks.typecheck import task_typecheck
+
+    (tmp_path / "pyproject.toml").write_text(_BARE_PYPROJECT, encoding="utf-8")
+    (tmp_path / "pyrightconfig.json").write_text("{}\n", encoding="utf-8")
+    pkg = tmp_path / "harness"
+    pkg.mkdir()
+    (pkg / "__init__.py").write_text("", encoding="utf-8")
+    monkeypatch.chdir(tmp_path)
+    assert "--project" not in task_typecheck().cmd

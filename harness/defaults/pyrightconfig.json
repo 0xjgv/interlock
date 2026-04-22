@@ -1,0 +1,9 @@
+{
+    "typeCheckingMode": "standard",
+    "reportUnusedCallResult": false,
+    "reportMissingTypeStubs": false,
+    "reportUnknownVariableType": false,
+    "reportUnknownMemberType": false,
+    "reportUnknownArgumentType": false,
+    "reportAny": false
+}
