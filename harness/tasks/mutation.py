@@ -11,8 +11,6 @@ from harness.config import load_config
 from harness.git import changed_py_files_vs_main
 from harness.runner import arg_value, fail, generate_coverage_xml, ok, python_m, warn_skip
 
-_MUTMUT = python_m("mutmut")
-
 
 def _coverage_line_rate() -> float | None:
     """Overall coverage.xml line-rate (0..1), or None if unreadable."""
@@ -39,15 +37,20 @@ def _parse_results(stdout: str) -> dict[str, list[str]]:
 
 
 def _mutant_in_changed(mutant_key: str, changed: set[str]) -> bool:
-    """Mutant keys look like `harness.foo.bar__mutmut_1`; match vs `harness/foo.py`."""
-    module = mutant_key.split("__mutmut_", 1)[0]
+    """Mutant keys look like `harness.foo.x_bar__mutmut_1`; match vs `harness/foo.py`.
+
+    The trailing dot-component is the mutmut-mangled function name (``x_<name>``),
+    which isn't part of the module file path — strip it before resolving.
+    """
+    head = mutant_key.split("__mutmut_", 1)[0]
+    module = head.rsplit(".", 1)[0]
     rel = module.replace(".", "/") + ".py"
     return any(c == rel or c.endswith("/" + rel) for c in changed)
 
 
-def _run_mutmut(timeout: int) -> bool:
+def _run_mutmut(mutmut: list[str], timeout: int) -> bool:
     """Run `mutmut run`, SIGTERM after `timeout`. Return True if it completed on its own."""
-    with subprocess.Popen([*_MUTMUT, "run"]) as proc:
+    with subprocess.Popen([*mutmut, "run"]) as proc:
         try:
             proc.wait(timeout=timeout)
         except subprocess.TimeoutExpired:
@@ -100,10 +103,11 @@ def cmd_mutation() -> None:
         min_score = None
     changed = changed_py_files_vs_main() if "--changed-only" in sys.argv else None
 
-    completed = _run_mutmut(timeout)
+    mutmut = python_m("mutmut")
+    completed = _run_mutmut(mutmut, timeout)
 
     res = subprocess.run(
-        [*_MUTMUT, "results", "--all=true"],
+        [*mutmut, "results", "--all=true"],
         capture_output=True,
         text=True,
         check=False,

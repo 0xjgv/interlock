@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import subprocess
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -95,3 +96,25 @@ def test_changed_py_files_vs_main_wrapper(repo: Path, monkeypatch: pytest.Monkey
 
     assert git_mod.changed_py_files_vs_main() == {"sentinel.py"}
     assert calls == ["origin/main"]
+
+
+def _stub_cfg(monkeypatch: pytest.MonkeyPatch, src: str, test: str) -> None:
+    stub = SimpleNamespace(src_dir_arg=src, test_dir_arg=test)
+    monkeypatch.setattr(git_mod, "load_config", lambda: stub)
+
+
+def test_src_test_prefixes_includes_both(monkeypatch: pytest.MonkeyPatch) -> None:
+    _stub_cfg(monkeypatch, "src", "tests")
+    assert git_mod._src_test_prefixes() == ("src/", "tests/")
+
+
+def test_src_test_prefixes_skips_dot_paths(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Project root (`.`) is not a prefix — fall through to the `("",)` sentinel."""
+    _stub_cfg(monkeypatch, ".", ".")
+    assert git_mod._src_test_prefixes() == ("",)
+
+
+def test_src_test_prefixes_skips_empty(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Empty src/test dirs are skipped — fall through to the `("",)` sentinel."""
+    _stub_cfg(monkeypatch, "", "")
+    assert git_mod._src_test_prefixes() == ("",)

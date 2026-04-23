@@ -575,7 +575,7 @@ wheels = [
 [[package]]
 name = "mutmut"
 version = "3.5.0"
-source = { registry = "https://pypi.org/simple" }
+source = { git = "https://github.com/boxed/mutmut.git?rev=e31d923c734383ddb7df4aa439ab3c60fd7d629a#e31d923c734383ddb7df4aa439ab3c60fd7d629a" }
 dependencies = [
     { name = "click" },
     { name = "coverage" },
@@ -583,10 +583,6 @@ dependencies = [
     { name = "pytest" },
     { name = "setproctitle" },
     { name = "textual" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/ac/0d/9ce4fc8b219504a336eb814c5a7ea8e379ad93ce05327ff3842aea93bf0b/mutmut-3.5.0.tar.gz", hash = "sha256:548186d4b0c494b7b9895db82871cb1f229b9271c9ff7cd633e348dd9afcc772", size = 36389, upload-time = "2026-02-22T18:46:41.824Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/4f/23/ac475f6db39643946feb09290a2178d603d2b623034d56d3f5059cddb769/mutmut-3.5.0-py3-none-any.whl", hash = "sha256:f19f2dd2e977eb9dc17255d8cb11e24fbfc3191620fba3108cac25779c9d78c9", size = 34242, upload-time = "2026-02-22T18:46:43.113Z" },
 ]
 
 [[package]]
@@ -776,7 +772,7 @@ requires-dist = [
     { name = "deptry", specifier = ">=0.25.1" },
     { name = "import-linter", specifier = ">=2.11" },
     { name = "lizard", specifier = ">=1.21.6" },
-    { name = "mutmut", specifier = ">=3.0" },
+    { name = "mutmut", git = "https://github.com/boxed/mutmut.git?rev=e31d923c734383ddb7df4aa439ab3c60fd7d629a" },
     { name = "pip-audit", specifier = ">=2.7" },
     { name = "ruff", specifier = ">=0.15.11" },
 ]
