@@ -10,8 +10,8 @@ export const Route = createFileRoute('/docs/')({
             { name: 'description', content: pageContent.meta.description },
         ],
         links: [
-            { rel: 'alternate', hreflang: 'en', href: '/docs/' },
-            { rel: 'alternate', hreflang: 'x-default', href: '/docs/' },
+            { rel: 'alternate', hrefLang: 'en', href: '/docs/' },
+            { rel: 'alternate', hrefLang: 'x-default', href: '/docs/' },
         ],
     }),
 });
