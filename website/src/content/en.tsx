@@ -17,7 +17,7 @@ function tocItem(
     return {
         href,
         label,
-        type: opts.type ?? (opts.level === 0 || !opts.level ? 'h2' : 'h3'),
+        type: opts.type ?? (`h${Math.min(6, (opts.level ?? 0) + 2)}` as TocNodeType),
         visualLevel: (opts.level ?? 0) as FlatTocItem['visualLevel'],
         prefix: opts.prefix ?? '',
         parentHref: opts.parent ?? null,
@@ -70,6 +70,25 @@ const TABLE_TH: React.CSSProperties = { ...TABLE_CELL, textAlign: 'left', fontFa
 const TABLE_TD_CODE: React.CSSProperties = { ...TABLE_CELL, fontFamily: 'var(--font-code)', whiteSpace: 'nowrap' };
 const TABLE_TD_PROSE: React.CSSProperties = { ...TABLE_CELL, fontFamily: 'var(--font-primary)' };
 
+/* Render inline backtick spans as <code>. Strips pairs of ` and wraps the
+   enclosed token in <code>; unwrapped text passes through. */
+function RenderNote({ text }: { text: string }) {
+    const parts = text.split(/(`[^`]+`)/g);
+    return (
+        <>
+            {parts.map((p, i) =>
+                p.startsWith('`') && p.endsWith('`') ? (
+                    <code key={i} style={{ fontFamily: 'var(--font-code)' }}>
+                        {p.slice(1, -1)}
+                    </code>
+                ) : (
+                    <span key={i}>{p}</span>
+                ),
+            )}
+        </>
+    );
+}
+
 function ConfigTable({ rows }: { rows: ConfigRow[] }) {
     return (
         <div style={{ width: '100%', overflowX: 'auto' }}>
@@ -88,7 +107,7 @@ function ConfigTable({ rows }: { rows: ConfigRow[] }) {
                             <td style={TABLE_TD_CODE}>{row.key}</td>
                             <td style={TABLE_TD_CODE}>{row.type}</td>
                             <td style={TABLE_TD_CODE}>{row.default}</td>
-                            <td style={TABLE_TD_PROSE}>{row.note}</td>
+                            <td style={TABLE_TD_PROSE}><RenderNote text={row.note} /></td>
                         </tr>
                     ))}
                 </tbody>
