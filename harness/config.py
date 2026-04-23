@@ -18,6 +18,7 @@ from typing import Any, Literal
 from harness.detect import (
     detect_features_dir,
     detect_src_dir,
+    detect_target_interpreter,
     detect_test_dir,
     detect_test_invoker,
     detect_test_runner,
@@ -27,6 +28,10 @@ TestRunner = Literal["pytest", "unittest"]
 TestInvoker = Literal["python", "uv"]
 AcceptanceRunner = Literal["pytest-bdd", "behave", "off"]
 MutationCIMode = Literal["off", "incremental", "full"]
+
+
+class HarnessConfigError(Exception):
+    """Raised when project configuration is missing or malformed."""
 
 
 def find_project_root(start: Path | None = None) -> Path:
@@ -177,9 +182,17 @@ class HarnessConfig:
 
 
 def invoker_prefix(cfg: HarnessConfig) -> list[str]:
-    """Argv prefix for invoking a Python module under the configured invoker."""
+    """Argv prefix for invoking a Python module under the configured invoker.
+
+    Prefers the target project's ``.venv/bin/python`` when ``invoker == "python"``, so
+    tools run against the project's own dependencies rather than pipx's venv. Falls
+    back to ``sys.executable`` when the project has no in-tree venv.
+    """
     if cfg.test_invoker == "uv":
         return ["uv", "run"]
+    venv_python = detect_target_interpreter(cfg.project_root)
+    if venv_python is not None:
+        return [str(venv_python), "-m"]
     return [sys.executable, "-m"]
 
 
@@ -205,6 +218,17 @@ def build_coverage_test_command(
 def load_config(start: Path | None = None) -> HarnessConfig:
     """Discover the project root and build a ``HarnessConfig``. Cached per project root."""
     return _load_config_cached(find_project_root(start))
+
+
+def require_pyproject(cfg: HarnessConfig) -> None:
+    """Raise ``HarnessConfigError`` when ``cfg.project_root`` has no ``pyproject.toml``.
+
+    ``find_project_root`` falls back to CWD when no ancestor has a ``pyproject.toml`` —
+    running gates against that bogus root produces confusing downstream errors. Call
+    this at the CLI boundary to fail fast with an actionable message.
+    """
+    if not (cfg.project_root / "pyproject.toml").is_file():
+        raise HarnessConfigError("no pyproject.toml — run `harness init` to scaffold")
 
 
 @cache

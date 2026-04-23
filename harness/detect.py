@@ -13,6 +13,7 @@ Test-runner detection order (first match wins):
 from __future__ import annotations
 
 import importlib.util
+import os
 import re
 from typing import TYPE_CHECKING, Any
 
@@ -165,6 +166,17 @@ def detect_test_invoker(project_root: Path) -> TestInvoker:
     if (project_root / "uv.lock").is_file():
         return "uv"
     return "python"
+
+
+def detect_target_interpreter(project_root: Path) -> Path | None:
+    """Return the target project's in-tree venv interpreter, or ``None`` when absent.
+
+    Looks for ``.venv/bin/python`` (POSIX) or ``.venv/Scripts/python.exe`` (Windows).
+    Lets ``invoker_prefix`` prefer the project's venv over pipx's own interpreter.
+    """
+    venv = project_root / ".venv"
+    candidate = venv / "Scripts" / "python.exe" if os.name == "nt" else venv / "bin" / "python"
+    return candidate if candidate.is_file() else None
 
 
 _FEATURES_DIR_CANDIDATES = ("tests/features", "features")

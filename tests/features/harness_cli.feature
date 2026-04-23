@@ -14,6 +14,7 @@ Feature: Harness CLI surface area
     And the output lists the command "deps"
     And the output lists the command "arch"
     And the output lists the command "acceptance"
+    And the output lists the command "init"
     And the output lists the command "init-acceptance"
     And the output lists the command "coverage"
     And the output lists the command "crap"
@@ -25,4 +26,9 @@ Feature: Harness CLI surface area
     And the output lists the command "post-edit"
     And the output lists the command "setup-hooks"
     And the output lists the command "clean"
+    And the output lists the command "version"
     And the output lists the command "help"
+
+  Scenario: harness version prints 1.0.0
+    Given I run "harness version"
+    Then the output contains "1.0.0"

@@ -8,6 +8,7 @@ import tomllib
 from typing import TYPE_CHECKING
 
 from harness.config import load_config
+from harness.runner import preflight
 from harness.stages.check import cmd_check
 from harness.stages.ci import cmd_ci
 from harness.stages.clean import cmd_clean
@@ -21,13 +22,16 @@ from harness.tasks.audit import cmd_audit
 from harness.tasks.coverage import cmd_coverage
 from harness.tasks.crap import cmd_crap
 from harness.tasks.deps import cmd_deps
+from harness.tasks.doctor import cmd_doctor
 from harness.tasks.fix import cmd_fix
 from harness.tasks.format import cmd_format
+from harness.tasks.init import cmd_init
 from harness.tasks.init_acceptance import cmd_init_acceptance
 from harness.tasks.lint import cmd_lint
 from harness.tasks.mutation import cmd_mutation
 from harness.tasks.test import cmd_test
 from harness.tasks.typecheck import cmd_typecheck
+from harness.tasks.version import cmd_version
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -118,6 +122,14 @@ TASK_GROUPS: list[tuple[str, dict[str, tuple[Callable[..., None], str]]]] = [
         },
     ),
     (
+        "Utility",
+        {
+            "doctor": (cmd_doctor, "Preflight diagnostic: paths, tools, venv"),
+            "init": (cmd_init, "Scaffold a greenfield pyproject.toml + tests/ in CWD"),
+            "version": (cmd_version, "print pyharness version"),
+        },
+    ),
+    (
         "Other",
         {
             "help": (cmd_help, "Show this help message"),
@@ -143,6 +155,7 @@ def main() -> None:
         cmd_help()
         sys.exit(1)
 
+    preflight(task_name)
     TASKS[task_name][0]()
 
 

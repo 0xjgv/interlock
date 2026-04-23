@@ -1,36 +1,40 @@
-"""Step defs for tests/features/harness_cli.feature.
+"""Step defs for tests/features/harness_doctor.feature.
 
 Shells out to `python -m harness.cli` — same entry point the installed CLI
-uses — so this acts as an end-to-end guardrail on the public command surface.
+uses — mirroring the `_run_harness` fixture from ``test_harness_cli``.
 """
 
 from __future__ import annotations
 
+import os
 import subprocess
 import sys
+from pathlib import Path
 
 from pytest_bdd import given, parsers, scenarios, then
 
-scenarios("../features/harness_cli.feature")
+import harness
+
+scenarios("../features/harness_doctor.feature")
+
+# Point the subprocess at this checkout's harness even when an outer
+# interpreter's site-packages shadows it (same concern as test_doctor.py).
+_HARNESS_PARENT = str(Path(harness.__file__).resolve().parent.parent)
 
 
 @given(parsers.parse('I run "harness {subcmd}"'), target_fixture="cli_output")
 def _run_harness(subcmd: str) -> str:
+    env = os.environ.copy()
+    existing = env.get("PYTHONPATH", "")
+    env["PYTHONPATH"] = f"{_HARNESS_PARENT}{os.pathsep}{existing}" if existing else _HARNESS_PARENT
     result = subprocess.run(
         [sys.executable, "-m", "harness.cli", *subcmd.split()],
         capture_output=True,
         text=True,
         check=False,
+        env=env,
     )
     return result.stdout + result.stderr
-
-
-@then(parsers.parse('the output lists the command "{name}"'))
-def _lists_command(cli_output: str, name: str) -> None:
-    # `harness help` prints "  <name>  <description>" — match the name token.
-    assert f"  {name} " in cli_output or f"  {name}\n" in cli_output, (
-        f"expected {name!r} in help output; got:\n{cli_output}"
-    )
 
 
 @then(parsers.parse('the output contains "{needle}"'))
