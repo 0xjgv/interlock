@@ -3,11 +3,11 @@ name: website
 on:
   push:
     paths:
-      - "pyharness/website/**"
+      - "website/**"
       - ".github/workflows/website.yml"
   pull_request:
     paths:
-      - "pyharness/website/**"
+      - "website/**"
       - ".github/workflows/website.yml"
 
 jobs:
@@ -15,7 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: pyharness/website
+        working-directory: website
     steps:
       - uses: actions/checkout@v4
 
