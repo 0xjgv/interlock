@@ -1,0 +1,72 @@
+# Template pyproject.toml for publishing `pyharness-mutmut` to PyPI.
+#
+# This file is NOT the pyproject for pyharness itself. It is dropped into a
+# local clone of https://github.com/boxed/mutmut (checked out to the SHA
+# pyharness pins) in place of upstream's pyproject.toml, then built and
+# published via `uv build && uv publish`. See PUBLISH.md in this directory
+# for the step-by-step walkthrough.
+#
+# Everything except the metadata (name/description/authors/urls) mirrors
+# upstream mutmut at SHA e31d923c734383ddb7df4aa439ab3c60fd7d629a
+# (version 3.5.0). Keep it in sync when bumping the pinned SHA.
+
+[project]
+name = "pyharness-mutmut"
+version = "3.5.0"
+description = "pyharness-published fork of mutmut for PyPI-only installs (no git required at install time)."
+keywords = ["mutmut", "mutant", "mutation", "test", "testing", "pyharness"]
+authors = [
+    { name = "Anders Hovmöller", email = "boxed@killingar.net" },
+]
+maintainers = [
+    { name = "pyharness maintainers" },
+]
+requires-python = ">=3.10"
+readme = "README.rst"
+license = "BSD-3-Clause"
+license-files = ["LICENSE"]
+
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Natural Language :: English",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+]
+
+# Kept identical to upstream mutmut 3.5.0. Do not diverge — this fork exists
+# solely to republish upstream under a PyPI-friendly name.
+dependencies = [
+    "click>=8.0.0",
+    "coverage>=7.3.0",
+    "libcst>=1.8.5",
+    "pytest>=6.2.5",
+    "setproctitle>=1.1.0",
+    "textual>=1.0.0",
+    "toml>=0.10.2 ; python_full_version < '3.11'",
+]
+
+[project.urls]
+Homepage = "https://github.com/boxed/mutmut"
+Upstream = "https://github.com/boxed/mutmut"
+Pyharness = "https://github.com/juans-gaitan/pyharness"
+Documentation = "https://mutmut.readthedocs.io/en/latest/"
+Repository = "https://github.com/boxed/mutmut"
+Issues = "https://github.com/boxed/mutmut/issues"
+Changelog = "https://github.com/boxed/mutmut/blob/main/HISTORY.rst"
+
+# Console script identical to upstream — the import path stays `mutmut`,
+# so consumers that `import mutmut` or invoke the `mutmut` CLI notice no
+# difference between this fork and the upstream distribution.
+[project.scripts]
+mutmut = "mutmut.__main__:cli"
+
+[build-system]
+requires = ["uv_build>=0.9.5,<0.10.0"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+source-include = ["HISTORY.rst"]
