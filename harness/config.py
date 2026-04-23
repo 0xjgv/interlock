@@ -245,9 +245,11 @@ def _load_config_cached(project_root: Path) -> HarnessConfig:
     )
     run_acceptance_in_check = bool(table.get("run_acceptance_in_check"))
 
-    mutation_ci_mode = _mutation_ci_mode_override(table) or "off"
+    mutation_ci_mode = _mutation_ci_mode_override(table) or HarnessConfig.mutation_ci_mode
     since_ref_raw = table.get("mutation_since_ref")
-    mutation_since_ref = since_ref_raw if isinstance(since_ref_raw, str) else "origin/main"
+    mutation_since_ref = (
+        since_ref_raw if isinstance(since_ref_raw, str) else HarnessConfig.mutation_since_ref
+    )
 
     return HarnessConfig(
         project_root=project_root,
