@@ -30,6 +30,10 @@ AcceptanceRunner = Literal["pytest-bdd", "behave", "off"]
 MutationCIMode = Literal["off", "incremental", "full"]
 
 
+class HarnessConfigError(Exception):
+    """Raised when project configuration is missing or malformed."""
+
+
 def find_project_root(start: Path | None = None) -> Path:
     """Walk up from ``start`` (CWD by default) to the first dir with ``pyproject.toml``.
 
@@ -214,6 +218,17 @@ def build_coverage_test_command(
 def load_config(start: Path | None = None) -> HarnessConfig:
     """Discover the project root and build a ``HarnessConfig``. Cached per project root."""
     return _load_config_cached(find_project_root(start))
+
+
+def require_pyproject(cfg: HarnessConfig) -> None:
+    """Raise ``HarnessConfigError`` when ``cfg.project_root`` has no ``pyproject.toml``.
+
+    ``find_project_root`` falls back to CWD when no ancestor has a ``pyproject.toml`` —
+    running gates against that bogus root produces confusing downstream errors. Call
+    this at the CLI boundary to fail fast with an actionable message.
+    """
+    if not (cfg.project_root / "pyproject.toml").is_file():
+        raise HarnessConfigError("no pyproject.toml — run `harness init` to scaffold")
 
 
 @cache

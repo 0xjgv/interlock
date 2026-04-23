@@ -8,6 +8,7 @@ import tomllib
 from typing import TYPE_CHECKING
 
 from harness.config import load_config
+from harness.runner import preflight
 from harness.stages.check import cmd_check
 from harness.stages.ci import cmd_ci
 from harness.stages.clean import cmd_clean
@@ -154,6 +155,7 @@ def main() -> None:
         cmd_help()
         sys.exit(1)
 
+    preflight(task_name)
     TASKS[task_name][0]()
 
 
