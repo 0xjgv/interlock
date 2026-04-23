@@ -18,6 +18,7 @@ from typing import Any, Literal
 from harness.detect import (
     detect_features_dir,
     detect_src_dir,
+    detect_target_interpreter,
     detect_test_dir,
     detect_test_invoker,
     detect_test_runner,
@@ -177,9 +178,17 @@ class HarnessConfig:
 
 
 def invoker_prefix(cfg: HarnessConfig) -> list[str]:
-    """Argv prefix for invoking a Python module under the configured invoker."""
+    """Argv prefix for invoking a Python module under the configured invoker.
+
+    Prefers the target project's ``.venv/bin/python`` when ``invoker == "python"``, so
+    tools run against the project's own dependencies rather than pipx's venv. Falls
+    back to ``sys.executable`` when the project has no in-tree venv.
+    """
     if cfg.test_invoker == "uv":
         return ["uv", "run"]
+    venv_python = detect_target_interpreter(cfg.project_root)
+    if venv_python is not None:
+        return [str(venv_python), "-m"]
     return [sys.executable, "-m"]
 
 
