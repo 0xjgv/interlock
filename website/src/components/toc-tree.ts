@@ -117,7 +117,7 @@ function headingDepthFromType(type: TocNodeType): number {
     if (type === 'page') {
         return 0;
     }
-    return parseInt(type.slice(1)) - 2;
+    return parseInt(type.slice(1), 10) - 2;
 }
 
 function hasNextSiblingAtLevel({

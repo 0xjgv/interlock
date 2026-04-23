@@ -450,6 +450,7 @@ export function TableOfContents({ items, logo: _logo }: { items: FlatTocItem[]; 
                 if (
                     tag === 'INPUT' ||
                     tag === 'TEXTAREA' ||
+                    tag === 'SELECT' ||
                     (e.target as HTMLElement).isContentEditable
                 ) {
                     return;
