@@ -15,10 +15,15 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import IO, NoReturn
 
+from harness.config import HarnessConfigError, load_config, require_pyproject
+
 GREEN = "\033[32m"
 RED = "\033[31m"
 RESET = "\033[0m"
 VERBOSE = "--verbose" in sys.argv
+
+# Commands that must work without a project — diagnostics, scaffolding, meta.
+PREFLIGHT_EXEMPT: frozenset[str] = frozenset({"doctor", "init", "version", "help"})
 
 _BIN = Path(sys.executable).parent
 
@@ -88,6 +93,24 @@ def fail_skip(message: str) -> NoReturn:
 def arg_value(flag: str, default: str) -> str:
     """Return the value of ``--flag=value`` in sys.argv, else ``default``."""
     return next((a.split("=", 1)[1] for a in sys.argv[1:] if a.startswith(flag)), default)
+
+
+def preflight(command: str) -> None:
+    """Fail fast with exit code 2 when running a non-exempt command without a pyproject.
+
+    ``find_project_root`` silently falls back to CWD when no ancestor has a
+    ``pyproject.toml``; every downstream task would then operate against a bogus
+    root. Gate execution here so users see one clear message instead of confusing
+    tool-by-tool failures. ``doctor`` and ``init`` are exempt — they exist to
+    diagnose and bootstrap broken setups.
+    """
+    if command in PREFLIGHT_EXEMPT:
+        return
+    try:
+        require_pyproject(load_config())
+    except HarnessConfigError as exc:
+        print(f"harness: {exc}", file=sys.stderr)
+        sys.exit(2)
 
 
 @dataclass(frozen=True)
