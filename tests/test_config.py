@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import sys
 import textwrap
 from pathlib import Path
@@ -13,6 +14,7 @@ from harness.config import (
     build_coverage_test_command,
     build_test_command,
     find_project_root,
+    invoker_prefix,
     load_config,
 )
 
@@ -347,3 +349,37 @@ def test_build_coverage_test_command_uv() -> None:
         "tests",
         "-q",
     ]
+
+
+# ─────────────── target-venv interpreter resolution ─────────────────
+
+
+def _make_stub_venv_python(project_root: Path) -> Path:
+    """Create ``.venv/bin/python`` (or ``.venv/Scripts/python.exe`` on Windows)."""
+    if os.name == "nt":
+        bin_dir = project_root / ".venv" / "Scripts"
+        python = bin_dir / "python.exe"
+    else:
+        bin_dir = project_root / ".venv" / "bin"
+        python = bin_dir / "python"
+    bin_dir.mkdir(parents=True)
+    python.write_text("", encoding="utf-8")
+    Path(python).chmod(0o755)
+    return python
+
+
+def test_invoker_prefix_uses_target_venv_python(tmp_path: Path) -> None:
+    python = _make_stub_venv_python(tmp_path)
+    cfg = _cfg(project_root=tmp_path)
+    assert invoker_prefix(cfg) == [str(python), "-m"]
+
+
+def test_invoker_prefix_falls_back_to_sys_executable_when_no_venv(tmp_path: Path) -> None:
+    cfg = _cfg(project_root=tmp_path)
+    assert invoker_prefix(cfg) == [sys.executable, "-m"]
+
+
+def test_invoker_prefix_uv_ignores_target_venv(tmp_path: Path) -> None:
+    _make_stub_venv_python(tmp_path)
+    cfg = _cfg(project_root=tmp_path, test_invoker="uv")
+    assert invoker_prefix(cfg) == ["uv", "run"]
