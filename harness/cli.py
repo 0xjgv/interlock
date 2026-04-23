@@ -21,6 +21,7 @@ from harness.tasks.audit import cmd_audit
 from harness.tasks.coverage import cmd_coverage
 from harness.tasks.crap import cmd_crap
 from harness.tasks.deps import cmd_deps
+from harness.tasks.doctor import cmd_doctor
 from harness.tasks.fix import cmd_fix
 from harness.tasks.format import cmd_format
 from harness.tasks.init import cmd_init
@@ -122,6 +123,7 @@ TASK_GROUPS: list[tuple[str, dict[str, tuple[Callable[..., None], str]]]] = [
     (
         "Utility",
         {
+            "doctor": (cmd_doctor, "Preflight diagnostic: paths, tools, venv"),
             "init": (cmd_init, "Scaffold a greenfield pyproject.toml + tests/ in CWD"),
             "version": (cmd_version, "print pyharness version"),
         },
