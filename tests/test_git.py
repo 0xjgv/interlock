@@ -31,37 +31,52 @@ def _commit_all(root: Path, message: str) -> None:
 @pytest.fixture
 def repo(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     _init_repo(tmp_path)
-    (tmp_path / "base.py").write_text("x = 1\n", encoding="utf-8")
+    (tmp_path / "pyproject.toml").write_text(
+        '[tool.harness]\nsrc_dir = "harness"\ntest_dir = "tests"\n',
+        encoding="utf-8",
+    )
+    (tmp_path / "harness").mkdir()
+    (tmp_path / "harness" / "base.py").write_text("x = 1\n", encoding="utf-8")
     _commit_all(tmp_path, "base")
     monkeypatch.chdir(tmp_path)
     return tmp_path
 
 
 def test_changed_py_files_vs_happy_path(repo: Path) -> None:
-    (repo / "added.py").write_text("y = 2\n", encoding="utf-8")
+    (repo / "harness" / "added.py").write_text("y = 2\n", encoding="utf-8")
     _commit_all(repo, "add file")
 
-    assert changed_py_files_vs("HEAD~1") == {"added.py"}
+    assert changed_py_files_vs("HEAD~1") == {"harness/added.py"}
 
 
 def test_changed_py_files_vs_ignores_non_py(repo: Path) -> None:
-    (repo / "added.py").write_text("y = 2\n", encoding="utf-8")
-    (repo / "notes.md").write_text("hi\n", encoding="utf-8")
-    (repo / "data.txt").write_text("x\n", encoding="utf-8")
+    (repo / "harness" / "added.py").write_text("y = 2\n", encoding="utf-8")
+    (repo / "harness" / "notes.md").write_text("hi\n", encoding="utf-8")
+    (repo / "harness" / "data.txt").write_text("x\n", encoding="utf-8")
     _commit_all(repo, "mixed")
 
-    assert changed_py_files_vs("HEAD~1") == {"added.py"}
+    assert changed_py_files_vs("HEAD~1") == {"harness/added.py"}
+
+
+def test_changed_py_files_vs_filters_out_of_tree_paths(repo: Path) -> None:
+    """Files outside the configured src/test dirs are dropped (matches siblings)."""
+    (repo / "harness" / "in_src.py").write_text("a = 1\n", encoding="utf-8")
+    (repo / "scripts").mkdir()
+    (repo / "scripts" / "helper.py").write_text("b = 2\n", encoding="utf-8")
+    _commit_all(repo, "mixed dirs")
+
+    assert changed_py_files_vs("HEAD~1") == {"harness/in_src.py"}
 
 
 def test_changed_py_files_vs_detects_renames(repo: Path) -> None:
     body = "def greet():\n    return 'hi there'\n" * 5
-    (repo / "old_name.py").write_text(body, encoding="utf-8")
+    (repo / "harness" / "old_name.py").write_text(body, encoding="utf-8")
     _commit_all(repo, "seed file")
-    _git("mv", "old_name.py", "new_name.py", cwd=repo)
+    _git("mv", "harness/old_name.py", "harness/new_name.py", cwd=repo)
     _commit_all(repo, "rename")
 
     result = changed_py_files_vs("HEAD~1")
-    assert result == {"new_name.py"}
+    assert result == {"harness/new_name.py"}
 
 
 def test_changed_py_files_vs_missing_ref_returns_empty(repo: Path) -> None:

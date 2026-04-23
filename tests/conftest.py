@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import os
+
 import pytest
 
 from harness import config as harness_config
@@ -29,5 +31,5 @@ def _isolate_test_env(
     monkeypatch.setenv("XDG_CONFIG_HOME", str(empty))
     for var in _GIT_ENV_LEAKS:
         monkeypatch.delenv(var, raising=False)
-    monkeypatch.setenv("GIT_CONFIG_GLOBAL", "/dev/null")
-    monkeypatch.setenv("GIT_CONFIG_SYSTEM", "/dev/null")
+    monkeypatch.setenv("GIT_CONFIG_GLOBAL", os.devnull)
+    monkeypatch.setenv("GIT_CONFIG_SYSTEM", os.devnull)
