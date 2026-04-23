@@ -31,3 +31,8 @@ def _lists_command(cli_output: str, name: str) -> None:
     assert f"  {name} " in cli_output or f"  {name}\n" in cli_output, (
         f"expected {name!r} in help output; got:\n{cli_output}"
     )
+
+
+@then(parsers.parse('the output contains "{needle}"'))
+def _output_contains(cli_output: str, needle: str) -> None:
+    assert needle in cli_output, f"expected {needle!r} in output; got:\n{cli_output}"

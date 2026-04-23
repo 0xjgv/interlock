@@ -28,6 +28,7 @@ from harness.tasks.lint import cmd_lint
 from harness.tasks.mutation import cmd_mutation
 from harness.tasks.test import cmd_test
 from harness.tasks.typecheck import cmd_typecheck
+from harness.tasks.version import cmd_version
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -115,6 +116,12 @@ TASK_GROUPS: list[tuple[str, dict[str, tuple[Callable[..., None], str]]]] = [
             "post-edit": (cmd_post_edit, "Format if source files changed (Claude Code hook)"),
             "setup-hooks": (cmd_hooks, "Install git pre-commit and Claude Stop hooks"),
             "clean": (cmd_clean, "Remove cache and build artifacts"),
+        },
+    ),
+    (
+        "Utility",
+        {
+            "version": (cmd_version, "print pyharness version"),
         },
     ),
     (
