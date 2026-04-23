@@ -19,6 +19,7 @@ from harness.config import HarnessConfigError, load_config, require_pyproject
 
 GREEN = "\033[32m"
 RED = "\033[31m"
+YELLOW = "\033[33m"
 RESET = "\033[0m"
 VERBOSE = "--verbose" in sys.argv
 

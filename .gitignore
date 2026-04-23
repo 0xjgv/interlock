@@ -9,6 +9,7 @@ wheels/
 .venv
 
 # >>> harness managed >>>
+.harness/
 .import_linter_cache/
 .pytest_cache/
 .ruff_cache/

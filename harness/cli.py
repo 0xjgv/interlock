@@ -29,6 +29,7 @@ from harness.tasks.init import cmd_init
 from harness.tasks.init_acceptance import cmd_init_acceptance
 from harness.tasks.lint import cmd_lint
 from harness.tasks.mutation import cmd_mutation
+from harness.tasks.stats import cmd_stats
 from harness.tasks.test import cmd_test
 from harness.tasks.typecheck import cmd_typecheck
 from harness.tasks.version import cmd_version
@@ -119,6 +120,15 @@ TASK_GROUPS: list[tuple[str, dict[str, tuple[Callable[..., None], str]]]] = [
             "post-edit": (cmd_post_edit, "Format if source files changed (Claude Code hook)"),
             "setup-hooks": (cmd_hooks, "Install git pre-commit and Claude Stop hooks"),
             "clean": (cmd_clean, "Remove cache and build artifacts"),
+        },
+    ),
+    (
+        "Reports",
+        {
+            "stats": (
+                cmd_stats,
+                "Trust-score report: verdict + suspicious tests + hot files (read-only)",
+            ),
         },
     ),
     (

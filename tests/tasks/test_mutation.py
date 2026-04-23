@@ -10,11 +10,9 @@ from pathlib import Path
 
 import pytest
 
-from harness.tasks import mutation as mutation_mod
+from harness import metrics as metrics_mod
 from harness.tasks.mutation import (
-    _coverage_line_rate,
     _mutant_in_changed,
-    _parse_results,
     _print_survivors,
     cmd_mutation,
 )
@@ -133,44 +131,6 @@ def test_mutation_min_coverage_comes_from_config(
     assert "95" in captured.out  # threshold surfaced in the skip message
 
 
-# ─────────────── _parse_results ─────────────────────
-
-
-def test_parse_results_groups_by_status() -> None:
-    stdout = (
-        "    harness.a.x__mutmut_1: killed\n"
-        "    harness.a.x__mutmut_2: survived\n"
-        "    harness.b.x__mutmut_3: killed\n"
-        "    harness.c.x__mutmut_4: timeout\n"
-    )
-    assert _parse_results(stdout) == {
-        "killed": ["harness.a.x__mutmut_1", "harness.b.x__mutmut_3"],
-        "survived": ["harness.a.x__mutmut_2"],
-        "timeout": ["harness.c.x__mutmut_4"],
-    }
-
-
-def test_parse_results_ignores_lines_without_mutant_key() -> None:
-    """Lines without `__mutmut_` in the key are dropped (headers, totals, etc.)."""
-    stdout = "Total: 42\n    harness.a.x__mutmut_1: killed\nsome other: line without key\n"
-    assert _parse_results(stdout) == {"killed": ["harness.a.x__mutmut_1"]}
-
-
-def test_parse_results_ignores_lines_without_separator() -> None:
-    """Lines missing the ': ' separator are dropped even when 'mutmut' appears."""
-    assert _parse_results("harness.a.x__mutmut_1\n") == {}
-
-
-def test_parse_results_splits_on_first_colon_space_only() -> None:
-    """`partition(": ")` — if a status ever contained ': ', we'd keep the tail as status."""
-    stdout = "harness.a.x__mutmut_1: killed: detail\n"
-    assert _parse_results(stdout) == {"killed: detail": ["harness.a.x__mutmut_1"]}
-
-
-def test_parse_results_empty_input() -> None:
-    assert _parse_results("") == {}
-
-
 # ─────────────── _mutant_in_changed ─────────────────────
 
 
@@ -244,7 +204,7 @@ def test_print_survivors_silent_when_nothing_matches_changed(
     assert capsys.readouterr().out == ""
 
 
-# ─────────────── _coverage_line_rate ─────────────────────
+# ─────────────── coverage fixture (shared with threshold test) ─────────
 
 
 @pytest.fixture
@@ -253,38 +213,10 @@ def primed_coverage_xml(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Call
     monkeypatch.chdir(tmp_path)
     (tmp_path / ".coverage").write_text("", encoding="utf-8")
     xml = tmp_path / "coverage.xml"
-    monkeypatch.setattr(mutation_mod, "generate_coverage_xml", lambda: xml)
+    monkeypatch.setattr(metrics_mod, "generate_coverage_xml", lambda: xml)
 
     def _write(body: str) -> Path:
         xml.write_text(body, encoding="utf-8")
         return xml
 
     return _write
-
-
-def test_coverage_line_rate_none_when_dotcoverage_missing(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    monkeypatch.chdir(tmp_path)
-    assert _coverage_line_rate() is None
-
-
-def test_coverage_line_rate_returns_float_from_xml(
-    primed_coverage_xml: Callable[[str], Path],
-) -> None:
-    primed_coverage_xml('<?xml version="1.0" ?><coverage line-rate="0.83"></coverage>')
-    assert _coverage_line_rate() == pytest.approx(0.83)
-
-
-def test_coverage_line_rate_none_when_xml_unparseable(
-    primed_coverage_xml: Callable[[str], Path],
-) -> None:
-    primed_coverage_xml("not xml")
-    assert _coverage_line_rate() is None
-
-
-def test_coverage_line_rate_none_when_line_rate_missing(
-    primed_coverage_xml: Callable[[str], Path],
-) -> None:
-    primed_coverage_xml('<?xml version="1.0" ?><coverage></coverage>')
-    assert _coverage_line_rate() is None
