@@ -9,11 +9,12 @@ replace on the single-line array form. Multi-line arrays raise ``ValueError``.
 from __future__ import annotations
 
 import atexit
+import json
 import os
 import re
 import signal
 import tempfile
-from contextlib import contextmanager
+from contextlib import contextmanager, suppress
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -27,7 +28,7 @@ _PATHS_LINE = re.compile(r"^(?P<indent>[ \t]*)paths_to_mutate\s*=\s*(?P<value>.+
 
 
 def _format_array(paths: list[str]) -> str:
-    quoted = ", ".join(f'"{p}"' for p in paths)
+    quoted = ", ".join(json.dumps(p) for p in paths)
     return f"[{quoted}]"
 
 
@@ -85,6 +86,8 @@ def _atomic_write(path: Path, data: bytes) -> None:
     try:
         with os.fdopen(fd, "wb") as f:
             f.write(data)
+        with suppress(FileNotFoundError):
+            Path(tmp_name).chmod(path.stat().st_mode)
         Path(tmp_name).replace(path)
     except BaseException:
         Path(tmp_name).unlink(missing_ok=True)
