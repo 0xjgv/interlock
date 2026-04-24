@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import os
 import subprocess
 import sys
@@ -74,10 +75,16 @@ def test_doctor_in_process_reports_sections(
     assert "command=doctor" in captured.out
     assert "── Readiness" in captured.out
     assert "── Detected Configuration" in captured.out
+    assert "── Setup Checklist" in captured.out
     assert "src_dir" in captured.out
     assert "test_runner" in captured.out
+    # Warn-only project is non-blocking; status shows gap count.
     assert "status                 ready" in captured.out
-    assert "Run `harness check` locally" in captured.out
+    assert "ready (" in captured.out  # "ready (N gaps)"
+    # Derived Next Steps flags the missing preset + CI + venv, not the generic line.
+    assert "Run `harness presets`" in captured.out
+    assert "Wire CI via `harness ci`" in captured.out
+    assert "Create a venv" in captured.out
     # task_doctor is CLI-only — it never composes into a stage pipeline.
     assert task_doctor() is None
 
@@ -184,3 +191,118 @@ def test_doctor_reports_missing_paths_as_blockers(
     assert "status                 blocked" in out
     assert "missing source path" in out
     assert "missing test path" in out
+
+
+def _write_probe_project(tmp_path: Path, *, tool_harness: str = "") -> None:
+    (tmp_path / "probe").mkdir()
+    (tmp_path / "probe" / "__init__.py").write_text("", encoding="utf-8")
+    (tmp_path / "tests").mkdir()
+    body = '[project]\nname = "probe"\nversion = "0.0.0"\nrequires-python = ">=3.13"\n'
+    if tool_harness:
+        body += "\n[tool.harness]\n" + tool_harness.strip() + "\n"
+    (tmp_path / "pyproject.toml").write_text(body, encoding="utf-8")
+
+
+def _run_cmd_doctor(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> str:
+    monkeypatch.chdir(tmp_path)
+    from harness.config import clear_cache
+    from harness.tasks.doctor import cmd_doctor
+
+    clear_cache()
+    try:
+        cmd_doctor()
+    finally:
+        clear_cache()
+    return capsys.readouterr().out
+
+
+def test_doctor_detects_git_pre_commit_hook(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    _write_probe_project(tmp_path)
+    hooks = tmp_path / ".git" / "hooks"
+    hooks.mkdir(parents=True)
+    (hooks / "pre-commit").write_text(
+        "#!/bin/sh\nexec python -m harness.cli pre-commit\n", encoding="utf-8"
+    )
+
+    out = _run_cmd_doctor(tmp_path, monkeypatch, capsys)
+    assert "── Setup Checklist" in out
+    assert "[git hook]" in out
+    assert "installed" in out
+
+
+def test_doctor_flags_missing_hooks_under_existing_git_or_claude(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    _write_probe_project(tmp_path)
+    (tmp_path / ".git").mkdir()
+    (tmp_path / ".claude").mkdir()
+
+    out = _run_cmd_doctor(tmp_path, monkeypatch, capsys)
+    assert "Run `harness setup-hooks`" in out
+
+
+def test_doctor_detects_ci_workflow(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    _write_probe_project(tmp_path)
+    workflows = tmp_path / ".github" / "workflows"
+    workflows.mkdir(parents=True)
+    (workflows / "ci.yml").write_text(
+        "name: ci\njobs:\n  test:\n    steps:\n      - run: harness ci\n",
+        encoding="utf-8",
+    )
+
+    out = _run_cmd_doctor(tmp_path, monkeypatch, capsys)
+    # CI row flips to `ok`; no Next-Steps bullet about wiring CI.
+    assert "Wire CI via `harness ci`" not in out
+
+
+def test_doctor_warns_on_acceptance_configured_without_scaffold(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    _write_probe_project(tmp_path, tool_harness='acceptance_runner = "pytest-bdd"')
+
+    out = _run_cmd_doctor(tmp_path, monkeypatch, capsys)
+    assert "Run `harness init-acceptance`" in out
+
+
+def test_doctor_ready_state_when_all_artifacts_wired(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    _write_probe_project(tmp_path, tool_harness='preset = "baseline"')
+    hooks = tmp_path / ".git" / "hooks"
+    hooks.mkdir(parents=True)
+    (hooks / "pre-commit").write_text(
+        "#!/bin/sh\nexec python -m harness.cli pre-commit\n", encoding="utf-8"
+    )
+    (tmp_path / ".claude").mkdir()
+    (tmp_path / ".claude" / "settings.json").write_text(
+        json.dumps({
+            "hooks": {
+                "Stop": [
+                    {"hooks": [{"type": "command", "command": "python -m harness.cli post-edit"}]}
+                ]
+            }
+        }),
+        encoding="utf-8",
+    )
+    (tmp_path / ".github" / "workflows").mkdir(parents=True)
+    (tmp_path / ".github" / "workflows" / "ci.yml").write_text(
+        "jobs:\n  x:\n    steps:\n      - run: harness ci\n", encoding="utf-8"
+    )
+    venv_bin = tmp_path / (".venv/Scripts" if os.name == "nt" else ".venv/bin")
+    venv_bin.mkdir(parents=True)
+    (venv_bin / ("python.exe" if os.name == "nt" else "python")).write_text(
+        "#!/bin/sh\n", encoding="utf-8"
+    )
+    features = tmp_path / "tests" / "features"
+    features.mkdir(parents=True)
+    (features / "probe.feature").write_text("Feature: probe\n", encoding="utf-8")
+
+    out = _run_cmd_doctor(tmp_path, monkeypatch, capsys)
+    assert "status                 ready" in out
+    assert "Run `harness check` locally" in out

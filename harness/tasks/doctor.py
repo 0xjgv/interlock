@@ -11,17 +11,26 @@ import shutil
 import sys
 import time
 import tomllib
+from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from harness import ui
 from harness.config import find_project_root, kv_with_source, load_config
 from harness.detect import expected_target_interpreter
+from harness.setup_state import (
+    acceptance_scaffold_present,
+    ci_workflow_present,
+    claude_stop_hook_installed,
+    harness_config_block_present,
+    pre_commit_hook_installed,
+)
 
 if TYPE_CHECKING:
     from pathlib import Path
 
     from harness.config import HarnessConfig
     from harness.runner import Task
+    from harness.ui import State
 
 _BUNDLED_TOOLS = (
     "ruff",
@@ -34,6 +43,17 @@ _BUNDLED_TOOLS = (
     "import-linter",
     "lizard",
 )
+_INERT_DETAIL = "not applicable"
+
+
+@dataclass(frozen=True)
+class CheckRow:
+    """One row in the Setup Checklist — mirrors ``ui.row`` args."""
+
+    label: str
+    target: str
+    detail: str
+    state: State
 
 
 def task_doctor() -> Task | None:
@@ -53,19 +73,20 @@ def cmd_doctor() -> None:
     cfg = _safe_load_config(pyproject_path, failures)
     _collect_blockers(cfg, pyproject_path, blockers)
     _collect_tool_warnings(project_root, cfg, warnings, blockers)
-    is_blocked = bool(blockers or failures)
+
+    rows = _collect_setup_rows(project_root, cfg, pyproject_path)
+    is_blocked = bool(blockers or failures or any(r.state == "fail" for r in rows))
+    gap_count = sum(1 for r in rows if r.state == "warn")
 
     ui.command_banner("doctor", cfg)
     ui.section("Readiness")
-    if is_blocked:
-        print("  status                 blocked")
-        print("  summary                fix blockers before running `harness check`")
-    else:
-        print("  status                 ready")
-        print("  summary                ready to try `harness check`")
+    _print_readiness(is_blocked, gap_count)
 
     ui.section("Detected Configuration")
     _print_configuration(project_root, cfg, pyproject_path)
+
+    ui.section("Setup Checklist")
+    _render_setup_checklist(rows)
 
     ui.section("Blockers")
     _print_messages([*failures, *blockers], empty="none")
@@ -74,11 +95,28 @@ def cmd_doctor() -> None:
     _print_messages(warnings, empty="none")
 
     ui.section("Next Steps")
-    _print_next_steps(is_blocked)
+    ui.message_list(
+        _next_steps(rows, is_blocked),
+        empty="Run `harness check` locally.",
+    )
     ui.command_footer(start)
 
     if failures:
         sys.exit(1)
+
+
+def _print_readiness(is_blocked: bool, gap_count: int) -> None:
+    if is_blocked:
+        print("  status                 blocked")
+        print("  summary                fix blockers before running `harness check`")
+        return
+    if gap_count:
+        suffix = "s" if gap_count != 1 else ""
+        print(f"  status                 ready ({gap_count} gap{suffix})")
+        print("  summary                see Setup Checklist for optional wiring")
+        return
+    print("  status                 ready")
+    print("  summary                ready to try `harness check`")
 
 
 def _safe_load_config(pyproject_path: Path, failures: list[str]) -> HarnessConfig | None:
@@ -123,6 +161,135 @@ def _collect_tool_warnings(
         warnings.append(f"no .venv found under project root ({venv_python})")
 
 
+def _collect_setup_rows(
+    project_root: Path, cfg: HarnessConfig | None, pyproject_path: Path
+) -> list[CheckRow]:
+    rows: list[CheckRow] = [_pyproject_row(pyproject_path)]
+    if cfg is None:
+        return rows
+    rows.extend([
+        _preset_row(cfg),
+        _harness_cfg_row(cfg),
+        _src_dir_row(cfg),
+        _test_dir_row(cfg),
+        _venv_row(cfg),
+        _git_hook_row(project_root),
+        _claude_hook_row(project_root),
+        _ci_workflow_row(project_root),
+        _acceptance_row(cfg),
+    ])
+    return rows
+
+
+def _pyproject_row(pyproject_path: Path) -> CheckRow:
+    if pyproject_path.is_file():
+        return CheckRow("pyproject", "pyproject.toml", "present", "ok")
+    return CheckRow("pyproject", "pyproject.toml", "missing", "fail")
+
+
+def _preset_row(cfg: HarnessConfig) -> CheckRow:
+    if cfg.preset:
+        return CheckRow("preset", cfg.preset, "configured", "ok")
+    return CheckRow("preset", "(none)", "using dataclass defaults", "warn")
+
+
+def _harness_cfg_row(cfg: HarnessConfig) -> CheckRow:
+    if harness_config_block_present(cfg):
+        return CheckRow("harness cfg", "[tool.harness] block", "present", "ok")
+    return CheckRow("harness cfg", "[tool.harness] block", "defaults apply", "warn")
+
+
+def _src_dir_row(cfg: HarnessConfig) -> CheckRow:
+    target = f"{cfg.src_dir_arg}/"
+    if cfg.src_dir.exists():
+        return CheckRow("src dir", target, "present", "ok")
+    return CheckRow("src dir", target, "missing", "fail")
+
+
+def _test_dir_row(cfg: HarnessConfig) -> CheckRow:
+    target = f"{cfg.test_dir_arg}/"
+    if cfg.test_dir.exists():
+        return CheckRow("test dir", target, "present", "ok")
+    return CheckRow("test dir", target, "missing", "fail")
+
+
+def _venv_row(cfg: HarnessConfig) -> CheckRow:
+    venv_python = expected_target_interpreter(cfg.project_root)
+    target = cfg.relpath(venv_python)
+    if venv_python.is_file():
+        return CheckRow("venv", target, "present", "ok")
+    return CheckRow("venv", target, "missing", "warn")
+
+
+def _git_hook_row(project_root: Path) -> CheckRow:
+    target = ".git/hooks/pre-commit"
+    if not (project_root / ".git").exists():
+        return CheckRow("git hook", target, _INERT_DETAIL, "warn")
+    if pre_commit_hook_installed(project_root):
+        return CheckRow("git hook", target, "installed", "ok")
+    return CheckRow("git hook", target, "run `harness setup-hooks`", "warn")
+
+
+def _claude_hook_row(project_root: Path) -> CheckRow:
+    target = ".claude/settings.json → Stop"
+    claude_dir = project_root / ".claude"
+    settings = claude_dir / "settings.json"
+    if not claude_dir.is_dir() and not settings.is_file():
+        return CheckRow("claude hook", target, _INERT_DETAIL, "warn")
+    if claude_stop_hook_installed(project_root):
+        return CheckRow("claude hook", target, "installed", "ok")
+    return CheckRow("claude hook", target, "run `harness setup-hooks`", "warn")
+
+
+def _ci_workflow_row(project_root: Path) -> CheckRow:
+    target = ".github/workflows/*.yml"
+    if ci_workflow_present(project_root):
+        return CheckRow("ci workflow", target, "present", "ok")
+    return CheckRow("ci workflow", target, "not detected", "warn")
+
+
+def _acceptance_row(cfg: HarnessConfig) -> CheckRow:
+    features_target = cfg.features_dir_arg or "tests/features/"
+    if cfg.acceptance_runner == "off":
+        return CheckRow("acceptance", "(disabled)", _INERT_DETAIL, "warn")
+    if acceptance_scaffold_present(cfg):
+        return CheckRow("acceptance", features_target, "scaffolded", "ok")
+    if cfg.acceptance_runner is not None:
+        return CheckRow("acceptance", features_target, "run `harness init-acceptance`", "warn")
+    return CheckRow("acceptance", features_target, "not wired", "warn")
+
+
+def _render_setup_checklist(rows: list[CheckRow]) -> None:
+    for row in rows:
+        ui.row(row.label, row.target, row.state, detail=row.detail, state=row.state)
+
+
+def _next_steps(rows: list[CheckRow], is_blocked: bool) -> list[str]:
+    if is_blocked:
+        return ["Fix blockers in Setup Checklist above, then rerun `harness doctor`."]
+    by_label = {r.label: r for r in rows}
+    steps: list[str] = []
+    if _is_warn(by_label, "git hook") or _is_warn(by_label, "claude hook"):
+        steps.append("Run `harness setup-hooks` to wire feedback loops.")
+    if _is_warn(by_label, "harness cfg") or _is_warn(by_label, "preset"):
+        steps.append("Run `harness presets` to pick a preset (baseline, strict, legacy).")
+    if _is_warn(by_label, "acceptance"):
+        steps.append("Run `harness init-acceptance` to scaffold Gherkin tests.")
+    if _is_warn(by_label, "ci workflow"):
+        steps.append("Wire CI via `harness ci` or the reusable pyharness GitHub Action.")
+    if _is_warn(by_label, "venv"):
+        steps.append("Create a venv (`uv sync` or `python -m venv .venv`).")
+    if not steps:
+        steps.append("Run `harness check` locally.")
+    return steps
+
+
+def _is_warn(by_label: dict[str, CheckRow], label: str) -> bool:
+    """True when ``label`` row is an actionable gap (warn, excluding inert placeholders)."""
+    row = by_label.get(label)
+    return row is not None and row.state == "warn" and row.detail != _INERT_DETAIL
+
+
 def _print_configuration(
     project_root: Path, cfg: HarnessConfig | None, pyproject_path: Path
 ) -> None:
@@ -165,14 +332,3 @@ def _cfg_rows(cfg: HarnessConfig) -> list[tuple[str, object]]:
 
 def _print_messages(messages: list[str], *, empty: str) -> None:
     ui.message_list(messages, empty=empty)
-
-
-def _print_next_steps(blocked: bool) -> None:
-    if blocked:
-        print("  1. Fix the blockers listed above.")
-        print("  2. Run `harness doctor` again.")
-        print("  3. Run `harness check` once readiness is clear.")
-        return
-    print("  1. Run `harness check` locally.")
-    print("  2. Wire CI with `harness ci` or the reusable pyharness GitHub Action.")
-    print("  3. Optional: run `harness setup-hooks` to install local feedback hooks.")

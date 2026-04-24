@@ -7,7 +7,14 @@ Feature: harness doctor adoption diagnostic
     Given I run "harness doctor"
     Then the output contains "── Readiness"
     And the output contains "── Detected Configuration"
+    And the output contains "── Setup Checklist"
     And the output contains "── Blockers"
     And the output contains "── Warnings"
     And the output contains "── Next Steps"
     And the output contains "src_dir"
+
+  Scenario: Setup Checklist surfaces artifact rows with tag labels
+    Given I run "harness doctor"
+    Then the output contains "[pyproject]"
+    And the output contains "[src dir]"
+    And the output contains "[ci workflow]"

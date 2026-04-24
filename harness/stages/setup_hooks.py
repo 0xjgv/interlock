@@ -11,12 +11,7 @@ from pathlib import Path
 from harness import ui
 from harness.config import load_config
 from harness.runner import ok
-
-
-def _is_post_edit_command(command: object) -> bool:
-    return isinstance(command, str) and (
-        command.endswith("harness.cli post-edit") or command == "uv run harness post-edit"
-    )
+from harness.setup_state import is_post_edit_command
 
 
 def _reset_invalid_container[T: (dict[str, object], list[object])](
@@ -39,7 +34,7 @@ def _keep_existing_hook(hook: object, new_command: str) -> bool:
     existing = hook.get("command")
     if existing == new_command:
         return False
-    return not _is_post_edit_command(existing)
+    return not is_post_edit_command(existing)
 
 
 def _ensure_stop_hook(settings: dict[str, object], command: str) -> dict[str, object]:
