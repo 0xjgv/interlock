@@ -75,7 +75,7 @@ def test_main_exits_with_command_status(monkeypatch: pytest.MonkeyPatch, tmp_pat
 
 
 def test_action_metadata_delegates_to_harness_ci() -> None:
-    action = Path("action.yml").read_text(encoding="utf-8")
+    action = (Path(__file__).resolve().parent.parent / "action.yml").read_text(encoding="utf-8")
 
     assert "using: composite" in action
     assert "actions/setup-python@v5" in action
