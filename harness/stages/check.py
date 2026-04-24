@@ -7,7 +7,7 @@ import time
 from harness import ui
 from harness.config import load_config
 from harness.reports.suppressions import print_suppressions_report
-from harness.runner import run, run_tasks, warn_skip
+from harness.runner import reset_results, results_snapshot, run, run_tasks, warn_skip
 from harness.tasks.acceptance import task_acceptance
 from harness.tasks.crap import cmd_crap_cached_advisory
 from harness.tasks.deps import task_deps
@@ -25,6 +25,7 @@ def cmd_check() -> None:
     """
     start = time.monotonic()
     cfg = load_config()
+    reset_results()
     ui.banner(cfg)
     try:
         ui.section("Quality Checks")
@@ -47,4 +48,18 @@ def cmd_check() -> None:
         cmd_crap_cached_advisory()
     finally:
         print_suppressions_report()
-        ui.stage_footer(time.monotonic() - start)
+        _print_footer(time.monotonic() - start)
+
+
+def _print_footer(elapsed: float) -> None:
+    """Verdict line when quiet (agent/LLM path); standard stage footer otherwise."""
+    if not ui.is_quiet():
+        ui.stage_footer(elapsed)
+        return
+    results = results_snapshot()
+    fails = [label for label, ok in results if not ok]
+    if not fails:
+        print(f"check: ok — {len(results)} tasks, {elapsed:.1f}s")
+        return
+    detail = ", ".join(fails)
+    print(f"check: FAILED — {detail} ({len(fails)} of {len(results)}) — {elapsed:.1f}s")

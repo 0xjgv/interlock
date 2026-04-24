@@ -32,3 +32,8 @@ Feature: Harness CLI surface area
   Scenario: harness version prints 1.0.0
     Given I run "harness version"
     Then the output contains "1.0.0"
+
+  Scenario: harness help --quiet skips banner and section headers
+    Given I run "harness help --quiet"
+    Then the output does not contain "command=help"
+    And the output does not contain "── "

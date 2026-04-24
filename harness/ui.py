@@ -39,6 +39,12 @@ def use_color() -> bool:
     return sys.stdout.isatty()
 
 
+def is_quiet() -> bool:
+    """True when `--quiet` requested and not overridden by `--verbose`."""
+    argv = sys.argv
+    return "--quiet" in argv and "--verbose" not in argv
+
+
 def _term_width() -> int:
     """Terminal width clamped to [60, 100]."""
     cols = shutil.get_terminal_size(fallback=(80, 24)).columns
@@ -53,6 +59,8 @@ def _c(code: str, text: str) -> str:
 
 def banner(cfg: HarnessConfig) -> None:
     """One-line stage banner: `pyharness vX  ·  preset=Y  ·  runner=Z  ·  invoker=W`."""
+    if is_quiet():
+        return
     preset = cfg.preset or "none"
     parts = [
         f"pyharness v{__version__}",
@@ -65,6 +73,8 @@ def banner(cfg: HarnessConfig) -> None:
 
 def command_banner(command: str, cfg: HarnessConfig | None = None) -> None:
     """One-line command banner aligned with stage banners."""
+    if is_quiet():
+        return
     parts = [f"pyharness v{__version__}", f"command={command}"]
     if cfg is not None:
         parts.extend([
@@ -77,6 +87,8 @@ def command_banner(command: str, cfg: HarnessConfig | None = None) -> None:
 
 def section(name: str) -> None:
     """`── name ─────…` stage/sub-stage header, sized to the terminal."""
+    if is_quiet():
+        return
     width = _term_width()
     prefix = f"── {name} "
     fill = max(3, width - len(prefix))
@@ -95,7 +107,10 @@ def row(
 
     `detail` (e.g., `"2 files reformatted"`) follows the status after ` · `.
     Long `command` is truncated to fit the available width; status is right-aligned.
+    Quiet mode suppresses ok/warn rows — only failures carry signal for agents.
     """
+    if is_quiet() and state != "fail":
+        return
     width = _term_width()
     color = _STATE_COLORS[state]
     label_tag = f"[{label}]"
@@ -137,6 +152,8 @@ def message_list(items: list[str], *, empty: str = "none", indent: str = "  ") -
 
 def stage_footer(elapsed_s: float) -> None:
     """`Completed in X.Ys` footer."""
+    if is_quiet():
+        return
     print(f"\n{_c(_DIM, f'Completed in {elapsed_s:.1f}s')}")
 
 

@@ -36,3 +36,8 @@ def _lists_command(cli_output: str, name: str) -> None:
 @then(parsers.parse('the output contains "{needle}"'))
 def _output_contains(cli_output: str, needle: str) -> None:
     assert needle in cli_output, f"expected {needle!r} in output; got:\n{cli_output}"
+
+
+@then(parsers.parse('the output does not contain "{needle}"'))
+def _output_does_not_contain(cli_output: str, needle: str) -> None:
+    assert needle not in cli_output, f"did not expect {needle!r} in output; got:\n{cli_output}"

@@ -25,6 +25,11 @@ YELLOW = "\033[33m"
 RESET = "\033[0m"
 VERBOSE = "--verbose" in sys.argv
 
+# Failure-dump truncation: keep first 40 + last 20 non-blank lines of each
+# stream. `HARNESS_DUMP_LINES=all` bypasses for CI debugging.
+_DUMP_HEAD_LINES = 40
+_DUMP_TAIL_LINES = 20
+
 # Commands that must work without a project — diagnostics, scaffolding, meta.
 PREFLIGHT_EXEMPT: frozenset[str] = frozenset({"doctor", "init", "presets", "version", "help"})
 
@@ -34,6 +39,20 @@ _UNITTEST_SUMMARY = re.compile(r"Ran (\d+) tests? in ([\d.]+s)")
 _PYTEST_SUMMARY = re.compile(r"(\d+) passed[^\n]*?\s+in\s+([\d.]+)s")
 
 _PRINT_LOCK = threading.Lock()
+
+# Per-stage accumulator — stages (e.g. `cmd_check`) read this to emit a
+# one-line verdict in quiet mode. Labels mirror the row tag `[label]`.
+_RESULTS: list[tuple[str, bool]] = []
+
+
+def reset_results() -> None:
+    """Clear the stage-level task-result accumulator."""
+    _RESULTS.clear()
+
+
+def results_snapshot() -> list[tuple[str, bool]]:
+    """Return `(label, passed)` pairs recorded since the last reset."""
+    return list(_RESULTS)
 
 
 def tool(name: str, *args: str) -> list[str]:
@@ -240,6 +259,7 @@ def _print_status(result: RunResult, *, elapsed_suffix: bool) -> None:
     label = task.label or _default_label(task.description)
     command = task.display or _default_display(task.cmd)
     status, detail, state = _status(result, elapsed_suffix=elapsed_suffix)
+    _RESULTS.append((label, state == "ok"))
     with _PRINT_LOCK:
         ui.row(label, command, status, detail=detail, state=state)
 
@@ -290,9 +310,28 @@ def _dump_failure(result: RunResult, *, titled: bool) -> None:
             print(f"\n--- {task.description} output ---")
         print(f"{_c(RED)}Command failed: {' '.join(task.cmd)}{_c(RESET)}")
         if result.stdout:
-            print(result.stdout, end="")
+            print(_truncate_dump(result.stdout), end="")
         if result.stderr:
-            print(result.stderr, end="")
+            print(_truncate_dump(result.stderr), end="")
+
+
+def _truncate_dump(text: str) -> str:
+    """Keep first 40 + last 20 non-blank lines; `HARNESS_DUMP_LINES=all` bypasses."""
+    if os.environ.get("HARNESS_DUMP_LINES") == "all":
+        return text
+    budget = _DUMP_HEAD_LINES + _DUMP_TAIL_LINES
+    # Cheap gate: short dumps skip the splitlines allocation entirely.
+    if text.count("\n") <= budget:
+        return text
+    lines = text.splitlines(keepends=True)
+    non_blank = [i for i, line in enumerate(lines) if line.strip()]
+    if len(non_blank) <= budget:
+        return text
+    head_end = non_blank[_DUMP_HEAD_LINES - 1] + 1
+    tail_start = non_blank[-_DUMP_TAIL_LINES]
+    omitted = len(non_blank) - budget
+    marker = f"… {omitted} lines omitted (re-run with --verbose) …\n"
+    return "".join(lines[:head_end]) + marker + "".join(lines[tail_start:])
 
 
 def _parse_test_summary(output: str) -> str:

@@ -189,6 +189,54 @@ def test_check_in_process_runs_suppressions_on_failure(
     assert calls == ["fix", "suppressions"]
 
 
+def _run_check_quiet(cwd: Path) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        [sys.executable, "-P", "-m", "harness.cli", "check", "--quiet"],
+        cwd=cwd,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+
+def test_check_quiet_success_is_one_verdict_line(tmp_project: Path) -> None:
+    result = _run_check_quiet(tmp_project)
+
+    assert result.returncode == 0, f"stdout={result.stdout}\nstderr={result.stderr}"
+    out = result.stdout
+    assert "pyharness v" not in out
+    assert "Quality Checks" not in out
+    assert "Parallel" not in out
+    assert "Advisory" not in out
+    assert "Suppressions" not in out
+    assert "Completed in" not in out
+    assert out.strip().splitlines()[-1].startswith("check: ok — ")
+
+
+def test_check_quiet_failure_emits_failed_verdict(tmp_project: Path) -> None:
+    failing = textwrap.dedent(
+        '''\
+        """Failing test."""
+
+        import unittest
+
+
+        class TestBroken(unittest.TestCase):
+            def test_broken(self) -> None:
+                self.assertEqual(1, 2)
+        '''
+    )
+    (tmp_project / "tests" / "test_add.py").write_text(failing, encoding="utf-8")
+
+    result = _run_check_quiet(tmp_project)
+
+    assert result.returncode != 0
+    out = result.stdout
+    assert "Quality Checks" not in out
+    assert "[test]" in out  # failing row preserved
+    assert any(line.startswith("check: FAILED — ") for line in out.splitlines()), out
+
+
 def test_check_fails_when_tests_fail(tmp_project: Path) -> None:
     failing = textwrap.dedent(
         '''\

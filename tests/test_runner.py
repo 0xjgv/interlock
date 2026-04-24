@@ -9,7 +9,7 @@ from pathlib import Path
 
 import pytest
 
-from harness.runner import Task, run_tasks
+from harness.runner import Task, _truncate_dump, reset_results, results_snapshot, run_tasks
 
 _ANSI_RE = re.compile(r"\x1b\[[0-9;]*m")
 _WAIT_FOR_MARKER = (
@@ -194,3 +194,75 @@ def test_task_explicit_label_and_display_override_defaults(
     assert "[typecheck]" in out
     assert "basedpyright src" in out
     assert "[whatever]" not in out
+
+
+def test_truncate_dump_head_tail_marker() -> None:
+    """Dumps longer than head+tail collapse to head + omission marker + tail."""
+    lines = [f"line-{i}\n" for i in range(200)]
+    out = _truncate_dump("".join(lines))
+    assert "line-0\n" in out
+    assert "line-39\n" in out
+    assert "line-40\n" not in out
+    assert "line-179\n" not in out
+    assert "line-180\n" in out
+    assert "line-199\n" in out
+    assert "… 140 lines omitted (re-run with --verbose) …" in out
+
+
+def test_truncate_dump_short_input_untouched() -> None:
+    """Inputs under the head+tail budget pass through verbatim."""
+    text = "".join(f"line-{i}\n" for i in range(50))
+    assert _truncate_dump(text) == text
+
+
+def test_truncate_dump_env_escape_disables_cap(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("HARNESS_DUMP_LINES", "all")
+    text = "".join(f"line-{i}\n" for i in range(200))
+    assert _truncate_dump(text) == text
+
+
+def test_quiet_suppresses_ok_rows_still_records_results(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    monkeypatch.setattr("harness.ui.is_quiet", lambda: True)
+    reset_results()
+    run_tasks([
+        _python_task("Alpha", "print('a')"),
+        _python_task("Bravo", "print('b')"),
+    ])
+    out = _strip(capsys.readouterr().out)
+    assert "[alpha]" not in out
+    assert "[bravo]" not in out
+    # Completion order is non-deterministic under parallel exec; compare as a set.
+    assert set(results_snapshot()) == {("alpha", True), ("bravo", True)}
+
+
+def test_quiet_still_shows_fail_rows(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    monkeypatch.setattr("harness.ui.is_quiet", lambda: True)
+    reset_results()
+    tasks = [
+        _python_task("Good", "print('ok')"),
+        _python_task("Bad", "import sys; sys.exit(3)"),
+    ]
+    with pytest.raises(SystemExit):
+        run_tasks(tasks)
+    out = _strip(capsys.readouterr().out)
+    assert "[good]" not in out
+    assert "[bad]" in out
+    assert "failed" in out
+    assert set(results_snapshot()) == {("good", True), ("bad", False)}
+
+
+def test_dump_failure_caps_long_stderr_in_run_tasks(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    code = "import sys\nfor i in range(200):\n    sys.stderr.write(f'err-{i}\\n')\nsys.exit(1)\n"
+    with pytest.raises(SystemExit):
+        run_tasks([_python_task("Noisy", code)])
+    out = _strip(capsys.readouterr().out)
+    assert "err-0" in out
+    assert "err-199" in out
+    assert "err-100" not in out
+    assert "lines omitted" in out

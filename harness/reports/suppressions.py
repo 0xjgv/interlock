@@ -60,6 +60,8 @@ def print_suppressions_report() -> None:
     """Print a report-only summary of suppressions found in source."""
     results = _scan_suppressions()
     total = sum(len(v) for v in results.values())
+    if ui.is_quiet() and total == 0:
+        return
     ui.section("Suppressions")
     print(f"Suppressions: {total} total")
     if total == 0:
