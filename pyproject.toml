@@ -1,5 +1,5 @@
 [project]
-name = "interlock"
+name = "interlocks"
 version = "0.1.0"
 description = "Zero-config Python quality interlock: lint, format, typecheck, test, coverage, acceptance, audit, deps, architecture, complexity, CRAP, mutation — all behind `interlock <task>` (or `il <task>`)."
 readme = "README.md"
@@ -9,7 +9,6 @@ authors = [{name = "0xjgv", email = "juan@mail.usestilgar.com"}]
 keywords = ["quality", "linting", "testing", "coverage", "mutation-testing", "ci", "devex"]
 classifiers = [
     "Development Status :: 5 - Production/Stable",
-    "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3.13",
     "Intended Audience :: Developers",
     "Topic :: Software Development :: Quality Assurance",

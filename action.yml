@@ -9,7 +9,7 @@ inputs:
   install-command:
     description: Command that installs interlock before running CI.
     required: false
-    default: python -m pip install interlock
+    default: python -m pip install interlocks
   command:
     description: interlock command to run.
     required: false

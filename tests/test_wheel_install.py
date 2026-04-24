@@ -1,7 +1,7 @@
 """Wheel-install smoke test.
 
 Builds the interlock wheel, installs it into a clean venv, and runs
-`interlock help`. Guards the `pipx install interlock` promise from the README
+`interlock help`. Guards the `pipx install interlocks` promise from the README
 against packaging regressions (e.g. missing `interlock/defaults/*` data files).
 
 Marked `slow` because building a wheel and creating a fresh venv takes several

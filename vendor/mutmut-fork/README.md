@@ -2,7 +2,7 @@
 
 A PyPI-only fork of [boxed/mutmut](https://github.com/boxed/mutmut), published
 as the distribution name **`interlock-mutmut`** so that interlock can be
-installed cleanly via `pipx install interlock` (or `uv tool install interlock`)
+installed cleanly via `pipx install interlocks` (or `uv tool install interlocks`)
 without requiring `git` on the install host.
 
 ## Why this exists

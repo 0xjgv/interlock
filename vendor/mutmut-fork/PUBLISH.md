@@ -2,7 +2,7 @@
 
 This is a **manual, one-off workflow**. Interlock maintainers run it when the
 upstream SHA interlock pins needs to be republished under the
-`interlock-mutmut` distribution name so that `pipx install interlock` works
+`interlock-mutmut` distribution name so that `pipx install interlocks` works
 without `git` available on the install host.
 
 ## Prerequisites

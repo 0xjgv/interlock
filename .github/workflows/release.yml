@@ -32,7 +32,7 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: testpypi
-      url: https://test.pypi.org/p/interlock
+      url: https://test.pypi.org/p/interlocks
     permissions:
       id-token: write
     steps:
@@ -57,7 +57,7 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: pypi
-      url: https://pypi.org/p/interlock
+      url: https://pypi.org/p/interlocks
     permissions:
       id-token: write
       contents: write

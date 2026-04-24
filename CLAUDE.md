@@ -2,7 +2,7 @@
 
 ## Install
 
-- `pipx install interlock` (or `uv tool install interlock` for uv users). All tools ship with the CLI.
+- `pipx install interlocks` (or `uv tool install interlocks` for uv users). All tools ship with the CLI.
 
 ## Commands
 

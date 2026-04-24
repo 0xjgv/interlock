@@ -3,7 +3,7 @@
 Adopt one Python quality loop across a repository or an organization:
 
 ```bash
-pipx install interlock       # or: uv tool install interlock
+pipx install interlocks       # or: uv tool install interlocks
 cd your-python-project
 interlock doctor               # readiness, detected config, blockers, next steps
 interlock check                # local edit loop
@@ -17,9 +17,9 @@ interlock bundles ruff, basedpyright, pytest, pytest-bdd, coverage, mutmut, dept
 ### 1. Install
 
 ```bash
-pipx install interlock
+pipx install interlocks
 # or
-uv tool install interlock
+uv tool install interlocks
 ```
 
 Every underlying tool ships with the CLI. No per-project dev dependency list is required just to try the standard loop.

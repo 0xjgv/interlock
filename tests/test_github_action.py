@@ -79,7 +79,7 @@ def test_action_metadata_delegates_to_interlock_ci() -> None:
 
     assert "using: composite" in action
     assert "actions/setup-python@v5" in action
-    assert "default: python -m pip install interlock" in action
+    assert "default: python -m pip install interlocks" in action
     assert "default: interlock ci" in action
     assert 'python -m interlock.github_action --command "${{ inputs.command }}"' in action
     assert "ruff" not in action

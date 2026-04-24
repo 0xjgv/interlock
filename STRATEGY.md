@@ -28,9 +28,9 @@ Reduce configuration surface with one preset taxonomy before adding more knobs:
 
 Do not expand the feature matrix yet. Package a narrow adoption loop:
 
-1. Start without installation: `uvx --from interlock interlock doctor` or `pipx run --spec interlock interlock doctor`.
-2. `uvx --from interlock interlock check` or `pipx run --spec interlock interlock check` proves local value.
-3. If the tool sticks, install it permanently with `uv tool install interlock` or `pipx install interlock`.
+1. Start without installation: `uvx --from interlocks interlock doctor` or `pipx run --spec interlocks interlock doctor`.
+2. `uvx --from interlocks interlock check` or `pipx run --spec interlocks interlock check` proves local value.
+3. If the tool sticks, install it permanently with `uv tool install interlocks` or `pipx install interlocks`.
 4. `interlock ci` becomes the one-line CI command.
 5. A first-class GitHub Action makes adoption copy-pasteable and reports a concise job summary.
 
