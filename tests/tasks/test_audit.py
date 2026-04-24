@@ -1,4 +1,4 @@
-"""Integration test for `harness audit` (pip-audit on deps)."""
+"""Integration test for `interlock audit` (pip-audit on deps)."""
 
 from __future__ import annotations
 
@@ -35,7 +35,7 @@ def tmp_project(tmp_path: Path) -> Path:
 def test_audit_clean_deps_passes(tmp_project: Path) -> None:
     """pip-audit against a project with no deps should report no vulnerabilities."""
     result = subprocess.run(
-        [sys.executable, "-m", "harness.cli", "audit"],
+        [sys.executable, "-m", "interlock.cli", "audit"],
         cwd=tmp_project,
         capture_output=True,
         text=True,
@@ -50,8 +50,8 @@ def test_audit_clean_deps_passes(tmp_project: Path) -> None:
 
 def test_audit_invokes_pip_audit(monkeypatch: pytest.MonkeyPatch) -> None:
     """Fast in-process check: cmd_audit builds a Task wrapping pip-audit and calls run()."""
-    from harness.runner import Task
-    from harness.tasks import audit as audit_mod
+    from interlock.runner import Task
+    from interlock.tasks import audit as audit_mod
 
     captured: dict[str, Task] = {}
 
@@ -64,3 +64,4 @@ def test_audit_invokes_pip_audit(monkeypatch: pytest.MonkeyPatch) -> None:
     task = captured["task"]
     assert task.description == "Dep audit"
     assert "pip_audit" in task.cmd
+    assert task.cmd[-1] == "."

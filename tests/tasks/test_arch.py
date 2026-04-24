@@ -1,4 +1,4 @@
-"""Integration + unit tests for `harness arch` (import-linter contracts)."""
+"""Integration + unit tests for `interlock arch` (import-linter contracts)."""
 
 from __future__ import annotations
 
@@ -43,7 +43,7 @@ _CLEAN_TEST = textwrap.dedent(
 
 _PIN_DIRS = textwrap.dedent(
     """
-    [tool.harness]
+    [tool.interlock]
     src_dir = "arch_probe"
     test_dir = "tests"
     """
@@ -93,7 +93,7 @@ def non_package_tests(tmp_path: Path) -> Path:
 @pytest.mark.slow
 def test_arch_passes_on_clean_project(clean_project: Path) -> None:
     result = subprocess.run(
-        [sys.executable, "-m", "harness.cli", "arch"],
+        [sys.executable, "-m", "interlock.cli", "arch"],
         cwd=clean_project,
         capture_output=True,
         text=True,
@@ -105,7 +105,7 @@ def test_arch_passes_on_clean_project(clean_project: Path) -> None:
 @pytest.mark.slow
 def test_arch_fails_when_src_imports_tests(dirty_project: Path) -> None:
     result = subprocess.run(
-        [sys.executable, "-m", "harness.cli", "arch"],
+        [sys.executable, "-m", "interlock.cli", "arch"],
         cwd=dirty_project,
         capture_output=True,
         text=True,
@@ -118,7 +118,7 @@ def test_arch_fails_when_src_imports_tests(dirty_project: Path) -> None:
 @pytest.mark.slow
 def test_arch_skips_when_tests_not_a_package(non_package_tests: Path) -> None:
     result = subprocess.run(
-        [sys.executable, "-m", "harness.cli", "arch"],
+        [sys.executable, "-m", "interlock.cli", "arch"],
         cwd=non_package_tests,
         capture_output=True,
         text=True,
@@ -133,11 +133,11 @@ def test_arch_skips_when_tests_not_a_package(non_package_tests: Path) -> None:
 def _stub_load_config(
     monkeypatch: pytest.MonkeyPatch, project_root: Path, src_dir: Path, test_dir: Path
 ) -> None:
-    """Point arch's ``load_config`` at a real ``HarnessConfig`` for ``project_root``."""
+    """Point arch's ``load_config`` at a real ``InterlockConfig`` for ``project_root``."""
     from dataclasses import replace
 
-    from harness.config import clear_cache, load_config
-    from harness.tasks import arch as arch_mod
+    from interlock.config import clear_cache, load_config
+    from interlock.tasks import arch as arch_mod
 
     clear_cache()
     cfg = replace(load_config(project_root), src_dir=src_dir, test_dir=test_dir)
@@ -148,7 +148,7 @@ def test_task_arch_uses_user_contracts_when_declared(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
     """If pyproject has [tool.importlinter], we invoke lint-imports without --config."""
-    from harness.tasks import arch as arch_mod
+    from interlock.tasks import arch as arch_mod
 
     proj = tmp_path / "proj"
     proj.mkdir()
@@ -174,7 +174,7 @@ def test_task_arch_synthesizes_default_when_no_contracts(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
     """No contracts + both dirs are packages → we build a temp INI and pass --config."""
-    from harness.tasks import arch as arch_mod
+    from interlock.tasks import arch as arch_mod
 
     proj = tmp_path / "proj"
     proj.mkdir()
@@ -200,7 +200,7 @@ def test_task_arch_synthesizes_default_when_no_contracts(
 def test_task_arch_returns_none_when_tests_not_a_package(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    from harness.tasks import arch as arch_mod
+    from interlock.tasks import arch as arch_mod
 
     proj = tmp_path / "proj"
     proj.mkdir()

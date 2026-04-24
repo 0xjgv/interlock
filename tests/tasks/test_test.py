@@ -1,4 +1,4 @@
-"""Integration tests for harness.tasks.test."""
+"""Integration tests for interlock.tasks.test."""
 
 from __future__ import annotations
 
@@ -44,7 +44,7 @@ def tmp_project(tmp_path: Path) -> Path:
 def test_test_cli(tmp_project: Path, source: str, expected_rc: int) -> None:
     (tmp_project / "tests" / "test_sample.py").write_text(source, encoding="utf-8")
     result = subprocess.run(
-        [sys.executable, "-m", "harness.cli", "test"],
+        [sys.executable, "-m", "interlock.cli", "test"],
         cwd=tmp_project,
         capture_output=True,
         text=True,
@@ -54,7 +54,7 @@ def test_test_cli(tmp_project: Path, source: str, expected_rc: int) -> None:
 
 
 def test_test_passing_in_process(tmp_project: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    from harness.tasks.test import cmd_test
+    from interlock.tasks.test import cmd_test
 
     (tmp_project / "tests" / "test_sample.py").write_text(PASSING, encoding="utf-8")
     monkeypatch.chdir(tmp_project)
@@ -62,7 +62,7 @@ def test_test_passing_in_process(tmp_project: Path, monkeypatch: pytest.MonkeyPa
 
 
 def test_test_failing_in_process(tmp_project: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    from harness.tasks.test import cmd_test
+    from interlock.tasks.test import cmd_test
 
     (tmp_project / "tests" / "test_sample.py").write_text(FAILING, encoding="utf-8")
     monkeypatch.chdir(tmp_project)
@@ -83,8 +83,8 @@ def tmp_project_no_tests(tmp_path: Path) -> Path:
 def test_task_test_returns_none_without_test_dir(
     tmp_project_no_tests: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    from harness.config import clear_cache
-    from harness.tasks.test import task_test
+    from interlock.config import clear_cache
+    from interlock.tasks.test import task_test
 
     monkeypatch.chdir(tmp_project_no_tests)
     clear_cache()
@@ -96,8 +96,8 @@ def test_cmd_test_skips_without_test_dir(
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    from harness.config import clear_cache
-    from harness.tasks.test import cmd_test
+    from interlock.config import clear_cache
+    from interlock.tasks.test import cmd_test
 
     monkeypatch.chdir(tmp_project_no_tests)
     clear_cache()
@@ -111,9 +111,9 @@ def test_cmd_check_skips_tests_without_test_dir(
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    """`harness check` in a greenfield project skips tests + exits clean."""
-    from harness.config import clear_cache
-    from harness.stages.check import cmd_check
+    """`interlock check` in a greenfield project skips tests + exits clean."""
+    from interlock.config import clear_cache
+    from interlock.stages.check import cmd_check
 
     monkeypatch.chdir(tmp_project_no_tests)
     clear_cache()

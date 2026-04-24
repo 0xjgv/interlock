@@ -1,4 +1,4 @@
-"""Unit tests for harness.reports.suppressions."""
+"""Unit tests for interlock.reports.suppressions."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from harness.reports.suppressions import (
+from interlock.reports.suppressions import (
     _parse_line_for_suppressions,
     _scan_suppressions,
     print_suppressions_report,
@@ -16,7 +16,7 @@ from harness.reports.suppressions import (
 SRC_NAME = "pkg"
 TEST_NAME = "tests"
 _PYPROJECT = f"""\
-[tool.harness]
+[tool.interlock]
 src_dir = "{SRC_NAME}"
 test_dir = "{TEST_NAME}"
 """

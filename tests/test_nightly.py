@@ -6,8 +6,8 @@ import sys
 
 import pytest
 
-from harness.config import load_config
-from harness.stages import nightly as nightly_mod
+from interlock.config import load_config
+from interlock.stages import nightly as nightly_mod
 
 
 @pytest.fixture
@@ -22,7 +22,7 @@ def spies(monkeypatch: pytest.MonkeyPatch) -> list[str]:
 def test_nightly_runs_coverage_before_mutation(
     monkeypatch: pytest.MonkeyPatch, spies: list[str]
 ) -> None:
-    monkeypatch.setattr(sys, "argv", ["harness", "nightly"])
+    monkeypatch.setattr(sys, "argv", ["interlock", "nightly"])
 
     nightly_mod.cmd_nightly()
 
@@ -33,19 +33,19 @@ def test_nightly_injects_min_score_from_config(
     monkeypatch: pytest.MonkeyPatch, spies: list[str]
 ) -> None:
     """Default config → `--min-score=<mutation_min_score>` appended to argv."""
-    monkeypatch.setattr(sys, "argv", ["harness", "nightly"])
+    monkeypatch.setattr(sys, "argv", ["interlock", "nightly"])
 
     nightly_mod.cmd_nightly()
 
-    assert sys.argv == ["harness", "nightly", f"--min-score={load_config().mutation_min_score}"]
+    assert sys.argv == ["interlock", "nightly", f"--min-score={load_config().mutation_min_score}"]
 
 
 def test_nightly_preserves_user_supplied_min_score(
     monkeypatch: pytest.MonkeyPatch, spies: list[str]
 ) -> None:
     """User's `--min-score=` wins: no duplicate injection."""
-    monkeypatch.setattr(sys, "argv", ["harness", "nightly", "--min-score=42.5"])
+    monkeypatch.setattr(sys, "argv", ["interlock", "nightly", "--min-score=42.5"])
 
     nightly_mod.cmd_nightly()
 
-    assert sys.argv == ["harness", "nightly", "--min-score=42.5"]
+    assert sys.argv == ["interlock", "nightly", "--min-score=42.5"]

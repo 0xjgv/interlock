@@ -1,4 +1,4 @@
-"""Integration tests for harness.tasks.format."""
+"""Integration tests for interlock.tasks.format."""
 
 from __future__ import annotations
 
@@ -34,7 +34,7 @@ def test_format_cli_clean_exits_zero(tmp_project: Path) -> None:
     f = tmp_project / "sample.py"
     f.write_text(CLEAN, encoding="utf-8")
     result = subprocess.run(
-        [sys.executable, "-m", "harness.cli", "format"],
+        [sys.executable, "-m", "interlock.cli", "format"],
         cwd=tmp_project,
         capture_output=True,
         text=True,
@@ -48,7 +48,7 @@ def test_format_cli_modifies_unformatted_file(tmp_project: Path) -> None:
     f = tmp_project / "sample.py"
     f.write_text(UNFORMATTED, encoding="utf-8")
     result = subprocess.run(
-        [sys.executable, "-m", "harness.cli", "format"],
+        [sys.executable, "-m", "interlock.cli", "format"],
         cwd=tmp_project,
         capture_output=True,
         text=True,
@@ -60,7 +60,7 @@ def test_format_cli_modifies_unformatted_file(tmp_project: Path) -> None:
 
 
 def test_format_no_exit_does_not_raise(tmp_project: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    from harness.tasks.format import cmd_format
+    from interlock.tasks.format import cmd_format
 
     (tmp_project / "sample.py").write_text(UNFORMATTED, encoding="utf-8")
     monkeypatch.chdir(tmp_project)
@@ -70,7 +70,7 @@ def test_format_no_exit_does_not_raise(tmp_project: Path, monkeypatch: pytest.Mo
 def test_format_injects_bundled_config_in_bare_project(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    from harness.tasks.format import task_format
+    from interlock.tasks.format import task_format
 
     (tmp_path / "pyproject.toml").write_text(
         "[project]\nname='bare'\nversion='0.0.0'\n", encoding="utf-8"

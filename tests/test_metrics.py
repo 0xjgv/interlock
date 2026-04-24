@@ -1,4 +1,4 @@
-"""Unit tests for harness.metrics — shared quality-data readers."""
+"""Unit tests for interlock.metrics — shared quality-data readers."""
 
 from __future__ import annotations
 
@@ -8,8 +8,8 @@ from pathlib import Path
 
 import pytest
 
-from harness import metrics as metrics_mod
-from harness.metrics import (
+from interlock import metrics as metrics_mod
+from interlock.metrics import (
     FunctionStats,
     _parse_lizard,
     _parse_results,
@@ -184,30 +184,30 @@ def test_coverage_line_rate_reads_explicit_path(tmp_path: Path) -> None:
 
 def test_parse_results_groups_by_status() -> None:
     stdout = (
-        "    harness.a.x__mutmut_1: killed\n"
-        "    harness.a.x__mutmut_2: survived\n"
-        "    harness.b.x__mutmut_3: killed\n"
-        "    harness.c.x__mutmut_4: timeout\n"
+        "    interlock.a.x__mutmut_1: killed\n"
+        "    interlock.a.x__mutmut_2: survived\n"
+        "    interlock.b.x__mutmut_3: killed\n"
+        "    interlock.c.x__mutmut_4: timeout\n"
     )
     assert _parse_results(stdout) == {
-        "killed": ["harness.a.x__mutmut_1", "harness.b.x__mutmut_3"],
-        "survived": ["harness.a.x__mutmut_2"],
-        "timeout": ["harness.c.x__mutmut_4"],
+        "killed": ["interlock.a.x__mutmut_1", "interlock.b.x__mutmut_3"],
+        "survived": ["interlock.a.x__mutmut_2"],
+        "timeout": ["interlock.c.x__mutmut_4"],
     }
 
 
 def test_parse_results_ignores_lines_without_mutant_key() -> None:
-    stdout = "Total: 42\n    harness.a.x__mutmut_1: killed\nsome other: line without key\n"
-    assert _parse_results(stdout) == {"killed": ["harness.a.x__mutmut_1"]}
+    stdout = "Total: 42\n    interlock.a.x__mutmut_1: killed\nsome other: line without key\n"
+    assert _parse_results(stdout) == {"killed": ["interlock.a.x__mutmut_1"]}
 
 
 def test_parse_results_ignores_lines_without_separator() -> None:
-    assert _parse_results("harness.a.x__mutmut_1\n") == {}
+    assert _parse_results("interlock.a.x__mutmut_1\n") == {}
 
 
 def test_parse_results_splits_on_first_colon_space_only() -> None:
-    stdout = "harness.a.x__mutmut_1: killed: detail\n"
-    assert _parse_results(stdout) == {"killed: detail": ["harness.a.x__mutmut_1"]}
+    stdout = "interlock.a.x__mutmut_1: killed: detail\n"
+    assert _parse_results(stdout) == {"killed: detail": ["interlock.a.x__mutmut_1"]}
 
 
 def test_parse_results_empty_input() -> None:

@@ -1,4 +1,4 @@
-"""Unit tests for harness.runner — Task / run_tasks parallel executor semantics."""
+"""Unit tests for interlock.runner — Task / run_tasks parallel executor semantics."""
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ from pathlib import Path
 
 import pytest
 
-from harness.runner import Task, _truncate_dump, reset_results, results_snapshot, run_tasks
+from interlock.runner import Task, _truncate_dump, reset_results, results_snapshot, run_tasks
 
 _ANSI_RE = re.compile(r"\x1b\[[0-9;]*m")
 _WAIT_FOR_MARKER = (
@@ -170,7 +170,7 @@ def test_run_tasks_verbose_streams_stdout_live(
     monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
     """VERBOSE path echoes the command + per-line `[tag]` prefix for stdout and stderr."""
-    monkeypatch.setattr("harness.runner.VERBOSE", True)
+    monkeypatch.setattr("interlock.runner.VERBOSE", True)
     run_tasks([
         _python_task("Verbose", "print('hello'); import sys; sys.stderr.write('err\\n')"),
     ])
@@ -216,7 +216,7 @@ def test_truncate_dump_short_input_untouched() -> None:
 
 
 def test_truncate_dump_env_escape_disables_cap(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv("HARNESS_DUMP_LINES", "all")
+    monkeypatch.setenv("INTERLOCK_DUMP_LINES", "all")
     text = "".join(f"line-{i}\n" for i in range(200))
     assert _truncate_dump(text) == text
 
@@ -224,7 +224,7 @@ def test_truncate_dump_env_escape_disables_cap(monkeypatch: pytest.MonkeyPatch) 
 def test_quiet_suppresses_ok_rows_still_records_results(
     monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    monkeypatch.setattr("harness.ui.is_quiet", lambda: True)
+    monkeypatch.setattr("interlock.ui.is_quiet", lambda: True)
     reset_results()
     run_tasks([
         _python_task("Alpha", "print('a')"),
@@ -240,7 +240,7 @@ def test_quiet_suppresses_ok_rows_still_records_results(
 def test_quiet_still_shows_fail_rows(
     monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    monkeypatch.setattr("harness.ui.is_quiet", lambda: True)
+    monkeypatch.setattr("interlock.ui.is_quiet", lambda: True)
     reset_results()
     tasks = [
         _python_task("Good", "print('ok')"),

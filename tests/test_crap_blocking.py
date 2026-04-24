@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pytest
 
-from harness.metrics import CrapRow
+from interlock.metrics import CrapRow
 
 _MODULE_SRC = textwrap.dedent(
     """\
@@ -22,7 +22,7 @@ _MODULE_SRC = textwrap.dedent(
 _TEST_SRC = textwrap.dedent(
     """\
     import unittest
-    from harness.mod import inc
+    from interlock.mod import inc
 
     class TestInc(unittest.TestCase):
         def test_inc(self):
@@ -38,7 +38,7 @@ _PYPROJECT_COV = textwrap.dedent(
     requires-python = ">=3.13"
 
     [tool.coverage.run]
-    source = ["harness"]
+    source = ["interlock"]
     branch = true
     """
 )
@@ -52,7 +52,7 @@ def _run_coverage(cwd: Path) -> None:
 @pytest.fixture
 def tmp_project(tmp_path: Path) -> Path:
     (tmp_path / "pyproject.toml").write_text(_PYPROJECT_COV, encoding="utf-8")
-    pkg = tmp_path / "harness"
+    pkg = tmp_path / "interlock"
     pkg.mkdir()
     (pkg / "__init__.py").write_text("", encoding="utf-8")
     (pkg / "mod.py").write_text(_MODULE_SRC, encoding="utf-8")
@@ -66,7 +66,7 @@ def tmp_project(tmp_path: Path) -> Path:
 def _write_pyproject(project: Path, *, enforce: bool) -> None:
     (project / "pyproject.toml").write_text(
         _PYPROJECT_COV
-        + f"\n[tool.harness]\ncrap_max = 0.5\nenforce_crap = {str(enforce).lower()}\n",
+        + f"\n[tool.interlock]\ncrap_max = 0.5\nenforce_crap = {str(enforce).lower()}\n",
         encoding="utf-8",
     )
 
@@ -78,10 +78,10 @@ def test_crap_exits_when_enforced(
     _write_pyproject(tmp_project, enforce=True)
     monkeypatch.chdir(tmp_project)
     monkeypatch.syspath_prepend(str(tmp_project))
-    monkeypatch.setattr(sys, "argv", ["harness", "crap"])
+    monkeypatch.setattr(sys, "argv", ["interlock", "crap"])
     _run_coverage(tmp_project)
 
-    from harness.tasks.crap import cmd_crap
+    from interlock.tasks.crap import cmd_crap
 
     with pytest.raises(SystemExit) as excinfo:
         cmd_crap()
@@ -98,10 +98,10 @@ def test_crap_stays_advisory_when_disabled(
     _write_pyproject(tmp_project, enforce=False)
     monkeypatch.chdir(tmp_project)
     monkeypatch.syspath_prepend(str(tmp_project))
-    monkeypatch.setattr(sys, "argv", ["harness", "crap"])
+    monkeypatch.setattr(sys, "argv", ["interlock", "crap"])
     _run_coverage(tmp_project)
 
-    from harness.tasks.crap import cmd_crap
+    from interlock.tasks.crap import cmd_crap
 
     cmd_crap()  # must not raise
 
@@ -112,8 +112,8 @@ def test_crap_stays_advisory_when_disabled(
 def test_cached_crap_advisory_skips_without_coverage(
     tmp_project: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    from harness.config import clear_cache
-    from harness.tasks.crap import cmd_crap_cached_advisory
+    from interlock.config import clear_cache
+    from interlock.tasks.crap import cmd_crap_cached_advisory
 
     monkeypatch.chdir(tmp_project)
     clear_cache()
@@ -128,8 +128,8 @@ def test_cached_crap_advisory_skips_without_coverage(
 def test_cached_crap_advisory_skips_stale_coverage(
     tmp_project: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    from harness.config import clear_cache
-    from harness.tasks.crap import cmd_crap_cached_advisory
+    from interlock.config import clear_cache
+    from interlock.tasks.crap import cmd_crap_cached_advisory
 
     cov_cache = tmp_project / ".coverage"
     cov_cache.write_text("old", encoding="utf-8")
@@ -147,8 +147,8 @@ def test_cached_crap_advisory_skips_stale_coverage(
 def test_cached_crap_advisory_reports_fresh_offenders(
     tmp_project: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    from harness.config import clear_cache
-    from harness.tasks import crap as crap_mod
+    from interlock.config import clear_cache
+    from interlock.tasks import crap as crap_mod
 
     cov_cache = tmp_project / ".coverage"
     cov_cache.write_text("fresh", encoding="utf-8")
@@ -164,7 +164,7 @@ def test_cached_crap_advisory_reports_fresh_offenders(
         "compute_crap_rows",
         lambda *args, **kwargs: [
             CrapRow(
-                path="harness/mod.py",
+                path="interlock/mod.py",
                 name="inc",
                 start=1,
                 end=2,
@@ -182,5 +182,5 @@ def test_cached_crap_advisory_reports_fresh_offenders(
         clear_cache()
 
     out = capsys.readouterr().out
-    assert "inc@1-2@harness/mod.py" in out
+    assert "inc@1-2@interlock/mod.py" in out
     assert "cached advisory" in out

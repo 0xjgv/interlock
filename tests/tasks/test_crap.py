@@ -19,7 +19,7 @@ _MODULE_SRC = textwrap.dedent(
 _TEST_SRC = textwrap.dedent(
     """\
     import unittest
-    from harness.mod import inc
+    from interlock.mod import inc
 
     class TestInc(unittest.TestCase):
         def test_inc(self):
@@ -35,7 +35,7 @@ _PYPROJECT = textwrap.dedent(
     requires-python = ">=3.13"
 
     [tool.coverage.run]
-    source = ["harness"]
+    source = ["interlock"]
     branch = true
 
     [tool.coverage.report]
@@ -52,9 +52,9 @@ def _run_coverage(cwd: Path) -> None:
 
 @pytest.fixture
 def tmp_project(tmp_path: Path) -> Path:
-    """Project with `harness/mod.py` + covering test under `tests/`."""
+    """Project with `interlock/mod.py` + covering test under `tests/`."""
     (tmp_path / "pyproject.toml").write_text(_PYPROJECT, encoding="utf-8")
-    pkg = tmp_path / "harness"
+    pkg = tmp_path / "interlock"
     pkg.mkdir()
     (pkg / "__init__.py").write_text("", encoding="utf-8")
     (pkg / "mod.py").write_text(_MODULE_SRC, encoding="utf-8")
@@ -74,7 +74,7 @@ def test_crap_passes_on_healthy_project(
     # Prime .coverage so generate_coverage_xml has something to convert.
     _run_coverage(tmp_project)
 
-    from harness.tasks.crap import cmd_crap
+    from interlock.tasks.crap import cmd_crap
 
     cmd_crap()  # trivial inc() is under the ceiling → stays silent on exit
 
@@ -86,16 +86,16 @@ def test_crap_passes_on_healthy_project(
 def test_crap_default_threshold_from_config(
     tmp_project: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    """`[tool.harness] crap_max = 5.0` surfaces in the 'all below N' success line."""
+    """`[tool.interlock] crap_max = 5.0` surfaces in the 'all below N' success line."""
     (tmp_project / "pyproject.toml").write_text(
-        _PYPROJECT + "\n[tool.harness]\ncrap_max = 5.0\n", encoding="utf-8"
+        _PYPROJECT + "\n[tool.interlock]\ncrap_max = 5.0\n", encoding="utf-8"
     )
     monkeypatch.chdir(tmp_project)
     monkeypatch.syspath_prepend(str(tmp_project))
-    monkeypatch.setattr(sys, "argv", ["harness", "crap"])  # no --max= override
+    monkeypatch.setattr(sys, "argv", ["interlock", "crap"])  # no --max= override
     _run_coverage(tmp_project)
 
-    from harness.tasks.crap import cmd_crap
+    from interlock.tasks.crap import cmd_crap
 
     cmd_crap()
     captured = capsys.readouterr()
@@ -105,16 +105,16 @@ def test_crap_default_threshold_from_config(
 def test_crap_cli_max_overrides_config(
     tmp_project: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    """`--max=N` on argv wins over `[tool.harness] crap_max`."""
+    """`--max=N` on argv wins over `[tool.interlock] crap_max`."""
     (tmp_project / "pyproject.toml").write_text(
-        _PYPROJECT + "\n[tool.harness]\ncrap_max = 5.0\n", encoding="utf-8"
+        _PYPROJECT + "\n[tool.interlock]\ncrap_max = 5.0\n", encoding="utf-8"
     )
     monkeypatch.chdir(tmp_project)
     monkeypatch.syspath_prepend(str(tmp_project))
-    monkeypatch.setattr(sys, "argv", ["harness", "crap", "--max=42.5"])
+    monkeypatch.setattr(sys, "argv", ["interlock", "crap", "--max=42.5"])
     _run_coverage(tmp_project)
 
-    from harness.tasks.crap import cmd_crap
+    from interlock.tasks.crap import cmd_crap
 
     cmd_crap()
     captured = capsys.readouterr()

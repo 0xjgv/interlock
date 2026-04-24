@@ -1,4 +1,4 @@
-"""Integration tests for `harness pre-commit` stage."""
+"""Integration tests for `interlock pre-commit` stage."""
 
 from __future__ import annotations
 
@@ -36,8 +36,8 @@ def _git_capture(cwd: Path, *args: str) -> str:
 @pytest.fixture
 def tmp_project(tmp_path: Path) -> Path:
     (tmp_path / "pyproject.toml").write_text(PYPROJECT, encoding="utf-8")
-    # harness/ exists but without __init__.py so it doesn't shadow the installed pkg
-    (tmp_path / "harness").mkdir()
+    # interlock/ exists but without __init__.py so it doesn't shadow the installed pkg
+    (tmp_path / "interlock").mkdir()
     (tmp_path / "tests").mkdir()
     _git(tmp_path, "init", "-q")
     _git(tmp_path, "config", "user.email", "t@e.co")
@@ -47,7 +47,7 @@ def tmp_project(tmp_path: Path) -> Path:
 
 def _run_pre_commit(cwd: Path) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
-        [sys.executable, "-m", "harness.cli", "pre-commit"],
+        [sys.executable, "-m", "interlock.cli", "pre-commit"],
         cwd=cwd,
         capture_output=True,
         text=True,
@@ -81,7 +81,7 @@ def test_pre_commit_noop_when_nothing_staged(tmp_project: Path) -> None:
 def test_pre_commit_noop_in_process(
     monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    from harness.stages import pre_commit as pre_commit_mod
+    from interlock.stages import pre_commit as pre_commit_mod
 
     monkeypatch.setattr(pre_commit_mod, "staged_py_files", list)
     pre_commit_mod.cmd_pre_commit()
@@ -91,7 +91,7 @@ def test_pre_commit_noop_in_process(
 @pytest.mark.parametrize(
     ("staged", "expected_task_descs"),
     [
-        (["harness/mod.py"], ["Type check", "Run tests"]),
+        (["interlock/mod.py"], ["Type check", "Run tests"]),
         (["tests/test_x.py"], ["Type check"]),
     ],
     ids=["src-runs-tests", "non-src-skips-tests"],
@@ -101,7 +101,7 @@ def test_pre_commit_in_process_dispatches(
     staged: list[str],
     expected_task_descs: list[str],
 ) -> None:
-    from harness.stages import pre_commit as pre_commit_mod
+    from interlock.stages import pre_commit as pre_commit_mod
 
     calls: list[object] = []
     monkeypatch.setattr(pre_commit_mod, "staged_py_files", lambda: staged)

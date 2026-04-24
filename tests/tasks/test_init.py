@@ -1,4 +1,4 @@
-"""Tests for `harness init` (greenfield scaffold)."""
+"""Tests for `interlock init` (greenfield scaffold)."""
 
 from __future__ import annotations
 
@@ -11,7 +11,7 @@ import pytest
 
 def _run_cli(cwd: Path, *args: str) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
-        [sys.executable, "-m", "harness.cli", *args],
+        [sys.executable, "-m", "interlock.cli", *args],
         cwd=cwd,
         capture_output=True,
         text=True,
@@ -29,7 +29,7 @@ def test_init_scaffolds_greenfield_project(tmp_path: Path) -> None:
     assert 'requires-python = ">=3.13"' in body
     assert "dependencies = []" in body
     assert 'dev = ["pytest>=8"]' in body
-    assert "[tool.harness]" in body
+    assert "[tool.interlock]" in body
     assert (tmp_path / "tests" / "__init__.py").is_file()
     smoke = tmp_path / "tests" / "test_smoke.py"
     assert smoke.is_file()
@@ -49,7 +49,7 @@ def test_init_refuses_to_overwrite_existing_pyproject(tmp_path: Path) -> None:
 def test_init_in_process_scaffolds(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """In-process call — lets coverage.py see the happy path."""
     monkeypatch.chdir(tmp_path)
-    from harness.tasks.init import cmd_init
+    from interlock.tasks.init import cmd_init
 
     cmd_init()
     assert (tmp_path / "pyproject.toml").is_file()
@@ -64,7 +64,7 @@ def test_init_in_process_refuses_overwrite(
     existing = tmp_path / "pyproject.toml"
     existing.write_text("# pre-existing\n", encoding="utf-8")
     monkeypatch.chdir(tmp_path)
-    from harness.tasks.init import cmd_init
+    from interlock.tasks.init import cmd_init
 
     with pytest.raises(SystemExit):
         cmd_init()
@@ -73,6 +73,6 @@ def test_init_in_process_refuses_overwrite(
 
 
 def test_task_init_returns_none() -> None:
-    from harness.tasks.init import task_init
+    from interlock.tasks.init import task_init
 
     assert task_init() is None

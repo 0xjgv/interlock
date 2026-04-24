@@ -41,9 +41,9 @@ _COMPLEX_SRC = textwrap.dedent(
 
 @pytest.fixture
 def tmp_project(tmp_path: Path) -> Path:
-    """Project layout lizard scans: `harness/` and `tests/`."""
-    (tmp_path / "harness").mkdir()
-    (tmp_path / "harness" / "__init__.py").write_text("", encoding="utf-8")
+    """Project layout lizard scans: `interlock/` and `tests/`."""
+    (tmp_path / "interlock").mkdir()
+    (tmp_path / "interlock" / "__init__.py").write_text("", encoding="utf-8")
     (tmp_path / "tests").mkdir()
     (tmp_path / "tests" / "__init__.py").write_text("", encoding="utf-8")
     return tmp_path
@@ -52,10 +52,10 @@ def tmp_project(tmp_path: Path) -> Path:
 def test_complexity_passes_on_simple_code(
     tmp_project: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    (tmp_project / "harness" / "mod.py").write_text(_SIMPLE_SRC, encoding="utf-8")
+    (tmp_project / "interlock" / "mod.py").write_text(_SIMPLE_SRC, encoding="utf-8")
     monkeypatch.chdir(tmp_project)
 
-    from harness.tasks.complexity import cmd_complexity
+    from interlock.tasks.complexity import cmd_complexity
 
     cmd_complexity()  # no SystemExit → lizard happy
 
@@ -63,10 +63,10 @@ def test_complexity_passes_on_simple_code(
 def test_complexity_fails_on_tangled_function(
     tmp_project: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    (tmp_project / "harness" / "mod.py").write_text(_COMPLEX_SRC, encoding="utf-8")
+    (tmp_project / "interlock" / "mod.py").write_text(_COMPLEX_SRC, encoding="utf-8")
     monkeypatch.chdir(tmp_project)
 
-    from harness.tasks.complexity import cmd_complexity
+    from interlock.tasks.complexity import cmd_complexity
 
     with pytest.raises(SystemExit) as exc:
         cmd_complexity()
@@ -83,9 +83,9 @@ def _flag_value(cmd: list[str], flag: str) -> str:
 def test_complexity_uses_default_thresholds_from_config(
     tmp_project: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """Default HarnessConfig thresholds (15/7/100) appear in the lizard argv."""
+    """Default InterlockConfig thresholds (15/7/100) appear in the lizard argv."""
     monkeypatch.chdir(tmp_project)
-    from harness.tasks.complexity import task_complexity
+    from interlock.tasks.complexity import task_complexity
 
     cmd = task_complexity().cmd
     assert _flag_value(cmd, "-C") == "15"
@@ -93,13 +93,13 @@ def test_complexity_uses_default_thresholds_from_config(
     assert _flag_value(cmd, "-L") == "100"
 
 
-def test_complexity_honors_tool_harness_overrides(
+def test_complexity_honors_tool_interlock_overrides(
     tmp_project: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """`[tool.harness]` threshold keys flow into lizard argv."""
+    """`[tool.interlock]` threshold keys flow into lizard argv."""
     (tmp_project / "pyproject.toml").write_text(
         textwrap.dedent("""\
-            [tool.harness]
+            [tool.interlock]
             complexity_max_ccn = 20
             complexity_max_args = 5
             complexity_max_loc = 150
@@ -107,7 +107,7 @@ def test_complexity_honors_tool_harness_overrides(
         encoding="utf-8",
     )
     monkeypatch.chdir(tmp_project)
-    from harness.tasks.complexity import task_complexity
+    from interlock.tasks.complexity import task_complexity
 
     cmd = task_complexity().cmd
     assert _flag_value(cmd, "-C") == "20"

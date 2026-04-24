@@ -2,9 +2,9 @@
 
 import unittest
 
-import harness
+import interlock
 
 
 class TestSmoke(unittest.TestCase):
     def test_package_importable(self) -> None:
-        self.assertIsNotNone(harness)
+        self.assertIsNotNone(interlock)

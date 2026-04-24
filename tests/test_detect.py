@@ -1,4 +1,4 @@
-"""Tests for harness.detect — pure helpers: runner, dirs, invoker."""
+"""Tests for interlock.detect — pure helpers: runner, dirs, invoker."""
 
 from __future__ import annotations
 
@@ -7,9 +7,9 @@ from pathlib import Path
 
 import pytest
 
-from harness import detect
-from harness.config import load_config
-from harness.detect import (
+from interlock import detect
+from interlock.config import load_config
+from interlock.detect import (
     detect_src_dir,
     detect_test_dir,
     detect_test_invoker,

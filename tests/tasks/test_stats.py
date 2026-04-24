@@ -1,4 +1,4 @@
-"""Unit tests for harness.tasks.stats — trust report + suspicious-test heuristic."""
+"""Unit tests for interlock.tasks.stats — trust report + suspicious-test heuristic."""
 
 from __future__ import annotations
 
@@ -11,11 +11,11 @@ from pathlib import Path
 
 import pytest
 
-import harness
-from harness.config import HarnessConfig
-from harness.metrics import CrapRow, MutationSummary
-from harness.tasks import stats as stats_mod
-from harness.tasks.stats import (
+import interlock
+from interlock.config import InterlockConfig
+from interlock.metrics import CrapRow, MutationSummary
+from interlock.tasks import stats as stats_mod
+from interlock.tasks.stats import (
     TestInspection,
     _collect_test_inspections,
     _compute_trust,
@@ -26,12 +26,12 @@ from harness.tasks.stats import (
     cmd_trust,
 )
 
-_HARNESS_PKG_ROOT = str(Path(harness.__file__).resolve().parent.parent)
+_INTERLOCK_PKG_ROOT = str(Path(interlock.__file__).resolve().parent.parent)
 
 
-def _cfg(root: Path, **over: object) -> HarnessConfig:
-    """Build a HarnessConfig with trust-relevant overrides."""
-    return HarnessConfig(
+def _cfg(root: Path, **over: object) -> InterlockConfig:
+    """Build a InterlockConfig with trust-relevant overrides."""
+    return InterlockConfig(
         project_root=root,
         src_dir=root,
         test_dir=root,
@@ -322,7 +322,7 @@ _PYPROJECT = textwrap.dedent(
 def tmp_project(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     """Small project with source + covering test; primes ``.coverage`` + ``coverage.xml``."""
     (tmp_path / "pyproject.toml").write_text(
-        _PYPROJECT + '\n[tool.harness]\nsrc_dir = "mypkg"\ntest_dir = "tests"\n',
+        _PYPROJECT + '\n[tool.interlock]\nsrc_dir = "mypkg"\ntest_dir = "tests"\n',
         encoding="utf-8",
     )
     pkg = tmp_path / "mypkg"
@@ -360,10 +360,10 @@ def test_cmd_trust_skips_without_coverage(
 ) -> None:
     (tmp_path / "pyproject.toml").write_text("", encoding="utf-8")
     monkeypatch.chdir(tmp_path)
-    from harness.config import clear_cache
+    from interlock.config import clear_cache
 
     clear_cache()
-    monkeypatch.setattr(sys, "argv", ["harness", "trust"])
+    monkeypatch.setattr(sys, "argv", ["interlock", "trust"])
     cmd_trust()
     captured = capsys.readouterr()
     assert "no coverage" in captured.out.lower()
@@ -374,7 +374,7 @@ def test_cmd_trust_prints_report(
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    monkeypatch.setattr(sys, "argv", ["harness", "trust", "--no-trend"])
+    monkeypatch.setattr(sys, "argv", ["interlock", "trust", "--no-trend"])
     cmd_trust()
     captured = capsys.readouterr()
     assert "command=trust" in captured.out
@@ -388,9 +388,9 @@ def test_cmd_trust_writes_trend_file(
     tmp_project: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr(sys, "argv", ["harness", "trust"])
+    monkeypatch.setattr(sys, "argv", ["interlock", "trust"])
     cmd_trust()
-    cache = tmp_project / ".harness" / "trust.json"
+    cache = tmp_project / ".interlock" / "trust.json"
     assert cache.is_file()
     data = json.loads(cache.read_text(encoding="utf-8"))
     assert "history" in data
@@ -401,9 +401,9 @@ def test_cmd_trust_no_trend_skips_cache(
     tmp_project: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr(sys, "argv", ["harness", "trust", "--no-trend"])
+    monkeypatch.setattr(sys, "argv", ["interlock", "trust", "--no-trend"])
     cmd_trust()
-    assert not (tmp_project / ".harness" / "trust.json").exists()
+    assert not (tmp_project / ".interlock" / "trust.json").exists()
 
 
 def test_cmd_trust_second_run_shows_delta(
@@ -411,7 +411,7 @@ def test_cmd_trust_second_run_shows_delta(
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    monkeypatch.setattr(sys, "argv", ["harness", "trust"])
+    monkeypatch.setattr(sys, "argv", ["interlock", "trust"])
     cmd_trust()
     capsys.readouterr()  # drain first run
     cmd_trust()
@@ -430,7 +430,7 @@ def test_cmd_trust_refresh_runs_coverage_first(
         calls.append(("coverage", min_pct))
 
     monkeypatch.setattr(stats_mod, "cmd_coverage", fake_coverage)
-    monkeypatch.setattr(sys, "argv", ["harness", "trust", "--refresh", "--no-trend"])
+    monkeypatch.setattr(sys, "argv", ["interlock", "trust", "--refresh", "--no-trend"])
 
     cmd_trust()
 
@@ -438,7 +438,7 @@ def test_cmd_trust_refresh_runs_coverage_first(
     assert calls == [("coverage", 0)]
     assert "command=trust" in captured.out
     assert "── Trust" in captured.out
-    assert "run `harness trust --verbose`" in captured.out
+    assert "run `interlock trust --verbose`" in captured.out
 
 
 def test_cmd_trust_refresh_failure_stops_before_report(
@@ -450,7 +450,7 @@ def test_cmd_trust_refresh_failure_stops_before_report(
         raise SystemExit(7)
 
     monkeypatch.setattr(stats_mod, "cmd_coverage", fail_coverage)
-    monkeypatch.setattr(sys, "argv", ["harness", "trust", "--refresh", "--no-trend"])
+    monkeypatch.setattr(sys, "argv", ["interlock", "trust", "--refresh", "--no-trend"])
 
     with pytest.raises(SystemExit) as exc:
         cmd_trust()
@@ -466,14 +466,14 @@ def _subprocess_env() -> dict[str, str]:
     env = os.environ.copy()
     existing = env.get("PYTHONPATH", "")
     env["PYTHONPATH"] = (
-        f"{_HARNESS_PKG_ROOT}{os.pathsep}{existing}" if existing else _HARNESS_PKG_ROOT
+        f"{_INTERLOCK_PKG_ROOT}{os.pathsep}{existing}" if existing else _INTERLOCK_PKG_ROOT
     )
     return env
 
 
 def test_cli_help_lists_trust() -> None:
     result = subprocess.run(
-        [sys.executable, "-m", "harness.cli", "help"],
+        [sys.executable, "-m", "interlock.cli", "help"],
         capture_output=True,
         text=True,
         check=False,
@@ -502,7 +502,7 @@ def test_verdict_sentence_concat() -> None:
 
 
 def test_render_does_not_crash_on_empty_report(capsys: pytest.CaptureFixture[str]) -> None:
-    from harness.tasks.stats import TrustReport, _render
+    from interlock.tasks.stats import TrustReport, _render
 
     report = TrustReport(
         score=100.0,
@@ -522,7 +522,7 @@ def test_render_does_not_crash_on_empty_report(capsys: pytest.CaptureFixture[str
 
 def test_render_verbose_and_truncation(capsys: pytest.CaptureFixture[str]) -> None:
     """Verbose path shows every row; non-verbose truncates with overflow hints."""
-    from harness.tasks.stats import TrustReport, _render
+    from interlock.tasks.stats import TrustReport, _render
 
     suspicious = [
         TestInspection(

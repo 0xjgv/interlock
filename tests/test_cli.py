@@ -1,4 +1,4 @@
-"""Unit tests for harness.cli dispatcher."""
+"""Unit tests for interlock.cli dispatcher."""
 
 from __future__ import annotations
 
@@ -10,8 +10,8 @@ from pathlib import Path
 
 import pytest
 
-from harness.cli import TASK_GROUPS, TASKS, cmd_help, cmd_presets, main
-from harness.config import clear_cache
+from interlock.cli import TASK_GROUPS, TASKS, cmd_help, cmd_presets, main
+from interlock.config import clear_cache
 
 
 @pytest.fixture
@@ -35,9 +35,9 @@ def test_tasks_dict_built_from_groups() -> None:
 def test_cmd_help_prints_usage_and_groups(capsys: pytest.CaptureFixture[str]) -> None:
     cmd_help()
     out = capsys.readouterr().out
-    assert "pyharness v" in out
+    assert "interlock v" in out
     assert "command=help" in out
-    assert "Usage: harness <command>" in out
+    assert "Usage: interlock <command>" in out
     assert "── Usage" in out
     assert "── Commands" in out
     assert "Tasks:" in out
@@ -63,7 +63,7 @@ def test_cmd_help_prints_active_preset_and_resolved_values(
             name = "pkg"
             version = "0.0.0"
 
-            [tool.harness]
+            [tool.interlock]
             preset = "strict"
             coverage_min = 91
             """
@@ -89,7 +89,7 @@ def test_cmd_presets_prints_options_and_copyable_config(
 ) -> None:
     cmd_presets()
     out = capsys.readouterr().out
-    assert "pyharness v" in out
+    assert "interlock v" in out
     assert "command=presets" in out
     assert "── Current" in out
     assert "── Current Values" in out
@@ -101,9 +101,9 @@ def test_cmd_presets_prints_options_and_copyable_config(
     assert "legacy" in out
     assert "── Next Steps" in out
     assert "Set a project preset with the CLI:" in out
-    assert "harness presets set baseline" in out
+    assert "interlock presets set baseline" in out
     assert "Or add this to pyproject.toml:" in out
-    assert '[tool.harness]\n    preset = "baseline"' in out
+    assert '[tool.interlock]\n    preset = "baseline"' in out
     assert "manually override any threshold" in out
     assert "pyproject.toml" in out
 
@@ -124,7 +124,7 @@ def test_cmd_presets_prints_active_preset(
             name = "pkg"
             version = "0.0.0"
 
-            [tool.harness]
+            [tool.interlock]
             preset = "strict"
             """
         ),
@@ -142,7 +142,7 @@ def test_cmd_presets_prints_active_preset(
     )
 
 
-def test_cmd_presets_set_appends_harness_table(
+def test_cmd_presets_set_appends_interlock_table(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
@@ -152,14 +152,14 @@ def test_cmd_presets_set_appends_harness_table(
         '[project]\nname = "pkg"\nversion = "0.0.0"\n', encoding="utf-8"
     )
     monkeypatch.chdir(tmp_path)
-    monkeypatch.setattr(sys, "argv", ["harness", "presets", "set", "baseline"])
+    monkeypatch.setattr(sys, "argv", ["interlock", "presets", "set", "baseline"])
 
     cmd_presets()
 
-    assert '[tool.harness]\npreset = "baseline"\n' in (tmp_path / "pyproject.toml").read_text(
+    assert '[tool.interlock]\npreset = "baseline"\n' in (tmp_path / "pyproject.toml").read_text(
         encoding="utf-8"
     )
-    assert "set [tool.harness] preset = 'baseline'" in capsys.readouterr().out
+    assert "set [tool.interlock] preset = 'baseline'" in capsys.readouterr().out
 
 
 def test_cmd_presets_set_replaces_existing_preset_without_thresholds(
@@ -172,7 +172,7 @@ def test_cmd_presets_set_replaces_existing_preset_without_thresholds(
             name = "pkg"
             version = "0.0.0"
 
-            [tool.harness]
+            [tool.interlock]
             preset = "baseline"
             coverage_min = 91
 
@@ -183,7 +183,7 @@ def test_cmd_presets_set_replaces_existing_preset_without_thresholds(
         encoding="utf-8",
     )
     monkeypatch.chdir(tmp_path)
-    monkeypatch.setattr(sys, "argv", ["harness", "presets", "set", "strict"])
+    monkeypatch.setattr(sys, "argv", ["interlock", "presets", "set", "strict"])
 
     cmd_presets()
 
@@ -204,7 +204,7 @@ def test_cmd_presets_set_rejects_unknown_preset(
         '[project]\nname = "pkg"\nversion = "0.0.0"\n', encoding="utf-8"
     )
     monkeypatch.chdir(tmp_path)
-    monkeypatch.setattr(sys, "argv", ["harness", "presets", "set", "agent-safe"])
+    monkeypatch.setattr(sys, "argv", ["interlock", "presets", "set", "agent-safe"])
 
     with pytest.raises(SystemExit) as exc:
         cmd_presets()
@@ -216,30 +216,30 @@ def test_cmd_presets_set_rejects_unknown_preset(
 def test_main_no_args_prints_help(
     monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    monkeypatch.setattr(sys, "argv", ["harness"])
+    monkeypatch.setattr(sys, "argv", ["interlock"])
     main()
     out = capsys.readouterr().out
-    assert "Usage: harness <command>" in out
+    assert "Usage: interlock <command>" in out
 
 
 def test_main_unknown_command_exits_one(
     monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    monkeypatch.setattr(sys, "argv", ["harness", "nope"])
+    monkeypatch.setattr(sys, "argv", ["interlock", "nope"])
     with pytest.raises(SystemExit) as exc:
         main()
     assert exc.value.code == 1
     captured = capsys.readouterr()
     assert "Unknown command: nope" in captured.err
-    assert "Usage: harness <command>" in captured.out
+    assert "Usage: interlock <command>" in captured.out
 
 
 def test_main_dispatches_known_command(
     monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    monkeypatch.setattr(sys, "argv", ["harness", "help"])
+    monkeypatch.setattr(sys, "argv", ["interlock", "help"])
     main()  # cmd_help() is safe to run
-    assert "Usage: harness <command>" in capsys.readouterr().out
+    assert "Usage: interlock <command>" in capsys.readouterr().out
 
 
 def test_main_skips_flag_args(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -250,6 +250,6 @@ def test_main_skips_flag_args(monkeypatch: pytest.MonkeyPatch) -> None:
         calls.append("ran")
 
     monkeypatch.setitem(TASKS, "help", (fake, "Show help"))
-    monkeypatch.setattr(sys, "argv", ["harness", "--verbose", "help"])
+    monkeypatch.setattr(sys, "argv", ["interlock", "--verbose", "help"])
     main()
     assert calls == ["ran"]

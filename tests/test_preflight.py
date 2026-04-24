@@ -9,26 +9,26 @@ from pathlib import Path
 
 import pytest
 
-import harness
-from harness.config import HarnessConfig, HarnessConfigError, clear_cache, require_pyproject
-from harness.runner import preflight
+import interlock
+from interlock.config import InterlockConfig, InterlockConfigError, clear_cache, require_pyproject
+from interlock.runner import preflight
 
-# Package root of the harness under test — forced onto ``PYTHONPATH`` for subprocess
+# Package root of the interlock under test — forced onto ``PYTHONPATH`` for subprocess
 # probes so they always exercise the current source, not a stale editable install.
-_HARNESS_PKG_ROOT = str(Path(harness.__file__).resolve().parent.parent)
+_INTERLOCK_PKG_ROOT = str(Path(interlock.__file__).resolve().parent.parent)
 
 
 def _subprocess_env() -> dict[str, str]:
     env = os.environ.copy()
     existing = env.get("PYTHONPATH", "")
     env["PYTHONPATH"] = (
-        f"{_HARNESS_PKG_ROOT}{os.pathsep}{existing}" if existing else _HARNESS_PKG_ROOT
+        f"{_INTERLOCK_PKG_ROOT}{os.pathsep}{existing}" if existing else _INTERLOCK_PKG_ROOT
     )
     return env
 
 
-def _cfg(root: Path) -> HarnessConfig:
-    return HarnessConfig(
+def _cfg(root: Path) -> InterlockConfig:
+    return InterlockConfig(
         project_root=root,
         src_dir=root,
         test_dir=root,
@@ -46,14 +46,14 @@ def test_require_pyproject_passes_when_file_exists(tmp_path: Path) -> None:
 
 
 def test_require_pyproject_raises_when_missing(tmp_path: Path) -> None:
-    with pytest.raises(HarnessConfigError, match=r"no pyproject\.toml"):
+    with pytest.raises(InterlockConfigError, match=r"no pyproject\.toml"):
         require_pyproject(_cfg(tmp_path))
 
 
 def test_require_pyproject_points_at_init(tmp_path: Path) -> None:
-    with pytest.raises(HarnessConfigError) as exc:
+    with pytest.raises(InterlockConfigError) as exc:
         require_pyproject(_cfg(tmp_path))
-    assert "harness init" in str(exc.value)
+    assert "interlock init" in str(exc.value)
 
 
 # ─────────────── preflight() exit behaviour ─────────────────────────
@@ -85,9 +85,9 @@ def test_preflight_exits_two_when_gated_command_has_no_pyproject(
 
 
 def test_cli_check_exits_two_without_pyproject(tmp_path: Path) -> None:
-    """Running ``harness check`` outside any project surfaces a clear error, exit 2."""
+    """Running ``interlock check`` outside any project surfaces a clear error, exit 2."""
     result = subprocess.run(
-        [sys.executable, "-m", "harness.cli", "check"],
+        [sys.executable, "-m", "interlock.cli", "check"],
         cwd=tmp_path,
         capture_output=True,
         text=True,
@@ -101,7 +101,7 @@ def test_cli_check_exits_two_without_pyproject(tmp_path: Path) -> None:
 def test_cli_help_works_without_pyproject(tmp_path: Path) -> None:
     """Help is exempt — users need it to recover from a missing pyproject."""
     result = subprocess.run(
-        [sys.executable, "-m", "harness.cli", "help"],
+        [sys.executable, "-m", "interlock.cli", "help"],
         cwd=tmp_path,
         capture_output=True,
         text=True,
@@ -109,4 +109,4 @@ def test_cli_help_works_without_pyproject(tmp_path: Path) -> None:
         env=_subprocess_env(),
     )
     assert result.returncode == 0, f"stdout={result.stdout}\nstderr={result.stderr}"
-    assert "Usage: harness <command>" in result.stdout
+    assert "Usage: interlock <command>" in result.stdout

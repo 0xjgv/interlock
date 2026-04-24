@@ -1,4 +1,4 @@
-"""Integration tests for `harness clean`."""
+"""Integration tests for `interlock clean`."""
 
 from __future__ import annotations
 
@@ -29,7 +29,7 @@ def tmp_project(tmp_path: Path) -> Path:
 
 def test_clean_removes_cache_artifacts(tmp_project: Path) -> None:
     result = subprocess.run(
-        [sys.executable, "-P", "-m", "harness.cli", "clean"],
+        [sys.executable, "-P", "-m", "interlock.cli", "clean"],
         cwd=tmp_project,
         capture_output=True,
         text=True,
@@ -54,7 +54,7 @@ def test_clean_removes_cache_artifacts(tmp_project: Path) -> None:
 
 def test_clean_is_idempotent(tmp_project: Path) -> None:
     """Running clean twice should succeed even when nothing is left to remove."""
-    cmd = [sys.executable, "-P", "-m", "harness.cli", "clean"]
+    cmd = [sys.executable, "-P", "-m", "interlock.cli", "clean"]
     first = subprocess.run(cmd, cwd=tmp_project, capture_output=True, text=True, check=False)
     second = subprocess.run(cmd, cwd=tmp_project, capture_output=True, text=True, check=False)
 
@@ -66,7 +66,7 @@ def test_clean_is_idempotent(tmp_project: Path) -> None:
 def test_clean_in_process_removes_artifacts(
     tmp_project: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    from harness.stages import clean as clean_mod
+    from interlock.stages import clean as clean_mod
 
     monkeypatch.chdir(tmp_project)
     # Stub the ruff subprocess — we only care about the filesystem cleanup path.

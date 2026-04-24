@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from harness.config import load_config
+from interlock.config import load_config
 
 
 def _write(path: Path, text: str) -> None:
@@ -39,7 +39,7 @@ def test_project_override(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> No
         name = "proj"
         version = "0.0.0"
 
-        [tool.harness]
+        [tool.interlock]
         mutation_ci_mode = "incremental"
         mutation_since_ref = "origin/develop"
         """,
@@ -61,8 +61,8 @@ def test_user_global_override(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -
         """,
     )
     home = tmp_path / "fake_home"
-    (home / ".config" / "harness").mkdir(parents=True)
-    (home / ".config" / "harness" / "config.toml").write_text(
+    (home / ".config" / "interlock").mkdir(parents=True)
+    (home / ".config" / "interlock" / "config.toml").write_text(
         'mutation_ci_mode = "full"\nmutation_since_ref = "main"\n',
         encoding="utf-8",
     )
@@ -82,13 +82,13 @@ def test_project_wins_over_user_global(tmp_path: Path, monkeypatch: pytest.Monke
         name = "pwins"
         version = "0.0.0"
 
-        [tool.harness]
+        [tool.interlock]
         mutation_ci_mode = "incremental"
         """,
     )
     home = tmp_path / "fake_home"
-    (home / ".config" / "harness").mkdir(parents=True)
-    (home / ".config" / "harness" / "config.toml").write_text(
+    (home / ".config" / "interlock").mkdir(parents=True)
+    (home / ".config" / "interlock" / "config.toml").write_text(
         'mutation_ci_mode = "full"\nmutation_since_ref = "origin/dev"\n',
         encoding="utf-8",
     )
@@ -110,7 +110,7 @@ def test_invalid_mode_falls_back_to_default(
         name = "badmode"
         version = "0.0.0"
 
-        [tool.harness]
+        [tool.interlock]
         mutation_ci_mode = "sometimes"
         """,
     )
@@ -130,7 +130,7 @@ def test_invalid_since_ref_type_falls_back_to_default(
         name = "badref"
         version = "0.0.0"
 
-        [tool.harness]
+        [tool.interlock]
         mutation_since_ref = 42
         """,
     )

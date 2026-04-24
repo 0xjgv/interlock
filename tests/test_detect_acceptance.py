@@ -5,8 +5,8 @@ from __future__ import annotations
 from dataclasses import replace
 from pathlib import Path
 
-from harness.config import HarnessConfig, clear_cache, load_config
-from harness.detect import detect_acceptance_runner, detect_features_dir
+from interlock.config import InterlockConfig, clear_cache, load_config
+from interlock.detect import detect_acceptance_runner, detect_features_dir
 
 _MINIMAL_PYPROJECT = '[project]\nname="probe"\nversion="0.0.0"\n'
 
@@ -16,8 +16,8 @@ def _cfg(
     *,
     pyproject_body: str = _MINIMAL_PYPROJECT,
     **overrides: object,
-) -> HarnessConfig:
-    """Build a HarnessConfig rooted at ``project_root`` with optional field overrides."""
+) -> InterlockConfig:
+    """Build a InterlockConfig rooted at ``project_root`` with optional field overrides."""
     (project_root / "pyproject.toml").write_text(pyproject_body, encoding="utf-8")
     clear_cache()
     return replace(load_config(project_root), project_root=project_root, **overrides)

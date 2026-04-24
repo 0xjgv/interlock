@@ -1,4 +1,4 @@
-"""Shared pytest-bdd fixtures for the pyharness acceptance suite."""
+"""Shared pytest-bdd fixtures for the interlock acceptance suite."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ import sys
 import textwrap
 from pathlib import Path
 
-# Minimal tmp-project pyproject. `[tool.harness]` knobs are tuned so all four
+# Minimal tmp-project pyproject. `[tool.interlock]` knobs are tuned so all four
 # stages (check/pre-commit/ci/nightly) can run to green in-test without
 # tripping thresholds or waiting on mutation for minutes.
 _TMP_PYPROJECT = textwrap.dedent(
@@ -37,7 +37,7 @@ _TMP_PYPROJECT = textwrap.dedent(
     fail_under = 0
     show_missing = true
 
-    [tool.harness]
+    [tool.interlock]
     src_dir = "src/tmp"
     test_dir = "tests"
     coverage_min = 0
@@ -55,12 +55,12 @@ def make_tmp_project(tmp_path: Path) -> Path:
     """Materialize a minimal clean project under ``tmp_path``.
 
     Structure:
-      - pyproject.toml (with `[tool.harness]` threshold overrides)
+      - pyproject.toml (with `[tool.interlock]` threshold overrides)
       - src/tmp/__init__.py
       - tests/test_ok.py (a single `def test_ok(): assert True`)
 
     ``tests/`` is deliberately *not* a Python package — that keeps the
-    default ``harness arch`` contract (src ↛ tests) dormant, so the tmp
+    default ``interlock arch`` contract (src ↛ tests) dormant, so the tmp
     project's ``ci`` stage doesn't need ``src/`` on ``PYTHONPATH`` for
     import-linter to resolve ``tmp``.
     """
@@ -77,15 +77,15 @@ def make_tmp_project(tmp_path: Path) -> Path:
     return tmp_path
 
 
-def run_harness_in_cwd(cwd: Path, *args: str) -> subprocess.CompletedProcess[str]:
-    """Run ``python -m harness.cli <args>`` with ``cwd`` as project root.
+def run_interlock_in_cwd(cwd: Path, *args: str) -> subprocess.CompletedProcess[str]:
+    """Run ``python -m interlock.cli <args>`` with ``cwd`` as project root.
 
-    Mirrors the ``_run_harness`` fixture in ``test_harness_cli.py`` but lets the
+    Mirrors the ``_run_interlock`` fixture in ``test_interlock_cli.py`` but lets the
     caller pin ``cwd`` — required for stage scenarios that operate on an inline
-    tmp project instead of the harness repo itself.
+    tmp project instead of the interlock repo itself.
     """
     return subprocess.run(
-        [sys.executable, "-m", "harness.cli", *args],
+        [sys.executable, "-m", "interlock.cli", *args],
         cwd=cwd,
         capture_output=True,
         text=True,

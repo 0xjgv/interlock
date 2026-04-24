@@ -1,4 +1,4 @@
-"""Integration tests for `harness ci` (format_check + lint + complexity + typecheck + coverage)."""
+"""Integration tests for `interlock ci` (format_check, lint, complexity, typecheck, coverage)."""
 
 from __future__ import annotations
 
@@ -31,7 +31,7 @@ _PYPROJECT = textwrap.dedent(
     reportMissingTypeStubs = false
 
     [tool.coverage.run]
-    source = ["harness"]
+    source = ["interlock"]
     branch = true
 
     [tool.coverage.report]
@@ -40,7 +40,7 @@ _PYPROJECT = textwrap.dedent(
     """
 )
 
-_INIT_SRC = '"""Tmp project package."""\n\nfrom harness.core import add\n\n__all__ = ["add"]\n'
+_INIT_SRC = '"""Tmp project package."""\n\nfrom interlock.core import add\n\n__all__ = ["add"]\n'
 
 _SRC = textwrap.dedent(
     '''\
@@ -58,7 +58,7 @@ _TEST_SRC = textwrap.dedent(
 
     import unittest
 
-    from harness.core import add
+    from interlock.core import add
 
 
     class TestAdd(unittest.TestCase):
@@ -87,8 +87,8 @@ def tmp_project(make_tmp_project: TmpProjectFactory) -> Path:
     return make_tmp_project(
         pyproject=_PYPROJECT,
         src_files={
-            "harness/__init__.py": _INIT_SRC,
-            "harness/core.py": _SRC,
+            "interlock/__init__.py": _INIT_SRC,
+            "interlock/core.py": _SRC,
         },
         test_files={
             "__init__.py": "",
@@ -99,7 +99,7 @@ def tmp_project(make_tmp_project: TmpProjectFactory) -> Path:
 
 def _run_ci(cwd: Path) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
-        [sys.executable, "-P", "-m", "harness.cli", "ci"],
+        [sys.executable, "-P", "-m", "interlock.cli", "ci"],
         cwd=cwd,
         capture_output=True,
         text=True,
@@ -112,7 +112,7 @@ def test_ci_passes_on_clean_project(tmp_project: Path) -> None:
 
     assert result.returncode == 0, f"stdout={result.stdout}\nstderr={result.stderr}"
     out = result.stdout
-    markers = ("pyharness v", "CI Checks", "[format]", "[lint]", "[complexity]", "[typecheck]")
+    markers = ("interlock v", "CI Checks", "[format]", "[lint]", "[complexity]", "[typecheck]")
     for marker in markers:
         assert marker in out, f"missing marker {marker!r}\n{out}"
     assert "[coverage]" in out
@@ -129,7 +129,7 @@ def test_ci_passes_on_clean_project(tmp_project: Path) -> None:
     ids=["format", "lint"],
 )
 def test_ci_fails_on_violation(tmp_project: Path, dirty_src: str, expected_fragment: str) -> None:
-    (tmp_project / "harness" / "core.py").write_text(dirty_src, encoding="utf-8")
+    (tmp_project / "interlock" / "core.py").write_text(dirty_src, encoding="utf-8")
 
     result = _run_ci(tmp_project)
 
@@ -142,8 +142,8 @@ def test_ci_in_process_queues_all_tasks(
 ) -> None:
     """Stub run_tasks + inline gates — verify cmd_ci composes the expected task list
     plus the sequential post-coverage gates."""
-    from harness.config import load_config
-    from harness.stages import ci as ci_mod
+    from interlock.config import load_config
+    from interlock.stages import ci as ci_mod
 
     parallel: list[str] = []
     sequential: list[str] = []
@@ -184,7 +184,7 @@ def test_ci_in_process_includes_mutation_when_enabled(
             name = "ci-mut"
             version = "0.0.0"
 
-            [tool.harness]
+            [tool.interlock]
             run_mutation_in_ci = true
             """
         ),
@@ -192,7 +192,7 @@ def test_ci_in_process_includes_mutation_when_enabled(
     )
     monkeypatch.chdir(tmp_path)
 
-    from harness.stages import ci as ci_mod
+    from interlock.stages import ci as ci_mod
 
     sequential: list[str] = []
     monkeypatch.setattr(ci_mod, "run_tasks", lambda tasks: None)

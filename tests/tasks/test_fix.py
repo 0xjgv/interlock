@@ -1,4 +1,4 @@
-"""Integration tests for harness.tasks.fix."""
+"""Integration tests for interlock.tasks.fix."""
 
 from __future__ import annotations
 
@@ -38,7 +38,7 @@ def test_fix_cli_clean_exits_zero(tmp_project: Path) -> None:
     f = tmp_project / "sample.py"
     f.write_text(CLEAN, encoding="utf-8")
     result = subprocess.run(
-        [sys.executable, "-m", "harness.cli", "fix"],
+        [sys.executable, "-m", "interlock.cli", "fix"],
         cwd=tmp_project,
         capture_output=True,
         text=True,
@@ -52,7 +52,7 @@ def test_fix_cli_modifies_fixable_file(tmp_project: Path) -> None:
     f = tmp_project / "sample.py"
     f.write_text(FIXABLE, encoding="utf-8")
     subprocess.run(
-        [sys.executable, "-m", "harness.cli", "fix"],
+        [sys.executable, "-m", "interlock.cli", "fix"],
         cwd=tmp_project,
         capture_output=True,
         text=True,
@@ -62,7 +62,7 @@ def test_fix_cli_modifies_fixable_file(tmp_project: Path) -> None:
 
 
 def test_fix_no_exit_does_not_raise(tmp_project: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    from harness.tasks.fix import cmd_fix
+    from interlock.tasks.fix import cmd_fix
 
     # F821 undefined-name — ruff can't auto-fix, exits 1.
     (tmp_project / "sample.py").write_text("x = undefined_name\n", encoding="utf-8")
@@ -73,7 +73,7 @@ def test_fix_no_exit_does_not_raise(tmp_project: Path, monkeypatch: pytest.Monke
 def test_fix_injects_bundled_config_in_bare_project(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    from harness.tasks.fix import task_fix
+    from interlock.tasks.fix import task_fix
 
     (tmp_path / "pyproject.toml").write_text(
         "[project]\nname='bare'\nversion='0.0.0'\n", encoding="utf-8"

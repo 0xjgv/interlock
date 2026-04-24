@@ -1,8 +1,8 @@
 """Wheel-install smoke test.
 
-Builds the pyharness wheel, installs it into a clean venv, and runs
-`harness help`. Guards the `pipx install pyharness` promise from the README
-against packaging regressions (e.g. missing `harness/defaults/*` data files).
+Builds the interlock wheel, installs it into a clean venv, and runs
+`interlock help`. Guards the `pipx install interlock` promise from the README
+against packaging regressions (e.g. missing `interlock/defaults/*` data files).
 
 Marked `slow` because building a wheel and creating a fresh venv takes several
 seconds; the `slow` marker is registered in pyproject.toml. Opt in with
@@ -25,7 +25,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 
 
 @pytest.mark.skipif(sys.platform == "win32", reason="POSIX venv layout assumed")
-def test_wheel_installs_and_harness_help_runs(tmp_path: Path) -> None:
+def test_wheel_installs_and_interlock_help_runs(tmp_path: Path) -> None:
     if shutil.which("uv") is None:
         pytest.skip("uv required")
 
@@ -44,12 +44,12 @@ def test_wheel_installs_and_harness_help_runs(tmp_path: Path) -> None:
     install_cmd = ["uv", "pip", "install", str(wheel), "--python", str(venv_python)]
     subprocess.run(install_cmd, check=True, cwd=tmp_path)
 
-    harness_bin = tmp_path / "venv" / "bin" / "harness"
-    assert harness_bin.exists(), f"harness entry point missing at {harness_bin}"
-    assert harness_bin.stat().st_mode & 0o111, "harness entry point not executable"
+    interlock_bin = tmp_path / "venv" / "bin" / "interlock"
+    assert interlock_bin.exists(), f"interlock entry point missing at {interlock_bin}"
+    assert interlock_bin.stat().st_mode & 0o111, "interlock entry point not executable"
 
     result = subprocess.run(
-        [str(harness_bin), "help"],
+        [str(interlock_bin), "help"],
         check=True,
         cwd=tmp_path,
         capture_output=True,
@@ -57,5 +57,5 @@ def test_wheel_installs_and_harness_help_runs(tmp_path: Path) -> None:
     )
     for expected in ("check", "pre-commit", "ci", "nightly"):
         assert expected in result.stdout, (
-            f"`harness help` output missing {expected!r}:\n{result.stdout}"
+            f"`interlock help` output missing {expected!r}:\n{result.stdout}"
         )

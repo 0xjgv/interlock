@@ -10,8 +10,8 @@ from pathlib import Path
 
 import pytest
 
-from harness import metrics as metrics_mod
-from harness.tasks.mutation import (
+from interlock import metrics as metrics_mod
+from interlock.tasks.mutation import (
     _mutant_in_changed,
     _print_survivors,
     cmd_mutation,
@@ -84,7 +84,7 @@ def test_mutation_skips_when_coverage_missing(
     """No .coverage → cmd_mutation should warn_skip, never SystemExit."""
     monkeypatch.chdir(tmp_project)
     # Defaults (min-coverage=70) apply; no coverage.xml exists → skip path.
-    monkeypatch.setattr(sys, "argv", ["harness", "mutation"])
+    monkeypatch.setattr(sys, "argv", ["interlock", "mutation"])
 
     cmd_mutation()  # no SystemExit expected
 
@@ -101,7 +101,7 @@ def test_mutation_runs_and_prints_score(
     monkeypatch.syspath_prepend(str(tmp_project))
     _run_coverage(tmp_project)
     monkeypatch.setattr(
-        sys, "argv", ["harness", "mutation", "--max-runtime=30", "--min-coverage=0"]
+        sys, "argv", ["interlock", "mutation", "--max-runtime=30", "--min-coverage=0"]
     )
 
     cmd_mutation()  # advisory — must never SystemExit
@@ -119,12 +119,12 @@ def test_mutation_min_coverage_comes_from_config(
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    """[tool.harness] mutation_min_coverage = 95 → skip message mentions 95.0%."""
+    """[tool.interlock] mutation_min_coverage = 95 → skip message mentions 95.0%."""
     (tmp_project / "pyproject.toml").write_text(
-        _PYPROJECT + "\n[tool.harness]\nmutation_min_coverage = 95\n", encoding="utf-8"
+        _PYPROJECT + "\n[tool.interlock]\nmutation_min_coverage = 95\n", encoding="utf-8"
     )
     primed_coverage_xml('<?xml version="1.0" ?><coverage line-rate="0.5"></coverage>')
-    monkeypatch.setattr(sys, "argv", ["harness", "mutation"])
+    monkeypatch.setattr(sys, "argv", ["interlock", "mutation"])
 
     cmd_mutation()  # advisory — must never SystemExit
     captured = capsys.readouterr()
@@ -135,26 +135,26 @@ def test_mutation_min_coverage_comes_from_config(
 
 
 def test_mutant_in_changed_matches_module_path() -> None:
-    assert _mutant_in_changed("harness.git.x_foo__mutmut_1", {"harness/git.py"})
+    assert _mutant_in_changed("interlock.git.x_foo__mutmut_1", {"interlock/git.py"})
 
 
 def test_mutant_in_changed_handles_nested_modules() -> None:
     assert _mutant_in_changed(
-        "harness.tasks.mutation.x__parse_results__mutmut_5", {"harness/tasks/mutation.py"}
+        "interlock.tasks.mutation.x__parse_results__mutmut_5", {"interlock/tasks/mutation.py"}
     )
 
 
 def test_mutant_in_changed_matches_suffix() -> None:
     """Path matches if any changed file ends with '/<module-path>'."""
-    assert _mutant_in_changed("harness.git.x_foo__mutmut_1", {"src/harness/git.py"})
+    assert _mutant_in_changed("interlock.git.x_foo__mutmut_1", {"src/interlock/git.py"})
 
 
 def test_mutant_in_changed_misses_unrelated() -> None:
-    assert not _mutant_in_changed("harness.git.x_foo__mutmut_1", {"harness/runner.py"})
+    assert not _mutant_in_changed("interlock.git.x_foo__mutmut_1", {"interlock/runner.py"})
 
 
 def test_mutant_in_changed_empty_set_is_miss() -> None:
-    assert not _mutant_in_changed("harness.git.x_foo__mutmut_1", set())
+    assert not _mutant_in_changed("interlock.git.x_foo__mutmut_1", set())
 
 
 # ─────────────── _print_survivors ─────────────────────
@@ -170,37 +170,37 @@ def test_print_survivors_prints_nothing_when_empty(
 def test_print_survivors_prints_header_and_keys(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    _print_survivors(["harness.a.x__mutmut_1", "harness.b.x__mutmut_2"], None)
+    _print_survivors(["interlock.a.x__mutmut_1", "interlock.b.x__mutmut_2"], None)
     out = capsys.readouterr().out
     assert "surviving mutants (2 shown)" in out
-    assert "harness.a.x__mutmut_1" in out
-    assert "harness.b.x__mutmut_2" in out
+    assert "interlock.a.x__mutmut_1" in out
+    assert "interlock.b.x__mutmut_2" in out
 
 
 def test_print_survivors_caps_at_twenty(capsys: pytest.CaptureFixture[str]) -> None:
-    many = [f"harness.a.x__mutmut_{i}" for i in range(30)]
+    many = [f"interlock.a.x__mutmut_{i}" for i in range(30)]
     _print_survivors(many, None)
     out = capsys.readouterr().out
     assert "surviving mutants (20 shown)" in out
-    assert "harness.a.x__mutmut_0" in out
-    assert "harness.a.x__mutmut_19" in out
-    assert "harness.a.x__mutmut_20" not in out
+    assert "interlock.a.x__mutmut_0" in out
+    assert "interlock.a.x__mutmut_19" in out
+    assert "interlock.a.x__mutmut_20" not in out
 
 
 def test_print_survivors_filters_to_changed_set(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    survivors = ["harness.git.x_foo__mutmut_1", "harness.runner.x_bar__mutmut_2"]
-    _print_survivors(survivors, {"harness/git.py"})
+    survivors = ["interlock.git.x_foo__mutmut_1", "interlock.runner.x_bar__mutmut_2"]
+    _print_survivors(survivors, {"interlock/git.py"})
     out = capsys.readouterr().out
-    assert "harness.git.x_foo__mutmut_1" in out
-    assert "harness.runner.x_bar__mutmut_2" not in out
+    assert "interlock.git.x_foo__mutmut_1" in out
+    assert "interlock.runner.x_bar__mutmut_2" not in out
 
 
 def test_print_survivors_silent_when_nothing_matches_changed(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    _print_survivors(["harness.runner.x_foo__mutmut_1"], {"harness/git.py"})
+    _print_survivors(["interlock.runner.x_foo__mutmut_1"], {"interlock/git.py"})
     assert capsys.readouterr().out == ""
 
 

@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pytest
 
-from harness import config as harness_config
+from interlock import config as interlock_config
 
 _GIT_ENV_LEAKS = (
     "GIT_DIR",
@@ -49,7 +49,7 @@ def _isolate_test_env(
     Without the GIT_* scrub, tests that shell out to `git` inherit `GIT_DIR`
     from an enclosing `git commit` hook and corrupt the outer repo.
     """
-    harness_config.clear_cache()
+    interlock_config.clear_cache()
     empty = tmp_path_factory.mktemp("empty_xdg")
     monkeypatch.setenv("XDG_CONFIG_HOME", str(empty))
     for var in _GIT_ENV_LEAKS:

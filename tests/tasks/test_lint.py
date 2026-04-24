@@ -1,4 +1,4 @@
-"""Integration tests for harness.tasks.lint."""
+"""Integration tests for interlock.tasks.lint."""
 
 from __future__ import annotations
 
@@ -37,7 +37,7 @@ def tmp_project(tmp_path: Path) -> Path:
 def test_lint_cli(tmp_project: Path, source: str, expected_rc: int) -> None:
     (tmp_project / "sample.py").write_text(source, encoding="utf-8")
     result = subprocess.run(
-        [sys.executable, "-m", "harness.cli", "lint"],
+        [sys.executable, "-m", "interlock.cli", "lint"],
         cwd=tmp_project,
         capture_output=True,
         text=True,
@@ -47,7 +47,7 @@ def test_lint_cli(tmp_project: Path, source: str, expected_rc: int) -> None:
 
 
 def test_lint_clean_in_process(tmp_project: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    from harness.tasks.lint import cmd_lint
+    from interlock.tasks.lint import cmd_lint
 
     (tmp_project / "sample.py").write_text(CLEAN, encoding="utf-8")
     monkeypatch.chdir(tmp_project)
@@ -55,7 +55,7 @@ def test_lint_clean_in_process(tmp_project: Path, monkeypatch: pytest.MonkeyPatc
 
 
 def test_lint_violating_in_process(tmp_project: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    from harness.tasks.lint import cmd_lint
+    from interlock.tasks.lint import cmd_lint
 
     (tmp_project / "sample.py").write_text(VIOLATING, encoding="utf-8")
     monkeypatch.chdir(tmp_project)
@@ -79,7 +79,7 @@ def test_lint_injects_bundled_config_when_project_has_none(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """Bare project with no [tool.ruff]: task_lint must pass --config <bundled>."""
-    from harness.tasks.lint import task_lint
+    from interlock.tasks.lint import task_lint
 
     (tmp_path / "pyproject.toml").write_text(_BARE_PYPROJECT, encoding="utf-8")
     monkeypatch.chdir(tmp_path)
@@ -94,7 +94,7 @@ def test_lint_omits_config_when_project_has_tool_ruff(
     tmp_project: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """Project with [tool.ruff]: task_lint must NOT pass --config."""
-    from harness.tasks.lint import task_lint
+    from interlock.tasks.lint import task_lint
 
     monkeypatch.chdir(tmp_project)
     assert "--config" not in task_lint().cmd
@@ -104,7 +104,7 @@ def test_lint_omits_config_when_project_has_ruff_sidecar(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """Project with ruff.toml sidecar: task_lint must NOT pass --config."""
-    from harness.tasks.lint import task_lint
+    from interlock.tasks.lint import task_lint
 
     (tmp_path / "pyproject.toml").write_text(_BARE_PYPROJECT, encoding="utf-8")
     (tmp_path / "ruff.toml").write_text("line-length = 99\n", encoding="utf-8")

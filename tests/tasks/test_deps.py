@@ -1,4 +1,4 @@
-"""Integration + unit tests for `harness deps` (deptry dependency hygiene)."""
+"""Integration + unit tests for `interlock deps` (deptry dependency hygiene)."""
 
 from __future__ import annotations
 
@@ -50,7 +50,7 @@ def dirty_project(tmp_path: Path) -> Path:
 @pytest.mark.slow
 def test_deps_passes_on_clean_project(clean_project: Path) -> None:
     result = subprocess.run(
-        [sys.executable, "-m", "harness.cli", "deps"],
+        [sys.executable, "-m", "interlock.cli", "deps"],
         cwd=clean_project,
         capture_output=True,
         text=True,
@@ -62,7 +62,7 @@ def test_deps_passes_on_clean_project(clean_project: Path) -> None:
 @pytest.mark.slow
 def test_deps_fails_on_unused_dependency(dirty_project: Path) -> None:
     result = subprocess.run(
-        [sys.executable, "-m", "harness.cli", "deps"],
+        [sys.executable, "-m", "interlock.cli", "deps"],
         cwd=dirty_project,
         capture_output=True,
         text=True,
@@ -74,8 +74,8 @@ def test_deps_fails_on_unused_dependency(dirty_project: Path) -> None:
 
 def test_deps_invokes_deptry_with_known_first_party(monkeypatch: pytest.MonkeyPatch) -> None:
     """In-process: cmd_deps builds a Task wrapping deptry + --known-first-party from src_dir."""
-    from harness.runner import Task
-    from harness.tasks import deps as deps_mod
+    from interlock.runner import Task
+    from interlock.tasks import deps as deps_mod
 
     captured: dict[str, Task] = {}
 
@@ -91,4 +91,4 @@ def test_deps_invokes_deptry_with_known_first_party(monkeypatch: pytest.MonkeyPa
     assert any("deptry" in part for part in cmd), f"deptry missing in cmd: {cmd}"
     assert "--known-first-party" in cmd
     kfp_idx = cmd.index("--known-first-party")
-    assert cmd[kfp_idx + 1] == "harness"
+    assert cmd[kfp_idx + 1] == "interlock"

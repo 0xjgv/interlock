@@ -7,7 +7,7 @@ on:
   pull_request:
 
 jobs:
-  harness-ci:
+  interlock-ci:
     strategy:
       fail-fast: false
       matrix:
@@ -24,8 +24,8 @@ jobs:
       - name: Install project
         run: uv sync
 
-      - name: Run harness ci
-        run: uv run harness ci
+      - name: Run interlock ci
+        run: uv run interlock ci
 
       - name: Wheel install smoke test
         if: hashFiles('tests/test_wheel_install.py') != ''

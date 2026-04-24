@@ -1,4 +1,4 @@
-"""Integration tests for `harness check` (fix + format + typecheck + test + suppressions)."""
+"""Integration tests for `interlock check` (fix + format + typecheck + test + suppressions)."""
 
 from __future__ import annotations
 
@@ -32,7 +32,7 @@ _PYPROJECT = textwrap.dedent(
     """
 )
 
-_INIT_SRC = '"""Tmp project package."""\n\nfrom harness.core import add\n\n__all__ = ["add"]\n'
+_INIT_SRC = '"""Tmp project package."""\n\nfrom interlock.core import add\n\n__all__ = ["add"]\n'
 
 _CLEAN_SRC = textwrap.dedent(
     '''\
@@ -50,7 +50,7 @@ _TEST_SRC = textwrap.dedent(
 
     import unittest
 
-    from harness.core import add
+    from interlock.core import add
 
 
     class TestAdd(unittest.TestCase):
@@ -65,8 +65,8 @@ def tmp_project(make_tmp_project: TmpProjectFactory) -> Path:
     return make_tmp_project(
         pyproject=_PYPROJECT,
         src_files={
-            "harness/__init__.py": _INIT_SRC,
-            "harness/core.py": _CLEAN_SRC,
+            "interlock/__init__.py": _INIT_SRC,
+            "interlock/core.py": _CLEAN_SRC,
         },
         test_files={
             "__init__.py": "",
@@ -77,7 +77,7 @@ def tmp_project(make_tmp_project: TmpProjectFactory) -> Path:
 
 def _run_check(cwd: Path) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
-        [sys.executable, "-P", "-m", "harness.cli", "check"],
+        [sys.executable, "-P", "-m", "interlock.cli", "check"],
         cwd=cwd,
         capture_output=True,
         text=True,
@@ -90,7 +90,7 @@ def test_check_passes_on_clean_project(tmp_project: Path) -> None:
 
     assert result.returncode == 0, f"stdout={result.stdout}\nstderr={result.stderr}"
     out = result.stdout
-    assert "pyharness v" in out
+    assert "interlock v" in out
     assert "Quality Checks" in out
     assert "Parallel" in out
     assert "Advisory" in out
@@ -115,19 +115,19 @@ def test_check_fixes_trivially_fixable_lint(tmp_project: Path) -> None:
             return a + b
         '''
     )
-    (tmp_project / "harness" / "core.py").write_text(dirty, encoding="utf-8")
+    (tmp_project / "interlock" / "core.py").write_text(dirty, encoding="utf-8")
 
     result = _run_check(tmp_project)
 
     assert result.returncode == 0, f"stdout={result.stdout}\nstderr={result.stderr}"
-    assert "import os" not in (tmp_project / "harness" / "core.py").read_text(encoding="utf-8")
+    assert "import os" not in (tmp_project / "interlock" / "core.py").read_text(encoding="utf-8")
 
 
 def test_check_in_process_dispatches_stages(
     tmp_project: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
     """Stub fix/format/run_tasks + suppressions; confirm cmd_check orchestrates them."""
-    from harness.stages import check as check_mod
+    from interlock.stages import check as check_mod
 
     calls: list[object] = []
     monkeypatch.setattr(check_mod, "cmd_fix", lambda: calls.append("fix"))
@@ -169,7 +169,7 @@ def test_check_in_process_runs_suppressions_on_failure(
     tmp_project: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """Suppressions report is in a `finally` — runs even when an inner stage raises."""
-    from harness.stages import check as check_mod
+    from interlock.stages import check as check_mod
 
     calls: list[str] = []
     monkeypatch.setattr(check_mod, "cmd_fix", lambda: calls.append("fix"))
@@ -191,7 +191,7 @@ def test_check_in_process_runs_suppressions_on_failure(
 
 def _run_check_quiet(cwd: Path) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
-        [sys.executable, "-P", "-m", "harness.cli", "check", "--quiet"],
+        [sys.executable, "-P", "-m", "interlock.cli", "check", "--quiet"],
         cwd=cwd,
         capture_output=True,
         text=True,
@@ -204,7 +204,7 @@ def test_check_quiet_success_is_one_verdict_line(tmp_project: Path) -> None:
 
     assert result.returncode == 0, f"stdout={result.stdout}\nstderr={result.stderr}"
     out = result.stdout
-    assert "pyharness v" not in out
+    assert "interlock v" not in out
     assert "Quality Checks" not in out
     assert "Parallel" not in out
     assert "Advisory" not in out

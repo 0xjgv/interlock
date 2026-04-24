@@ -1,4 +1,4 @@
-"""Tests for `harness doctor` preflight diagnostic."""
+"""Tests for `interlock doctor` preflight diagnostic."""
 
 from __future__ import annotations
 
@@ -10,21 +10,23 @@ from pathlib import Path
 
 import pytest
 
-import harness
+import interlock
 
 # When running under an outer interpreter whose site-packages .pth shadows
 # this checkout (e.g. a parent-repo pre-commit hook), point the subprocess's
-# PYTHONPATH at the in-tree harness so `python -m harness.cli` sees the
+# PYTHONPATH at the in-tree interlock so `python -m interlock.cli` sees the
 # code under test — not the shadowed install.
-_HARNESS_PARENT = str(Path(harness.__file__).resolve().parent.parent)
+_INTERLOCK_PARENT = str(Path(interlock.__file__).resolve().parent.parent)
 
 
 def _run_doctor(cwd: Path) -> subprocess.CompletedProcess[str]:
     env = os.environ.copy()
     existing = env.get("PYTHONPATH", "")
-    env["PYTHONPATH"] = f"{_HARNESS_PARENT}{os.pathsep}{existing}" if existing else _HARNESS_PARENT
+    env["PYTHONPATH"] = (
+        f"{_INTERLOCK_PARENT}{os.pathsep}{existing}" if existing else _INTERLOCK_PARENT
+    )
     return subprocess.run(
-        [sys.executable, "-P", "-m", "harness.cli", "doctor"],
+        [sys.executable, "-P", "-m", "interlock.cli", "doctor"],
         cwd=cwd,
         capture_output=True,
         text=True,
@@ -62,8 +64,8 @@ def test_doctor_in_process_reports_sections(
     )
     monkeypatch.chdir(tmp_path)
 
-    from harness.config import clear_cache
-    from harness.tasks.doctor import cmd_doctor, task_doctor
+    from interlock.config import clear_cache
+    from interlock.tasks.doctor import cmd_doctor, task_doctor
 
     clear_cache()
     try:
@@ -82,8 +84,8 @@ def test_doctor_in_process_reports_sections(
     assert "status                 ready" in captured.out
     assert "ready (" in captured.out  # "ready (N gaps)"
     # Derived Next Steps flags the missing preset + CI + venv, not the generic line.
-    assert "Run `harness presets`" in captured.out
-    assert "Wire CI via `harness ci`" in captured.out
+    assert "Run `interlock presets`" in captured.out
+    assert "Wire CI via `interlock ci`" in captured.out
     assert "Create a venv" in captured.out
     # task_doctor is CLI-only — it never composes into a stage pipeline.
     assert task_doctor() is None
@@ -101,15 +103,15 @@ def test_doctor_reports_configured_preset(
             'name = "probe"',
             'version = "0.0.0"',
             "",
-            "[tool.harness]",
+            "[tool.interlock]",
             'preset = "baseline"',
         ]),
         encoding="utf-8",
     )
     monkeypatch.chdir(tmp_path)
 
-    from harness.config import clear_cache
-    from harness.tasks.doctor import cmd_doctor
+    from interlock.config import clear_cache
+    from interlock.tasks.doctor import cmd_doctor
 
     clear_cache()
     try:
@@ -140,15 +142,15 @@ def test_doctor_reports_unsupported_preset_as_blocker(
             'name = "probe"',
             'version = "0.0.0"',
             "",
-            "[tool.harness]",
+            "[tool.interlock]",
             'preset = "agent-safe"',
         ]),
         encoding="utf-8",
     )
     monkeypatch.chdir(tmp_path)
 
-    from harness.config import clear_cache
-    from harness.tasks.doctor import cmd_doctor
+    from interlock.config import clear_cache
+    from interlock.tasks.doctor import cmd_doctor
 
     clear_cache()
     try:
@@ -170,7 +172,7 @@ def test_doctor_reports_missing_paths_as_blockers(
             'name = "probe"',
             'version = "0.0.0"',
             "",
-            "[tool.harness]",
+            "[tool.interlock]",
             'src_dir = "src"',
             'test_dir = "tests"',
         ]),
@@ -178,8 +180,8 @@ def test_doctor_reports_missing_paths_as_blockers(
     )
     monkeypatch.chdir(tmp_path)
 
-    from harness.config import clear_cache
-    from harness.tasks.doctor import cmd_doctor
+    from interlock.config import clear_cache
+    from interlock.tasks.doctor import cmd_doctor
 
     clear_cache()
     try:
@@ -193,13 +195,13 @@ def test_doctor_reports_missing_paths_as_blockers(
     assert "missing test path" in out
 
 
-def _write_probe_project(tmp_path: Path, *, tool_harness: str = "") -> None:
+def _write_probe_project(tmp_path: Path, *, tool_interlock: str = "") -> None:
     (tmp_path / "probe").mkdir()
     (tmp_path / "probe" / "__init__.py").write_text("", encoding="utf-8")
     (tmp_path / "tests").mkdir()
     body = '[project]\nname = "probe"\nversion = "0.0.0"\nrequires-python = ">=3.13"\n'
-    if tool_harness:
-        body += "\n[tool.harness]\n" + tool_harness.strip() + "\n"
+    if tool_interlock:
+        body += "\n[tool.interlock]\n" + tool_interlock.strip() + "\n"
     (tmp_path / "pyproject.toml").write_text(body, encoding="utf-8")
 
 
@@ -207,8 +209,8 @@ def _run_cmd_doctor(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> str:
     monkeypatch.chdir(tmp_path)
-    from harness.config import clear_cache
-    from harness.tasks.doctor import cmd_doctor
+    from interlock.config import clear_cache
+    from interlock.tasks.doctor import cmd_doctor
 
     clear_cache()
     try:
@@ -225,7 +227,7 @@ def test_doctor_detects_git_pre_commit_hook(
     hooks = tmp_path / ".git" / "hooks"
     hooks.mkdir(parents=True)
     (hooks / "pre-commit").write_text(
-        "#!/bin/sh\nexec python -m harness.cli pre-commit\n", encoding="utf-8"
+        "#!/bin/sh\nexec python -m interlock.cli pre-commit\n", encoding="utf-8"
     )
 
     out = _run_cmd_doctor(tmp_path, monkeypatch, capsys)
@@ -242,7 +244,7 @@ def test_doctor_flags_missing_hooks_under_existing_git_or_claude(
     (tmp_path / ".claude").mkdir()
 
     out = _run_cmd_doctor(tmp_path, monkeypatch, capsys)
-    assert "Run `harness setup-hooks`" in out
+    assert "Run `interlock setup-hooks`" in out
 
 
 def test_doctor_detects_ci_workflow(
@@ -252,39 +254,43 @@ def test_doctor_detects_ci_workflow(
     workflows = tmp_path / ".github" / "workflows"
     workflows.mkdir(parents=True)
     (workflows / "ci.yml").write_text(
-        "name: ci\njobs:\n  test:\n    steps:\n      - run: harness ci\n",
+        "name: ci\njobs:\n  test:\n    steps:\n      - run: interlock ci\n",
         encoding="utf-8",
     )
 
     out = _run_cmd_doctor(tmp_path, monkeypatch, capsys)
     # CI row flips to `ok`; no Next-Steps bullet about wiring CI.
-    assert "Wire CI via `harness ci`" not in out
+    assert "Wire CI via `interlock ci`" not in out
 
 
 def test_doctor_warns_on_acceptance_configured_without_scaffold(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    _write_probe_project(tmp_path, tool_harness='acceptance_runner = "pytest-bdd"')
+    _write_probe_project(tmp_path, tool_interlock='acceptance_runner = "pytest-bdd"')
 
     out = _run_cmd_doctor(tmp_path, monkeypatch, capsys)
-    assert "Run `harness init-acceptance`" in out
+    assert "Run `interlock init-acceptance`" in out
 
 
 def test_doctor_ready_state_when_all_artifacts_wired(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    _write_probe_project(tmp_path, tool_harness='preset = "baseline"')
+    _write_probe_project(tmp_path, tool_interlock='preset = "baseline"')
     hooks = tmp_path / ".git" / "hooks"
     hooks.mkdir(parents=True)
     (hooks / "pre-commit").write_text(
-        "#!/bin/sh\nexec python -m harness.cli pre-commit\n", encoding="utf-8"
+        "#!/bin/sh\nexec python -m interlock.cli pre-commit\n", encoding="utf-8"
     )
     (tmp_path / ".claude").mkdir()
     (tmp_path / ".claude" / "settings.json").write_text(
         json.dumps({
             "hooks": {
                 "Stop": [
-                    {"hooks": [{"type": "command", "command": "python -m harness.cli post-edit"}]}
+                    {
+                        "hooks": [
+                            {"type": "command", "command": "python -m interlock.cli post-edit"}
+                        ]
+                    }
                 ]
             }
         }),
@@ -292,7 +298,7 @@ def test_doctor_ready_state_when_all_artifacts_wired(
     )
     (tmp_path / ".github" / "workflows").mkdir(parents=True)
     (tmp_path / ".github" / "workflows" / "ci.yml").write_text(
-        "jobs:\n  x:\n    steps:\n      - run: harness ci\n", encoding="utf-8"
+        "jobs:\n  x:\n    steps:\n      - run: interlock ci\n", encoding="utf-8"
     )
     venv_bin = tmp_path / (".venv/Scripts" if os.name == "nt" else ".venv/bin")
     venv_bin.mkdir(parents=True)
@@ -305,4 +311,4 @@ def test_doctor_ready_state_when_all_artifacts_wired(
 
     out = _run_cmd_doctor(tmp_path, monkeypatch, capsys)
     assert "status                 ready" in out
-    assert "Run `harness check` locally" in out
+    assert "Run `interlock check` locally" in out

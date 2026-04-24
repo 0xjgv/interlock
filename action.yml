@@ -1,19 +1,19 @@
-name: pyharness CI
-description: Install pyharness and run the repository quality pipeline through harness ci.
+name: interlock CI
+description: Install interlock and run the repository quality pipeline through interlock ci.
 
 inputs:
   python-version:
-    description: Python version used to install and run pyharness.
+    description: Python version used to install interlock and run interlock.
     required: false
     default: "3.13"
   install-command:
-    description: Command that installs pyharness before running CI.
+    description: Command that installs interlock before running CI.
     required: false
-    default: python -m pip install pyharness
+    default: python -m pip install interlock
   command:
-    description: pyharness command to run.
+    description: interlock command to run.
     required: false
-    default: harness ci
+    default: interlock ci
 
 runs:
   using: composite
@@ -23,12 +23,12 @@ runs:
       with:
         python-version: ${{ inputs.python-version }}
 
-    - name: Install pyharness
+    - name: Install interlock
       shell: bash
       run: |
         python -m pip install --upgrade pip
         ${{ inputs.install-command }}
 
-    - name: Run pyharness
+    - name: Run interlock
       shell: bash
-      run: python -m harness.github_action --command "${{ inputs.command }}"
+      run: python -m interlock.github_action --command "${{ inputs.command }}"
