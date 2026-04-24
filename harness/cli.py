@@ -29,7 +29,7 @@ from harness.tasks.init import cmd_init
 from harness.tasks.init_acceptance import cmd_init_acceptance
 from harness.tasks.lint import cmd_lint
 from harness.tasks.mutation import cmd_mutation
-from harness.tasks.stats import cmd_stats
+from harness.tasks.stats import cmd_stats, cmd_trust
 from harness.tasks.test import cmd_test
 from harness.tasks.typecheck import cmd_typecheck
 from harness.tasks.version import cmd_version
@@ -133,7 +133,11 @@ TASK_GROUPS: list[tuple[str, dict[str, tuple[Callable[..., None], str]]]] = [
         {
             "stats": (
                 cmd_stats,
-                "Trust-score report: verdict + suspicious tests + hot files (read-only)",
+                "Legacy alias for trust report (cached quality data)",
+            ),
+            "trust": (
+                cmd_trust,
+                "Actionable trust report: coverage, CRAP, suspicious tests, next actions",
             ),
         },
     ),

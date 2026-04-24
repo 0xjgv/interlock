@@ -41,7 +41,7 @@ If the repository is ready, `doctor` points you at `harness check` and CI wiring
 harness check
 ```
 
-`check` runs the local edit loop: fix, format, typecheck, tests, optional acceptance tests, advisory dependency hygiene, and the suppressions report. It is the command to run after edits before pushing.
+`check` runs the local edit loop: fix, format, typecheck, tests, optional acceptance tests, advisory dependency hygiene, cached CRAP feedback when fresh coverage exists, and the suppressions report. It is the command to run after edits before pushing.
 
 ### 4. Wire CI
 
@@ -156,7 +156,7 @@ Run `harness help` to see the active preset and resolved values.
 
 | Stage | When | What runs |
 |-------|------|-----------|
-| `harness check` | Local edit loop | fix -> format -> parallel(typecheck, test, acceptance when opted in) -> deps advisory -> suppressions |
+| `harness check` | Local edit loop | fix -> format -> parallel(typecheck, test, acceptance when opted in) -> deps advisory -> cached CRAP advisory or refresh hint -> suppressions |
 | `harness pre-commit` | Git pre-commit hook | fix/format staged Python files, re-stage, typecheck, tests when source changed |
 | `harness ci` | Pull requests and protected branches | format-check, lint, complexity, deps, typecheck, coverage, arch, acceptance -> CRAP -> optional mutation |
 | `harness nightly` | Scheduled jobs | coverage -> mutation, always blocking on `mutation_min_score` |
@@ -187,7 +187,8 @@ Advanced gates:
 - `coverage --min=N`: coverage.py with fail-under. `--min=N` overrides `coverage_min`.
 - `crap --max=N [--changed-only]`: CRAP complexity x coverage gate. Blocking depends on `enforce_crap`.
 - `mutation --max-runtime=N [--min-coverage=N] [--min-score=N] [--changed-only]`: mutmut. Advisory unless `enforce_mutation = true` or `--min-score=` is passed.
-- `stats [--no-trend]`: trust-score report combining coverage, CRAP, mutation, suspicious-test AST inspection, and recent git diff. It is read-only and never exits non-zero.
+- `trust [--refresh] [--no-trend]`: actionable trust report combining coverage, CRAP, mutation, suspicious-test AST inspection, recent git diff, and next actions. `--refresh` runs coverage first with `--min=0`.
+- `stats [--no-trend]`: legacy alias for the cached trust report. It is read-only and never exits non-zero.
 
 Scaffolding:
 

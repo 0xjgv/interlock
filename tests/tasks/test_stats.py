@@ -24,6 +24,7 @@ from harness.tasks.stats import (
     _read_prev_trust,
     _write_trust,
     cmd_stats,
+    cmd_trust,
 )
 
 _HARNESS_PKG_ROOT = str(Path(harness.__file__).resolve().parent.parent)
@@ -381,6 +382,7 @@ def test_cmd_stats_prints_report(
     assert "TRUST" in captured.out
     assert "suspicious tests" in captured.out
     assert "hot files" in captured.out
+    assert "next actions" in captured.out
 
 
 def test_cmd_stats_writes_trend_file(
@@ -418,6 +420,45 @@ def test_cmd_stats_second_run_shows_delta(
     assert "since last run" in captured.out
 
 
+def test_cmd_trust_refresh_runs_coverage_first(
+    tmp_project: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    calls: list[object] = []
+
+    def fake_coverage(*, min_pct: int | None = None) -> None:
+        calls.append(("coverage", min_pct))
+
+    monkeypatch.setattr(stats_mod, "cmd_coverage", fake_coverage)
+    monkeypatch.setattr(sys, "argv", ["harness", "trust", "--refresh", "--no-trend"])
+
+    cmd_trust()
+
+    captured = capsys.readouterr()
+    assert calls == [("coverage", 0)]
+    assert "pyharness trust report" in captured.out
+    assert "run `harness trust --verbose`" in captured.out
+
+
+def test_cmd_trust_refresh_failure_stops_before_report(
+    tmp_project: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    def fail_coverage(*, min_pct: int | None = None) -> None:
+        raise SystemExit(7)
+
+    monkeypatch.setattr(stats_mod, "cmd_coverage", fail_coverage)
+    monkeypatch.setattr(sys, "argv", ["harness", "trust", "--refresh", "--no-trend"])
+
+    with pytest.raises(SystemExit) as exc:
+        cmd_trust()
+
+    assert exc.value.code == 7
+    assert "pyharness trust report" not in capsys.readouterr().out
+
+
 # ─────────────── CLI wiring smoke ──────────────────────────────
 
 
@@ -430,7 +471,7 @@ def _subprocess_env() -> dict[str, str]:
     return env
 
 
-def test_cli_help_lists_stats() -> None:
+def test_cli_help_lists_stats_and_trust() -> None:
     result = subprocess.run(
         [sys.executable, "-m", "harness.cli", "help"],
         capture_output=True,
@@ -440,6 +481,7 @@ def test_cli_help_lists_stats() -> None:
     )
     assert result.returncode == 0
     assert "stats" in result.stdout
+    assert "trust" in result.stdout
     assert "Reports:" in result.stdout
 
 
@@ -476,6 +518,7 @@ def test_render_does_not_crash_on_empty_report(capsys: pytest.CaptureFixture[str
     captured = capsys.readouterr()
     assert "TRUST" in captured.out
     assert "(none)" in captured.out
+    assert "next actions" in captured.out
 
 
 def test_inspection_dataclass_fields() -> None:

@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
+import os
 import subprocess
 import sys
 import textwrap
 from pathlib import Path
 
 import pytest
+
+from harness.metrics import CrapRow
 
 _MODULE_SRC = textwrap.dedent(
     """\
@@ -104,3 +107,80 @@ def test_crap_stays_advisory_when_disabled(
 
     captured = capsys.readouterr()
     assert "CRAP: 1 function(s) exceed 0.5" in captured.out
+
+
+def test_cached_crap_advisory_skips_without_coverage(
+    tmp_project: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    from harness.config import clear_cache
+    from harness.tasks.crap import cmd_crap_cached_advisory
+
+    monkeypatch.chdir(tmp_project)
+    clear_cache()
+    try:
+        cmd_crap_cached_advisory()
+    finally:
+        clear_cache()
+
+    assert "no coverage cache" in capsys.readouterr().out
+
+
+def test_cached_crap_advisory_skips_stale_coverage(
+    tmp_project: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    from harness.config import clear_cache
+    from harness.tasks.crap import cmd_crap_cached_advisory
+
+    cov_cache = tmp_project / ".coverage"
+    cov_cache.write_text("old", encoding="utf-8")
+    os.utime(cov_cache, (1, 1))
+    monkeypatch.chdir(tmp_project)
+    clear_cache()
+    try:
+        cmd_crap_cached_advisory()
+    finally:
+        clear_cache()
+
+    assert "coverage cache is stale" in capsys.readouterr().out
+
+
+def test_cached_crap_advisory_reports_fresh_offenders(
+    tmp_project: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    from harness.config import clear_cache
+    from harness.tasks import crap as crap_mod
+
+    cov_cache = tmp_project / ".coverage"
+    cov_cache.write_text("fresh", encoding="utf-8")
+    future = max(p.stat().st_mtime for p in tmp_project.rglob("*.py")) + 10
+    os.utime(cov_cache, (future, future))
+    (tmp_project / "coverage.xml").write_text("<coverage />", encoding="utf-8")
+    monkeypatch.chdir(tmp_project)
+    monkeypatch.setattr(crap_mod, "generate_coverage_xml", lambda: Path("coverage.xml"))
+    monkeypatch.setattr(crap_mod, "parse_coverage", lambda path: {})
+    monkeypatch.setattr(crap_mod, "lizard_functions", lambda src: [])
+    monkeypatch.setattr(
+        crap_mod,
+        "compute_crap_rows",
+        lambda *args, **kwargs: [
+            CrapRow(
+                path="harness/mod.py",
+                name="inc",
+                start=1,
+                end=2,
+                ccn=10,
+                loc=2,
+                coverage=0.0,
+                crap=110.0,
+            )
+        ],
+    )
+    clear_cache()
+    try:
+        crap_mod.cmd_crap_cached_advisory()
+    finally:
+        clear_cache()
+
+    out = capsys.readouterr().out
+    assert "inc@1-2@harness/mod.py" in out
+    assert "cached advisory" in out

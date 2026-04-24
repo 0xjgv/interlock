@@ -5,7 +5,6 @@ from __future__ import annotations
 import ast
 import datetime as _dt
 import json
-import os
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -20,11 +19,13 @@ from harness.metrics import (
     CrapRow,
     MutationSummary,
     compute_crap_rows,
+    iter_py_files,
     lizard_functions,
     parse_coverage,
     read_mutation_summary,
 )
 from harness.runner import GREEN, RED, RESET, VERBOSE, YELLOW, generate_coverage_xml, warn_skip
+from harness.tasks.coverage import cmd_coverage
 
 if TYPE_CHECKING:
     from harness.config import HarnessConfig
@@ -47,9 +48,6 @@ _TIERS: tuple[tuple[float, str, str, str], ...] = (
     (TRUST_YELLOW, YELLOW, "🟡", "CAUTION"),
     (0.0, RED, "🔴", "RISKY"),
 )
-
-# Directories to skip during test AST walk (vendored deps, caches).
-_SKIP_DIRS = frozenset({".venv", "venv", "__pycache__", ".tox", "node_modules"})
 
 
 @dataclass(frozen=True)
@@ -153,22 +151,13 @@ def _collect_test_inspections(
         return []
     relpath = cfg.relpath if cfg is not None else str
     out: list[TestInspection] = []
-    for path in sorted(_walk_py_files(test_dir)):
+    for path in sorted(iter_py_files(test_dir)):
         try:
             tree = ast.parse(path.read_text(encoding="utf-8"))
         except (OSError, SyntaxError):
             continue
         out.extend(_inspect_tree(tree, relpath(path)))
     return out
-
-
-def _walk_py_files(root: Path) -> Iterator[Path]:
-    """Yield .py files under ``root``, pruning ``_SKIP_DIRS`` at descent."""
-    for dirpath, dirnames, filenames in os.walk(root):
-        dirnames[:] = [d for d in dirnames if d not in _SKIP_DIRS]
-        for name in filenames:
-            if name.endswith(".py"):
-                yield Path(dirpath) / name
 
 
 def _inspect_tree(tree: ast.Module, rel_path: str) -> list[TestInspection]:
@@ -269,7 +258,7 @@ def _write_trust(cache: Path, score: float) -> None:
 # ─────────────── render ─────────────────────────────────────────
 
 
-def _render(report: TrustReport, *, verbose: bool) -> None:
+def _render(report: TrustReport, *, verbose: bool, command_name: str = "stats") -> None:
     """ANSI one-shot report. Box-drawing chars are stdlib-safe on modern terms."""
     print()
     _render_header(report)
@@ -280,7 +269,9 @@ def _render(report: TrustReport, *, verbose: bool) -> None:
     print()
     _render_diff(report)
     print()
-    _render_stages(report)
+    _render_next_actions(report, verbose=verbose)
+    print()
+    _render_stages(report, command_name=command_name)
 
 
 def _render_header(report: TrustReport) -> None:
@@ -349,7 +340,40 @@ def _render_diff(report: TrustReport) -> None:
         print(f"    {path}{marker}")
 
 
-def _render_stages(report: TrustReport) -> None:
+def _render_next_actions(report: TrustReport, *, verbose: bool) -> None:
+    print("▸ next actions")
+    if not report.suspicious and not report.crap_rows:
+        print("    (none)")
+        return
+    if report.suspicious:
+        _render_suspicious_actions(report.suspicious, verbose=verbose)
+    if report.crap_rows:
+        _render_crap_actions(report.crap_rows, verbose=verbose)
+    print("    Refresh with `harness trust --refresh --no-trend` or `harness ci`.")
+
+
+def _render_suspicious_actions(rows: list[TestInspection], *, verbose: bool) -> None:
+    print("    Add behavioral assertions, or shorten/mark intentional smoke tests:")
+    shown = rows if verbose else rows[:3]
+    for row in shown:
+        print(f"      {row.file}::{row.name}")
+    _render_more_hint(total=len(rows), shown=len(shown))
+
+
+def _render_crap_actions(rows: list[CrapRow], *, verbose: bool) -> None:
+    print("    Cover or simplify hot functions; start with:")
+    shown = rows if verbose else rows[:3]
+    for row in shown:
+        print(f"      {row.path}::{row.name}  cov {row.coverage * 100:.0f}%")
+    _render_more_hint(total=len(rows), shown=len(shown))
+
+
+def _render_more_hint(*, total: int, shown: int) -> None:
+    if total > shown:
+        print(f"      … {total - shown} more (use --verbose)")
+
+
+def _render_stages(report: TrustReport, *, command_name: str) -> None:
     parts: list[str] = []
     if report.coverage_pct is not None:
         parts.append(f"coverage {report.coverage_pct:.0f}%")
@@ -358,7 +382,7 @@ def _render_stages(report: TrustReport) -> None:
     parts.append(f"CRAP {len(report.crap_rows)} over ceiling")
     parts.append(f"suspicious {len(report.suspicious)}")
     print("stages: " + "   ".join(parts))
-    print("run `harness stats --verbose` for full breakdown")
+    print(f"run `harness {command_name} --verbose` for full breakdown")
 
 
 def _delta_arrow(delta: float) -> str:
@@ -382,15 +406,27 @@ def _crap_color(crap: float, crap_max: float) -> str:
 
 def cmd_stats() -> None:
     """Print a trust-score report over cached quality data. Always exits 0 (advisory)."""
+    _cmd_trust_like(command_name="stats", allow_refresh=False)
+
+
+def cmd_trust() -> None:
+    """Print an actionable trust report; --refresh runs coverage first."""
+    _cmd_trust_like(command_name="trust", allow_refresh=True)
+
+
+def _cmd_trust_like(*, command_name: str, allow_refresh: bool) -> None:
     cfg = load_config()
     no_trend = "--no-trend" in sys.argv
 
+    if allow_refresh and "--refresh" in sys.argv:
+        cmd_coverage(min_pct=0)
+
     if not Path(".coverage").exists():
-        warn_skip("stats: no coverage data — run `harness coverage` first")
+        warn_skip(f"{command_name}: no coverage data — run `harness coverage` first")
         return
     cov_file = generate_coverage_xml()
     if not cov_file.exists():
-        warn_skip("stats: coverage.xml not generated — run `harness coverage` first")
+        warn_skip(f"{command_name}: coverage.xml not generated — run `harness coverage` first")
         return
 
     cov_map = parse_coverage(cov_file)
@@ -425,7 +461,7 @@ def cmd_stats() -> None:
         diff_changed=diff_changed,
         diff_new_crap=[r for r in crap_rows if r.path in diff_changed],
     )
-    _render(report, verbose=VERBOSE)
+    _render(report, verbose=VERBOSE, command_name=command_name)
 
     if not no_trend:
         _write_trust(cache, score)

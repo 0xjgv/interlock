@@ -2,14 +2,30 @@
 
 from __future__ import annotations
 
+import os
 import re
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from harness.runner import capture, generate_coverage_xml, python_m, tool
 
+if TYPE_CHECKING:
+    from collections.abc import Iterator
+
 _LIZARD_LINE = re.compile(r"^\s*(\d+)\s+(\d+)\s+\d+\s+(\d+)\s+\d+\s+(\S+)@(\d+)-(\d+)@(.+)$")
+
+PY_SKIP_DIRS = frozenset({".venv", "venv", "__pycache__", ".tox", "node_modules"})
+
+
+def iter_py_files(root: Path) -> Iterator[Path]:
+    """Yield .py files under ``root``, pruning ``PY_SKIP_DIRS`` at descent."""
+    for dirpath, dirnames, filenames in os.walk(root):
+        dirnames[:] = [d for d in dirnames if d not in PY_SKIP_DIRS]
+        for name in filenames:
+            if name.endswith(".py"):
+                yield Path(dirpath) / name
 
 
 @dataclass(frozen=True)

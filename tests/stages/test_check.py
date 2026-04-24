@@ -138,6 +138,7 @@ def test_check_in_process_dispatches_stages(
         "run",
         lambda task, **kw: calls.append(("run", task.description, kw)),
     )
+    monkeypatch.setattr(check_mod, "cmd_crap_cached_advisory", lambda: calls.append("cached-crap"))
     monkeypatch.setattr(
         check_mod, "print_suppressions_report", lambda: calls.append("suppressions")
     )
@@ -150,6 +151,7 @@ def test_check_in_process_dispatches_stages(
         "format",
         ("run_tasks", ["Type check", "Run tests"]),
         ("run", "Deps (deptry)", {"no_exit": True}),
+        "cached-crap",
         "suppressions",
     ]
     assert "Quality Checks" in capsys.readouterr().out

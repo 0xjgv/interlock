@@ -6,6 +6,7 @@ from harness.config import load_config
 from harness.reports.suppressions import print_suppressions_report
 from harness.runner import run, run_tasks, section, warn_skip
 from harness.tasks.acceptance import task_acceptance
+from harness.tasks.crap import cmd_crap_cached_advisory
 from harness.tasks.deps import task_deps
 from harness.tasks.fix import cmd_fix
 from harness.tasks.format import cmd_format
@@ -35,5 +36,6 @@ def cmd_check() -> None:
                 parallel.append(acceptance)
         run_tasks(parallel)
         run(task_deps(), no_exit=True)
+        cmd_crap_cached_advisory()
     finally:
         print_suppressions_report()
