@@ -1,0 +1,4 @@
+openspec/
+.claude/
+.codex/
+.env*

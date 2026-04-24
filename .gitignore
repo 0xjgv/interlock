@@ -24,4 +24,8 @@ mutmut-junit.xml
 # <<< harness managed <<<
 
 # AI
+.claude/commands/
+.claude/skills/
 .humanlayer/
+openspec/
+.codex/
