@@ -5,9 +5,9 @@ from __future__ import annotations
 import subprocess
 import sys
 
-from harness.config import load_config
+from harness.config import HarnessConfig, load_config
 from harness.git import changed_py_files_vs_main
-from harness.metrics import coverage_line_rate, read_mutation_summary
+from harness.metrics import MutationSummary, coverage_line_rate, read_mutation_summary
 from harness.runner import (
     arg_value,
     fail,
@@ -54,6 +54,31 @@ def _print_survivors(survived: list[str], changed: set[str] | None) -> None:
         print(f"      {key}")
 
 
+def _resolve_min_score(cfg: HarnessConfig) -> float | None:
+    """CLI ``--min-score=`` wins; else ``cfg.mutation_min_score`` when enforcing; else None."""
+    min_score_arg = arg_value("--min-score=", "")
+    if min_score_arg:
+        return float(min_score_arg)
+    if cfg.enforce_mutation:
+        return cfg.mutation_min_score
+    return None
+
+
+def _report_mutation(
+    summary: MutationSummary, min_score: float | None, *, completed: bool, changed: set[str] | None
+) -> bool:
+    """Print ok/fail row + survivors. Return True when the gate failed."""
+    total = summary.killed + summary.survived + summary.timeout
+    failed = min_score is not None and summary.score < min_score
+    partial = "" if completed else " (partial — timeout)"
+    if failed:
+        fail(f"Mutation: score {summary.score:.1f}% below threshold {min_score:.1f}%{partial}")
+    else:
+        ok(f"Mutation: score {summary.score:.1f}% (killed {summary.killed}/{total}){partial}")
+    _print_survivors(summary.survivors, changed)
+    return failed
+
+
 def cmd_mutation() -> None:
     """Mutation score via mutmut (reads ``[tool.mutmut]``).
 
@@ -75,13 +100,7 @@ def cmd_mutation() -> None:
         return
 
     timeout = int(arg_value("--max-runtime=", str(cfg.mutation_max_runtime)))
-    min_score_arg = arg_value("--min-score=", "")
-    if min_score_arg:
-        min_score: float | None = float(min_score_arg)
-    elif cfg.enforce_mutation:
-        min_score = cfg.mutation_min_score
-    else:
-        min_score = None
+    min_score = _resolve_min_score(cfg)
     changed = changed_py_files_vs_main() if "--changed-only" in sys.argv else None
 
     completed = _run_mutmut(python_m("mutmut"), timeout)
@@ -90,14 +109,6 @@ def cmd_mutation() -> None:
     if summary is None:
         warn_skip("mutation: .mutmut-cache/ missing after run")
         return
-    total = summary.killed + summary.survived + summary.timeout
 
-    failed = min_score is not None and summary.score < min_score
-    partial = "" if completed else " (partial — timeout)"
-    if failed:
-        fail(f"Mutation: score {summary.score:.1f}% below threshold {min_score:.1f}%{partial}")
-    else:
-        ok(f"Mutation: score {summary.score:.1f}% (killed {summary.killed}/{total}){partial}")
-    _print_survivors(summary.survivors, changed)
-    if failed:
+    if _report_mutation(summary, min_score, completed=completed, changed=changed):
         sys.exit(1)

@@ -327,46 +327,33 @@ def _load_config_cached(project_root: Path) -> HarnessConfig:
 
     test_dir_override = table.get("test_dir")
     src_dir_override = table.get("src_dir")
+    features_dir_override = table.get("features_dir")
     runner_override = _runner_override(table)
     invoker_override = _invoker_override(table)
+    acceptance_runner = _acceptance_runner_override(table)
     pytest_args = tuple(str(a) for a in (table.get("pytest_args") or ()))
 
-    test_dir = (
-        (project_root / test_dir_override).resolve()
-        if isinstance(test_dir_override, str)
-        else detect_test_dir(project_root)
+    test_dir = _resolved_path(test_dir_override, detect_test_dir(project_root), project_root)
+    src_dir = _resolved_path(
+        src_dir_override, detect_src_dir(project_root, pyproject), project_root
     )
-    src_dir = (
-        (project_root / src_dir_override).resolve()
-        if isinstance(src_dir_override, str)
-        else detect_src_dir(project_root, pyproject)
+    features_dir = _resolved_path(
+        features_dir_override, detect_features_dir(project_root, test_dir), project_root
     )
     test_runner: TestRunner = runner_override or detect_test_runner(
         project_root, pyproject, test_dir
     )
     test_invoker: TestInvoker = invoker_override or detect_test_invoker(project_root)
-    thresholds = _threshold_overrides(table)
+    run_acceptance_in_check, mutation_ci_mode, mutation_since_ref = _resolve_flags(table)
 
-    acceptance_runner = _acceptance_runner_override(table)
-    features_dir_override = table.get("features_dir")
-    features_dir = (
-        (project_root / features_dir_override).resolve()
-        if isinstance(features_dir_override, str)
-        else detect_features_dir(project_root, test_dir)
-    )
-    run_acceptance_override = _coerce_bool(table.get("run_acceptance_in_check"))
-    run_acceptance_in_check = (
-        run_acceptance_override
-        if run_acceptance_override is not None
-        else HarnessConfig.run_acceptance_in_check
-    )
-
-    mutation_ci_mode = _mutation_ci_mode_override(table) or HarnessConfig.mutation_ci_mode
-    since_ref_raw = table.get("mutation_since_ref")
-    mutation_since_ref = (
-        since_ref_raw if isinstance(since_ref_raw, str) else HarnessConfig.mutation_since_ref
-    )
-
+    overrides = {
+        "src_dir": src_dir_override,
+        "test_dir": test_dir_override,
+        "features_dir": features_dir_override,
+        "test_runner": runner_override,
+        "test_invoker": invoker_override,
+        "acceptance_runner": acceptance_runner,
+    }
     return HarnessConfig(
         project_root=project_root,
         src_dir=src_dir,
@@ -380,19 +367,31 @@ def _load_config_cached(project_root: Path) -> HarnessConfig:
         run_acceptance_in_check=run_acceptance_in_check,
         mutation_ci_mode=mutation_ci_mode,
         mutation_since_ref=mutation_since_ref,
-        value_sources=_complete_value_sources(
-            value_sources,
-            table,
-            test_dir_override=test_dir_override,
-            src_dir_override=src_dir_override,
-            runner_override=runner_override,
-            invoker_override=invoker_override,
-            acceptance_runner=acceptance_runner,
-            features_dir_override=features_dir_override,
-        ),
+        value_sources=_complete_value_sources(value_sources, table, overrides=overrides),
         unsupported_presets=unsupported_presets,
-        **thresholds,
+        **_threshold_overrides(table),
     )
+
+
+def _resolved_path[T](override: object, fallback: T, project_root: Path) -> Path | T:
+    """Resolve ``override`` against ``project_root`` when set; otherwise return ``fallback``."""
+    if isinstance(override, str):
+        return (project_root / override).resolve()
+    return fallback
+
+
+def _resolve_flags(table: dict[str, Any]) -> tuple[bool, MutationCIMode, str]:
+    """Return ``(run_acceptance_in_check, mutation_ci_mode, mutation_since_ref)``."""
+    run_override = _coerce_bool(table.get("run_acceptance_in_check"))
+    run_acceptance_in_check = (
+        run_override if run_override is not None else HarnessConfig.run_acceptance_in_check
+    )
+    mutation_ci_mode = _mutation_ci_mode_override(table) or HarnessConfig.mutation_ci_mode
+    since_ref_raw = table.get("mutation_since_ref")
+    mutation_since_ref = (
+        since_ref_raw if isinstance(since_ref_raw, str) else HarnessConfig.mutation_since_ref
+    )
+    return run_acceptance_in_check, mutation_ci_mode, mutation_since_ref
 
 
 _STRING_KEYS = ("src_dir", "test_dir", "mutation_since_ref", "features_dir")
@@ -462,12 +461,7 @@ def _complete_value_sources(
     sources: dict[str, str],
     table: dict[str, Any],
     *,
-    test_dir_override: object,
-    src_dir_override: object,
-    runner_override: TestRunner | None,
-    invoker_override: TestInvoker | None,
-    acceptance_runner: AcceptanceRunner | None,
-    features_dir_override: object,
+    overrides: dict[str, object],
 ) -> dict[str, str]:
     complete = dict(sources)
     default_keys = (
@@ -480,14 +474,7 @@ def _complete_value_sources(
     )
     for key in default_keys:
         complete.setdefault(key, _SOURCE_DEFAULT)
-    for key, value in {
-        "src_dir": src_dir_override,
-        "test_dir": test_dir_override,
-        "test_runner": runner_override,
-        "test_invoker": invoker_override,
-        "features_dir": features_dir_override,
-        "acceptance_runner": acceptance_runner,
-    }.items():
+    for key, value in overrides.items():
         if value is None:
             complete[key] = _SOURCE_AUTO
         else:

@@ -166,6 +166,20 @@ def test_run_tasks_preserves_output_on_failure(capsys: pytest.CaptureFixture[str
     assert "ERR" in out
 
 
+def test_run_tasks_verbose_streams_stdout_live(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """VERBOSE path echoes the command + per-line `[tag]` prefix for stdout and stderr."""
+    monkeypatch.setattr("harness.runner.VERBOSE", True)
+    run_tasks([
+        _python_task("Verbose", "print('hello'); import sys; sys.stderr.write('err\\n')"),
+    ])
+    out = _strip(capsys.readouterr().out)
+    assert "-> [Verbose]" in out
+    assert "[Verbose] hello" in out
+    assert "[Verbose] err" in out
+
+
 def test_task_explicit_label_and_display_override_defaults(
     capsys: pytest.CaptureFixture[str],
 ) -> None:

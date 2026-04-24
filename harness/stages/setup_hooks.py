@@ -19,41 +19,40 @@ def _is_post_edit_command(command: object) -> bool:
     )
 
 
+def _reset_invalid_container[T: (dict[str, object], list[object])](
+    parent: dict[str, object], key: str, empty: T
+) -> T:
+    """Return ``parent[key]`` when it matches ``type(empty)``; reset to ``empty`` otherwise."""
+    value = parent.setdefault(key, empty)
+    if isinstance(value, type(empty)):
+        return value  # pyright: ignore[reportReturnType]
+    parent[key] = empty
+    return empty
+
+
+def _keep_existing_hook(hook: object, new_command: str) -> bool:
+    """Keep non-command hooks; drop duplicates of ``new_command`` or prior post-edit entries."""
+    if not isinstance(hook, dict):
+        return True
+    if hook.get("type") != "command":
+        return True
+    existing = hook.get("command")
+    if existing == new_command:
+        return False
+    return not _is_post_edit_command(existing)
+
+
 def _ensure_stop_hook(settings: dict[str, object], command: str) -> dict[str, object]:
-    hooks = settings.setdefault("hooks", {})
-    if not isinstance(hooks, dict):
-        hooks = {}
-        settings["hooks"] = hooks
-
-    stop_entries = hooks.setdefault("Stop", [])
-    if not isinstance(stop_entries, list):
-        stop_entries = []
-        hooks["Stop"] = stop_entries
-
-    hook_entry = {"type": "command", "command": command}
-    merged_hooks: list[object] = []
-
-    for entry in stop_entries:
-        if not isinstance(entry, dict):
-            continue
-        nested_hooks = entry.get("hooks")
-        if not isinstance(nested_hooks, list):
-            continue
-        for existing_hook in nested_hooks:
-            if not isinstance(existing_hook, dict):
-                merged_hooks.append(existing_hook)
-                continue
-            if existing_hook.get("type") != "command":
-                merged_hooks.append(existing_hook)
-                continue
-            existing_command = existing_hook.get("command")
-            if existing_command == command:
-                continue
-            if _is_post_edit_command(existing_command):
-                continue
-            merged_hooks.append(existing_hook)
-
-    merged_hooks.append(hook_entry)
+    hooks = _reset_invalid_container(settings, "hooks", {})
+    stop_entries = _reset_invalid_container(hooks, "Stop", [])
+    merged_hooks: list[object] = [
+        hook
+        for entry in stop_entries
+        if isinstance(entry, dict) and isinstance(entry.get("hooks"), list)
+        for hook in entry["hooks"]
+        if _keep_existing_hook(hook, command)
+    ]
+    merged_hooks.append({"type": "command", "command": command})
     hooks["Stop"] = [{"hooks": merged_hooks}]
     return settings
 

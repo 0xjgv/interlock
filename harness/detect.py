@@ -111,14 +111,27 @@ def detect_src_dir(project_root: Path, pyproject: dict[str, Any]) -> Path:
     for candidate in _declared_package_candidates(project_root, pyproject):
         if candidate.is_dir():
             return candidate.resolve()
+    return (
+        _src_layout_dir(project_root)
+        or _top_level_package_dir(project_root)
+        or _project_name_dir(project_root, pyproject)
+        or project_root.resolve()
+    )
 
+
+def _src_layout_dir(project_root: Path) -> Path | None:
+    """Return ``src/<pkg>`` (first ``__init__.py`` child) or ``src/`` itself if layout exists."""
     src_dir = project_root / "src"
-    if src_dir.is_dir():
-        for entry in sorted(src_dir.iterdir()):
-            if entry.is_dir() and (entry / "__init__.py").is_file():
-                return entry.resolve()
-        return src_dir.resolve()
+    if not src_dir.is_dir():
+        return None
+    for entry in sorted(src_dir.iterdir()):
+        if entry.is_dir() and (entry / "__init__.py").is_file():
+            return entry.resolve()
+    return src_dir.resolve()
 
+
+def _top_level_package_dir(project_root: Path) -> Path | None:
+    """First top-level dir with ``__init__.py`` that isn't a tests/tooling dir."""
     for entry in sorted(project_root.iterdir()):
         if not entry.is_dir() or entry.name.startswith("."):
             continue
@@ -126,39 +139,54 @@ def detect_src_dir(project_root: Path, pyproject: dict[str, Any]) -> Path:
             continue
         if (entry / "__init__.py").is_file():
             return entry.resolve()
+    return None
 
+
+def _project_name_dir(project_root: Path, pyproject: dict[str, Any]) -> Path | None:
+    """``[project] name`` as an importable directory, if it exists on disk."""
     project_name = (pyproject.get("project", {}) or {}).get("name")
-    if isinstance(project_name, str):
-        candidate = project_root / project_name.replace("-", "_")
-        if candidate.is_dir():
-            return candidate.resolve()
-
-    return project_root.resolve()
+    if not isinstance(project_name, str):
+        return None
+    candidate = project_root / project_name.replace("-", "_")
+    return candidate.resolve() if candidate.is_dir() else None
 
 
 def _declared_package_candidates(project_root: Path, pyproject: dict[str, Any]) -> Iterator[Path]:
     """Yield candidate source dirs from explicit build-backend declarations."""
     tool = pyproject.get("tool", {}) or {}
+    for resolver in (_uv_package_path, _hatch_package_path, _setuptools_package_path):
+        candidate = resolver(project_root, tool)
+        if candidate is not None:
+            yield candidate
 
+
+def _uv_package_path(project_root: Path, tool: dict[str, Any]) -> Path | None:
     uv_module = (tool.get("uv", {}) or {}).get("build-backend", {}) or {}
     module_name = uv_module.get("module-name")
-    if isinstance(module_name, str) and module_name:
-        module_root = uv_module.get("module-root", "")
-        yield project_root / str(module_root) / module_name
+    if not isinstance(module_name, str) or not module_name:
+        return None
+    module_root = uv_module.get("module-root", "")
+    return project_root / str(module_root) / module_name
 
-    hatch_packages = (
+
+def _hatch_package_path(project_root: Path, tool: dict[str, Any]) -> Path | None:
+    packages = (
         (tool.get("hatch", {}) or {})
         .get("build", {})
         .get("targets", {})
         .get("wheel", {})
         .get("packages")
     )
-    if isinstance(hatch_packages, list) and hatch_packages:
-        yield project_root / str(hatch_packages[0])
+    if not isinstance(packages, list) or not packages:
+        return None
+    return project_root / str(packages[0])
 
-    setuptools_packages = (tool.get("setuptools", {}) or {}).get("packages")
-    if isinstance(setuptools_packages, list) and setuptools_packages:
-        yield project_root / str(setuptools_packages[0]).replace(".", "/")
+
+def _setuptools_package_path(project_root: Path, tool: dict[str, Any]) -> Path | None:
+    packages = (tool.get("setuptools", {}) or {}).get("packages")
+    if not isinstance(packages, list) or not packages:
+        return None
+    return project_root / str(packages[0]).replace(".", "/")
 
 
 def detect_test_invoker(project_root: Path) -> TestInvoker:

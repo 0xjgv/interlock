@@ -520,6 +520,57 @@ def test_render_does_not_crash_on_empty_report(capsys: pytest.CaptureFixture[str
     assert "── Next Actions" in captured.out
 
 
+def test_render_verbose_and_truncation(capsys: pytest.CaptureFixture[str]) -> None:
+    """Verbose path shows every row; non-verbose truncates with overflow hints."""
+    from harness.tasks.stats import TrustReport, _render
+
+    suspicious = [
+        TestInspection(
+            file="tests/t.py", name=f"test_{i}", loc=10, assert_count=0, trivial_asserts=0
+        )
+        for i in range(12)
+    ]
+    # One trivial-assert row to hit the `!= 0` branch of `_format_suspicious`.
+    suspicious.append(
+        TestInspection(
+            file="tests/t.py", name="test_trivial", loc=8, assert_count=2, trivial_asserts=2
+        )
+    )
+    crap_rows = [
+        CrapRow(
+            path="a.py", name=f"f{i}", start=1, end=10, ccn=10, loc=10, coverage=0.3, crap=50.0 + i
+        )
+        for i in range(12)
+    ]
+    report = TrustReport(
+        score=40.0,
+        prev_score=None,
+        crap_rows=crap_rows,
+        suspicious=suspicious,
+        mutation=None,
+        coverage_pct=None,
+        crap_max=30.0,
+    )
+
+    _render(report, verbose=False)
+    non_verbose = capsys.readouterr().out
+    assert "more (use --verbose)" in non_verbose  # _print_truncated hint
+    assert "Add behavioral assertions" in non_verbose
+    assert "Cover or simplify hot functions" in non_verbose
+    # Top-3 actions list + more-hint visible.
+    assert f"{len(suspicious) - 3} more" in non_verbose
+    assert f"{len(crap_rows) - 3} more" in non_verbose
+
+    _render(report, verbose=True)
+    verbose = capsys.readouterr().out
+    # Every suspicious row rendered; no trailing "more" overflow hint.
+    for row in suspicious:
+        assert row.name in verbose
+    for row in crap_rows:
+        assert f"::{row.name}" in verbose
+    assert "more (use --verbose)" not in verbose
+
+
 def test_inspection_dataclass_fields() -> None:
     """Sanity: TestInspection fields line up with AST walker outputs."""
     t = TestInspection(file="a.py", name="test_x", loc=3, assert_count=1, trivial_asserts=0)
