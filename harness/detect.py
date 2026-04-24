@@ -168,14 +168,21 @@ def detect_test_invoker(project_root: Path) -> TestInvoker:
     return "python"
 
 
+def expected_target_interpreter(project_root: Path) -> Path:
+    """Return the conventional in-project venv interpreter path (existence not checked).
+
+    POSIX: ``.venv/bin/python``. Windows: ``.venv/Scripts/python.exe``.
+    """
+    venv = project_root / ".venv"
+    return venv / "Scripts" / "python.exe" if os.name == "nt" else venv / "bin" / "python"
+
+
 def detect_target_interpreter(project_root: Path) -> Path | None:
     """Return the target project's in-tree venv interpreter, or ``None`` when absent.
 
-    Looks for ``.venv/bin/python`` (POSIX) or ``.venv/Scripts/python.exe`` (Windows).
     Lets ``invoker_prefix`` prefer the project's venv over pipx's own interpreter.
     """
-    venv = project_root / ".venv"
-    candidate = venv / "Scripts" / "python.exe" if os.name == "nt" else venv / "bin" / "python"
+    candidate = expected_target_interpreter(project_root)
     return candidate if candidate.is_file() else None
 
 

@@ -10,7 +10,7 @@ from __future__ import annotations
 import os
 import sys
 import tomllib
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from functools import cache
 from pathlib import Path
 from typing import Any, Literal
@@ -28,6 +28,62 @@ TestRunner = Literal["pytest", "unittest"]
 TestInvoker = Literal["python", "uv"]
 AcceptanceRunner = Literal["pytest-bdd", "behave", "off"]
 MutationCIMode = Literal["off", "incremental", "full"]
+Preset = Literal["baseline", "strict", "legacy"]
+
+_SOURCE_AUTO = "auto-detected"
+_SOURCE_DEFAULT = "bundled-default"
+_SOURCE_PRESET = "preset-derived"
+_SOURCE_PROJECT = "project-configured"
+_SOURCE_USER = "user-global"
+
+_SUPPORTED_PRESETS: tuple[Preset, ...] = ("baseline", "strict", "legacy")
+_PRESET_DEFAULTS: dict[Preset, dict[str, object]] = {
+    "baseline": {
+        "coverage_min": 70,
+        "crap_max": 40.0,
+        "complexity_max_ccn": 18,
+        "complexity_max_loc": 120,
+        "complexity_max_args": 8,
+        "mutation_min_coverage": 60.0,
+        "mutation_max_runtime": 600,
+        "mutation_min_score": 70.0,
+        "enforce_crap": False,
+        "run_mutation_in_ci": False,
+        "enforce_mutation": False,
+        "mutation_ci_mode": "off",
+        "run_acceptance_in_check": False,
+    },
+    "strict": {
+        "coverage_min": 90,
+        "crap_max": 20.0,
+        "complexity_max_ccn": 10,
+        "complexity_max_loc": 80,
+        "complexity_max_args": 5,
+        "mutation_min_coverage": 80.0,
+        "mutation_max_runtime": 900,
+        "mutation_min_score": 85.0,
+        "enforce_crap": True,
+        "run_mutation_in_ci": True,
+        "enforce_mutation": True,
+        "mutation_ci_mode": "full",
+        "run_acceptance_in_check": True,
+    },
+    "legacy": {
+        "coverage_min": 0,
+        "crap_max": 80.0,
+        "complexity_max_ccn": 30,
+        "complexity_max_loc": 250,
+        "complexity_max_args": 12,
+        "mutation_min_coverage": 0.0,
+        "mutation_max_runtime": 300,
+        "mutation_min_score": 0.0,
+        "enforce_crap": False,
+        "run_mutation_in_ci": False,
+        "enforce_mutation": False,
+        "mutation_ci_mode": "off",
+        "run_acceptance_in_check": False,
+    },
+}
 
 
 class HarnessConfigError(Exception):
@@ -129,6 +185,7 @@ class HarnessConfig:
     test_dir: Path
     test_runner: TestRunner
     test_invoker: TestInvoker
+    preset: Preset | None = None
     pytest_args: tuple[str, ...] = ()
     # Thresholds — overridable via `[tool.harness]`. Single source of truth for
     # every gate; individual tasks never hardcode these.
@@ -150,6 +207,8 @@ class HarnessConfig:
     acceptance_runner: AcceptanceRunner | None = None
     features_dir: Path | None = None
     run_acceptance_in_check: bool = False
+    value_sources: dict[str, str] = field(default_factory=dict)
+    unsupported_presets: tuple[str, ...] = ()
 
     @property
     def pyproject(self) -> dict[str, Any]:
@@ -234,9 +293,11 @@ def require_pyproject(cfg: HarnessConfig) -> None:
 @cache
 def _load_config_cached(project_root: Path) -> HarnessConfig:
     pyproject = _load_pyproject(project_root)
-    # Precedence (high → low): project [tool.harness] > ~/.config/harness/config.toml
-    # > bundled dataclass defaults. `dict(user | project)` lets project keys override.
-    table = {**_user_global_table(), **_harness_table(pyproject)}
+    user_table = _user_global_table()
+    project_table = _harness_table(pyproject)
+    table, value_sources, preset, unsupported_presets = _resolve_config_table(
+        user_table, project_table
+    )
 
     test_dir_override = table.get("test_dir")
     src_dir_override = table.get("src_dir")
@@ -267,7 +328,12 @@ def _load_config_cached(project_root: Path) -> HarnessConfig:
         if isinstance(features_dir_override, str)
         else detect_features_dir(project_root, test_dir)
     )
-    run_acceptance_in_check = bool(table.get("run_acceptance_in_check"))
+    run_acceptance_override = _coerce_bool(table.get("run_acceptance_in_check"))
+    run_acceptance_in_check = (
+        run_acceptance_override
+        if run_acceptance_override is not None
+        else HarnessConfig.run_acceptance_in_check
+    )
 
     mutation_ci_mode = _mutation_ci_mode_override(table) or HarnessConfig.mutation_ci_mode
     since_ref_raw = table.get("mutation_since_ref")
@@ -281,14 +347,130 @@ def _load_config_cached(project_root: Path) -> HarnessConfig:
         test_dir=test_dir,
         test_runner=test_runner,
         test_invoker=test_invoker,
+        preset=preset,
         pytest_args=pytest_args,
         acceptance_runner=acceptance_runner,
         features_dir=features_dir,
         run_acceptance_in_check=run_acceptance_in_check,
         mutation_ci_mode=mutation_ci_mode,
         mutation_since_ref=mutation_since_ref,
+        value_sources=_complete_value_sources(
+            value_sources,
+            table,
+            test_dir_override=test_dir_override,
+            src_dir_override=src_dir_override,
+            runner_override=runner_override,
+            invoker_override=invoker_override,
+            acceptance_runner=acceptance_runner,
+            features_dir_override=features_dir_override,
+        ),
+        unsupported_presets=unsupported_presets,
         **thresholds,
     )
+
+
+_STRING_KEYS = ("src_dir", "test_dir", "mutation_since_ref", "features_dir")
+_ENUM_PARSERS = {
+    "test_runner": _runner_override,
+    "test_invoker": _invoker_override,
+    "acceptance_runner": _acceptance_runner_override,
+    "mutation_ci_mode": _mutation_ci_mode_override,
+}
+
+
+def _resolve_config_table(
+    user_table: dict[str, Any], project_table: dict[str, Any]
+) -> tuple[dict[str, Any], dict[str, str], Preset | None, tuple[str, ...]]:
+    """Resolve config using preset defaults before explicit values per layer."""
+    resolved: dict[str, Any] = {}
+    sources: dict[str, str] = {}
+    active_preset: Preset | None = None
+    unsupported: list[str] = []
+
+    for table, source in ((user_table, _SOURCE_USER), (project_table, _SOURCE_PROJECT)):
+        preset = _preset_override(table)
+        if preset is not None:
+            resolved.update(_PRESET_DEFAULTS[preset])
+            sources.update(dict.fromkeys(_PRESET_DEFAULTS[preset], _SOURCE_PRESET))
+            resolved["preset"] = preset
+            sources["preset"] = source
+            active_preset = preset
+        elif isinstance(table.get("preset"), str):
+            unsupported.append(f"{source}: {table['preset']}")
+
+        explicit = _explicit_config_overrides(table)
+        resolved.update(explicit)
+        sources.update(dict.fromkeys(explicit, source))
+
+    return resolved, sources, active_preset, tuple(unsupported)
+
+
+def _preset_override(table: dict[str, Any]) -> Preset | None:
+    value = table.get("preset")
+    if value in _SUPPORTED_PRESETS:
+        return value
+    return None
+
+
+def _explicit_config_overrides(table: dict[str, Any]) -> dict[str, Any]:
+    overrides: dict[str, Any] = {}
+    for key in _STRING_KEYS:
+        value = table.get(key)
+        if isinstance(value, str):
+            overrides[key] = value
+    value = table.get("pytest_args")
+    if isinstance(value, list):
+        overrides["pytest_args"] = value
+    for key, parser in _ENUM_PARSERS.items():
+        parsed = parser(table)
+        if parsed is not None:
+            overrides[key] = parsed
+    overrides.update(_threshold_overrides(table))
+    value = _coerce_bool(table.get("run_acceptance_in_check"))
+    if value is not None:
+        overrides["run_acceptance_in_check"] = value
+    return overrides
+
+
+def _complete_value_sources(
+    sources: dict[str, str],
+    table: dict[str, Any],
+    *,
+    test_dir_override: object,
+    src_dir_override: object,
+    runner_override: TestRunner | None,
+    invoker_override: TestInvoker | None,
+    acceptance_runner: AcceptanceRunner | None,
+    features_dir_override: object,
+) -> dict[str, str]:
+    complete = dict(sources)
+    default_keys = (
+        *_INT_THRESHOLDS,
+        *_FLOAT_THRESHOLDS,
+        *_BOOL_THRESHOLDS,
+        "mutation_ci_mode",
+        "mutation_since_ref",
+        "run_acceptance_in_check",
+    )
+    for key in default_keys:
+        complete.setdefault(key, _SOURCE_DEFAULT)
+    for key, value in {
+        "src_dir": src_dir_override,
+        "test_dir": test_dir_override,
+        "test_runner": runner_override,
+        "test_invoker": invoker_override,
+        "features_dir": features_dir_override,
+        "acceptance_runner": acceptance_runner,
+    }.items():
+        if value is None:
+            complete[key] = _SOURCE_AUTO
+        else:
+            complete.setdefault(key, _SOURCE_PROJECT if key in table else _SOURCE_USER)
+    complete.setdefault("pytest_args", _SOURCE_DEFAULT)
+    complete.setdefault(
+        "preset", _SOURCE_DEFAULT if table.get("preset") is None else _SOURCE_PROJECT
+    )
+    return complete
 
 
 _INT_THRESHOLDS = (

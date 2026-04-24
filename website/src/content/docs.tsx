@@ -29,7 +29,7 @@ export const pageContent = {
     meta: {
         title: 'pyharness Docs — Complete Reference',
         description:
-            'Complete pyharness reference: every task and flag, every [tool.harness] config key, the precedence cascade, bundled defaults, Gherkin acceptance, and the setup-hooks deep-dive.',
+            'Complete pyharness reference: adoption diagnostics, presets, every task and flag, GitHub Action CI, bundled defaults, Gherkin acceptance, and hook interfaces.',
     },
 
     toc: [
@@ -57,9 +57,11 @@ export const pageContent = {
             parent: '#tasks',
             prefix: '├ ',
         }),
+        tocItem('#tasks-doctor', 'doctor', { level: 1, parent: '#tasks', prefix: '├ ' }),
         tocItem('#tasks-help', 'help', { level: 1, parent: '#tasks', prefix: '└ ' }),
         tocItem('#config', 'Configuration'),
         tocItem('#precedence', 'Precedence Cascade'),
+        tocItem('#github-action', 'GitHub Action CI'),
         tocItem('#defaults', 'Bundled Defaults'),
         tocItem('#acceptance', 'Acceptance (Gherkin)'),
         tocItem('#hooks', 'Hooks Deep-Dive'),
@@ -79,8 +81,8 @@ export const pageContent = {
                     margin: 0,
                 }}
             >
-                Complete reference for pyharness — every task, every config key, and every
-                bundled default, grounded in the source.
+                Complete reference for pyharness — adoption diagnostics, presets, CI wiring,
+                tasks, config keys, and bundled defaults.
             </p>
         </div>
     ),
@@ -99,8 +101,9 @@ export const pageContent = {
                         Every sub-command of <Code>harness</Code>, in the same order they appear in{' '}
                         <Code>TASK_GROUPS</Code>. Tasks mutate or inspect a single concern; stages
                         (<Code>check</Code>, <Code>pre-commit</Code>, <Code>ci</Code>,{' '}
-                        <Code>nightly</Code>) compose them. Flags not listed here fall back to{' '}
-                        <Code>[tool.harness]</Code> config.
+                        <Code>nightly</Code>) compose them. Adoption usually starts with{' '}
+                        <Code>doctor</Code>, then <Code>check</Code>, then <Code>ci</Code>. Flags
+                        not listed here fall back to <Code>[tool.harness]</Code> config.
                     </P>
                     {/* harness/cli.py:84 — "fix": (cmd_fix, "Fix lint errors with ruff") */}
                     <SectionHeading id="tasks-fix" level={2}>
@@ -269,10 +272,22 @@ harness mutation --changed-only            # only mutate changed files`}</CodeBl
                         setup-hooks
                     </SectionHeading>
                     <P>
-                        Install the git pre-commit hook and the Claude Code Stop hook. See the{' '}
-                        <a href="#hooks">Hooks deep-dive</a> for exactly what gets written.
+                        Convenience installer for hooks that call the stable{' '}
+                        <Code>harness pre-commit</Code> and <Code>harness post-edit</Code>{' '}
+                        interfaces. See the <a href="#hooks">Hooks deep-dive</a> for exactly what
+                        gets written.
                     </P>
                     <CodeBlock lang="bash">{`harness setup-hooks`}</CodeBlock>
+
+                    <SectionHeading id="tasks-doctor" level={2}>
+                        doctor
+                    </SectionHeading>
+                    <P>
+                        Adoption diagnostic. Reports readiness, detected configuration with value
+                        sources, blockers, warnings, and next steps. It stays lightweight: no
+                        tests, typecheck, coverage, mutation, dependency audit, or network checks.
+                    </P>
+                    <CodeBlock lang="bash">{`harness doctor`}</CodeBlock>
 
                     {/* harness/cli.py:123 — "help": (cmd_help, "Show this help message")
                         harness/cli.py:47-77  — _print_detected_block() prints detected paths + thresholds */}
@@ -281,17 +296,17 @@ harness mutation --changed-only            # only mutate changed files`}</CodeBl
                     </SectionHeading>
                     <P>
                         Print the task list plus detected paths (project root, src/test dirs, test
-                        runner, invoker, features dir, acceptance runner) and every active
-                        threshold.
+                        runner, invoker, features dir, acceptance runner), the active preset, and
+                        every resolved threshold.
                     </P>
                     <CodeBlock lang="bash">{`harness help`}</CodeBlock>
                 </>
             ),
             aside: (
                 <P>
-                    Task list: <Code>harness/cli.py:80-126</Code>. Reach for individual tasks only
-                    when debugging — for day-to-day use run a stage (<Code>check</Code>,{' '}
-                    <Code>pre-commit</Code>, <Code>ci</Code>, or <Code>nightly</Code>).
+                    Task list: <Code>harness/cli.py</Code>. Reach for individual tasks only when
+                    debugging; for adoption use <Code>doctor</Code>, <Code>check</Code>, and{' '}
+                    <Code>ci</Code>.
                 </P>
             ),
         },
@@ -311,6 +326,8 @@ harness mutation --changed-only            # only mutate changed files`}</CodeBl
                     </P>
                     {/* CLAUDE.md:34-61 — full annotated [tool.harness] sample block */}
                     <CodeBlock lang="toml">{`[tool.harness]
+preset = "baseline"              # "baseline" | "strict" | "legacy"
+
 # Paths / runners
 src_dir = "harness"
 test_dir = "tests"
@@ -332,6 +349,7 @@ mutation_min_score = 80.0
 enforce_crap = true
 run_mutation_in_ci = false
 enforce_mutation = false
+mutation_ci_mode = "off"         # "off" | "incremental" | "full"
 
 # Acceptance
 acceptance_runner = "pytest-bdd" # "pytest-bdd" | "behave" | "off"
@@ -339,8 +357,9 @@ features_dir = "tests/features"
 run_acceptance_in_check = false`}</CodeBlock>
 
                     <P>
-                        The 19 keys, grouped and sourced from{' '}
-                        <Code>CLAUDE.md:34-61</Code>:
+                        Presets are defaults, not a second config system. Explicit values in the
+                        same file override preset defaults. <Code>agent-safe</Code> is intentionally
+                        unsupported and appears as a diagnostic warning/blocker.
                     </P>
                     <div
                         className="w-full max-w-full overflow-x-auto"
@@ -374,6 +393,12 @@ run_acceptance_in_check = false`}</CodeBlock>
                                 {(
                                     [
                                         // CLAUDE.md:37 — src_dir = "harness"  (auto-detected when unset)
+                                        [
+                                            'preset',
+                                            '"baseline" | "strict" | "legacy"',
+                                            'unset',
+                                            'adoption posture; explicit keys still win',
+                                        ],
                                         [
                                             'src_dir',
                                             'str',
@@ -485,6 +510,12 @@ run_acceptance_in_check = false`}</CodeBlock>
                                             'false',
                                             'true = fail when score < mutation_min_score',
                                         ],
+                                        [
+                                            'mutation_ci_mode',
+                                            '"off" | "incremental" | "full"',
+                                            '"off"',
+                                            'future mutation scheduling posture',
+                                        ],
                                         // CLAUDE.md:59 — acceptance_runner = "pytest-bdd"
                                         [
                                             'acceptance_runner',
@@ -569,9 +600,9 @@ run_acceptance_in_check = false`}</CodeBlock>
             ),
             aside: (
                 <P>
-                    All 19 keys listed in <Code>CLAUDE.md:34-61</Code> and the expanded discussion
-                    in <Code>README.md:85-115</Code>. Run <Code>harness help</Code> to see which
-                    values resolved in your project.
+                    Run <Code>harness help</Code> to see the active preset and resolved values.
+                    Run <Code>harness doctor</Code> when you also need source labels, blockers, and
+                    next steps.
                 </P>
             ),
         },
@@ -585,8 +616,7 @@ run_acceptance_in_check = false`}</CodeBlock>
                         Precedence Cascade
                     </SectionHeading>
                     <P>
-                        Four layers. Highest wins. This is the contract for every threshold and
-                        path pyharness reads.
+                        Presets apply as defaults inside the existing cascade. Highest wins.
                     </P>
                     {/* README.md:121 — 1. CLI flags (--min=, --max=, --max-runtime=, --min-score=) */}
                     {/* README.md:122 — 2. Project [tool.harness] in nearest pyproject.toml */}
@@ -596,37 +626,78 @@ run_acceptance_in_check = false`}</CodeBlock>
                         <Li>
                             <strong>1. CLI flags</strong> — <Code>--min=</Code>,{' '}
                             <Code>--max=</Code>, <Code>--max-runtime=</Code>,{' '}
-                            <Code>--min-score=</Code>, <Code>--min-coverage=</Code>. Always win.
+                            <Code>--min-score=</Code>, <Code>--min-coverage=</Code>. Highest
+                            precedence.
                         </Li>
                         <Li>
-                            <strong>2. Project config</strong> —{' '}
-                            <Code>[tool.harness]</Code> in the nearest <Code>pyproject.toml</Code>{' '}
-                            (walked up from CWD, pytest rootdir rules).
+                            <strong>2. Project explicit values</strong> — keys in{' '}
+                            <Code>[tool.harness]</Code> in the nearest <Code>pyproject.toml</Code>.
                         </Li>
                         <Li>
-                            <strong>3. User-global config</strong> —{' '}
-                            <Code>~/.config/harness/config.toml</Code> (respects{' '}
-                            <Code>$XDG_CONFIG_HOME</Code>). Same keys as{' '}
-                            <Code>[tool.harness]</Code>, no wrapper.
+                            <strong>3. Project preset defaults</strong> —{' '}
+                            <Code>preset = "baseline"</Code>, <Code>"strict"</Code>, or{' '}
+                            <Code>"legacy"</Code> in <Code>[tool.harness]</Code>.
                         </Li>
                         <Li>
-                            <strong>4. Bundled defaults</strong> — the values shown in the{' '}
-                            <a href="#config">config table</a>, plus tool configs under{' '}
-                            <Code>harness/defaults/</Code> (see next section).
+                            <strong>4. User-global explicit values</strong> — keys in{' '}
+                            <Code>~/.config/harness/config.toml</Code>, no wrapper.
+                        </Li>
+                        <Li>
+                            <strong>5. User-global preset defaults</strong> — optional preset in{' '}
+                            <Code>~/.config/harness/config.toml</Code>.
+                        </Li>
+                        <Li>
+                            <strong>6. Bundled defaults</strong> — dataclass defaults and tool
+                            configs under <Code>harness/defaults/</Code>.
                         </Li>
                     </List>
 
                     <P>Example user-global override:</P>
                     {/* README.md:127-131 — ~/.config/harness/config.toml example */}
                     <CodeBlock lang="toml">{`# ~/.config/harness/config.toml  (or $XDG_CONFIG_HOME/harness/config.toml)
+preset = "baseline"
 coverage_min = 85
 crap_max = 25.0`}</CodeBlock>
                 </>
             ),
             aside: (
                 <P>
-                    Precedence contract: <Code>README.md:119-124</Code>. Same rules apply to every
-                    threshold — there is no second cascade for special cases.
+                    Presets never hide explicit values. <Code>preset = "strict"</Code> with{' '}
+                    <Code>coverage_min = 91</Code> resolves coverage to 91.
+                </P>
+            ),
+        },
+
+        {
+            content: (
+                <>
+                    <SectionHeading id="github-action" level={1}>
+                        GitHub Action CI
+                    </SectionHeading>
+                    <P>
+                        Downstream repositories can use the root <Code>action.yml</Code> to install
+                        pyharness, run <Code>harness ci</Code>, and write a concise job summary
+                        when <Code>GITHUB_STEP_SUMMARY</Code> is available.
+                    </P>
+                    <CodeBlock lang="yaml">{`name: pyharness
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  pyharness:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: 0xjgv/pyharness@v1`}</CodeBlock>
+                </>
+            ),
+            aside: (
+                <P>
+                    The action delegates to <Code>harness ci</Code>; it does not duplicate the
+                    quality pipeline in YAML or JavaScript.
                 </P>
             ),
         },
@@ -908,7 +979,9 @@ def _check(result: int, expected: int) -> None:
                         Hooks Deep-Dive — harness setup-hooks
                     </SectionHeading>
                     <P>
-                        One command, two hooks. Both reference the exact Python interpreter that
+                        <Code>harness pre-commit</Code> and <Code>harness post-edit</Code> are the
+                        stable hook interfaces. <Code>setup-hooks</Code> is the convenience
+                        installer. Both generated hooks reference the exact Python interpreter that
                         installed pyharness, so they survive venv changes.
                     </P>
                     <CodeBlock lang="bash">{`harness setup-hooks`}</CodeBlock>

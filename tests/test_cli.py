@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import sys
+import textwrap
+from pathlib import Path
 
 import pytest
 
@@ -25,6 +27,42 @@ def test_cmd_help_prints_usage_and_groups(capsys: pytest.CaptureFixture[str]) ->
     assert "Tasks:" in out
     assert "Stages:" in out
     assert "help" in out  # known command listed
+
+
+def test_cmd_help_prints_active_preset_and_resolved_values(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    (tmp_path / "pkg").mkdir()
+    (tmp_path / "pkg" / "__init__.py").write_text("", encoding="utf-8")
+    (tmp_path / "tests").mkdir()
+    (tmp_path / "pyproject.toml").write_text(
+        textwrap.dedent(
+            """
+            [project]
+            name = "pkg"
+            version = "0.0.0"
+
+            [tool.harness]
+            preset = "strict"
+            coverage_min = 91
+            """
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.chdir(tmp_path)
+
+    from harness.config import clear_cache
+
+    clear_cache()
+    try:
+        cmd_help()
+    finally:
+        clear_cache()
+
+    out = capsys.readouterr().out
+    assert "preset                strict" in out
+    assert "coverage_min           91" in out
+    assert "run_mutation_in_ci     True" in out
 
 
 def test_main_no_args_prints_help(

@@ -1,9 +1,8 @@
-"""Preflight diagnostic: detect project layout, bundled tool resolution, and venv status.
+"""Adoption diagnostic: report readiness, blockers, warnings, and next steps.
 
-``doctor`` is intentionally permissive — it reports warnings but exits 0 unless
-the project is structurally broken (e.g. an unreadable ``pyproject.toml``). The
-output is plain human-readable key/value lines grouped under section headers.
-Stdlib-only.
+``doctor`` is intentionally lightweight and static. It reads local config, checks
+filesystem paths and PATH resolution, and never runs tests, typechecking, coverage,
+mutation, dependency audit, or network-dependent checks.
 """
 
 from __future__ import annotations
@@ -14,6 +13,7 @@ import tomllib
 from typing import TYPE_CHECKING
 
 from harness.config import find_project_root, load_config
+from harness.detect import expected_target_interpreter
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -21,8 +21,6 @@ if TYPE_CHECKING:
     from harness.config import HarnessConfig
     from harness.runner import Task
 
-# CLIs pyharness invokes via subprocess — reporting their resolution helps
-# users diagnose missing tools (e.g. basedpyright not installed in the venv).
 _BUNDLED_TOOLS = (
     "ruff",
     "basedpyright",
@@ -46,35 +44,37 @@ def cmd_doctor() -> None:
     pyproject_path = project_root / "pyproject.toml"
 
     warnings: list[str] = []
+    blockers: list[str] = []
     failures: list[str] = []
 
-    print("Project:")
-    print(f"  project_root           {project_root}")
     cfg = _safe_load_config(pyproject_path, failures)
-    _print_project(cfg, pyproject_path, warnings)
+    _collect_blockers(cfg, pyproject_path, blockers)
+    _collect_tool_warnings(project_root, cfg, warnings, blockers)
+    is_blocked = bool(blockers or failures)
 
-    print()
-    print("Tools:")
-    for name in _BUNDLED_TOOLS:
-        resolved = shutil.which(name)
-        if resolved:
-            print(f"  {name:<22} {resolved}")
-        else:
-            print(f"  {name:<22} (not found)")
-            warnings.append(f"tool not found on PATH: {name}")
-
-    print()
-    print("Venv:")
-    venv_python = _venv_python(project_root)
-    if venv_python.is_file():
-        print(f"  venv_python            {venv_python}")
+    print("Readiness:")
+    if is_blocked:
+        print("  status                 blocked")
+        print("  summary                fix blockers before running `harness check`")
     else:
-        print(f"  venv_python            (missing: {venv_python})")
-        warnings.append("no .venv found under project root")
+        print("  status                 ready")
+        print("  summary                ready to try `harness check`")
 
     print()
-    print("Summary:")
-    _print_summary(warnings, failures)
+    print("Detected configuration:")
+    _print_configuration(project_root, cfg, pyproject_path)
+
+    print()
+    print("Blockers:")
+    _print_messages([*failures, *blockers], empty="none")
+
+    print()
+    print("Warnings:")
+    _print_messages(warnings, empty="none")
+
+    print()
+    print("Next steps:")
+    _print_next_steps(is_blocked)
 
     if failures:
         sys.exit(1)
@@ -89,37 +89,89 @@ def _safe_load_config(pyproject_path: Path, failures: list[str]) -> HarnessConfi
         return None
 
 
-def _print_project(cfg: HarnessConfig | None, pyproject_path: Path, warnings: list[str]) -> None:
-    if pyproject_path.is_file():
-        print(f"  pyproject.toml         {pyproject_path}")
-    else:
-        print("  pyproject.toml         (missing)")
-        warnings.append("no pyproject.toml at project root")
+def _collect_blockers(
+    cfg: HarnessConfig | None, pyproject_path: Path, blockers: list[str]
+) -> None:
+    if not pyproject_path.is_file():
+        blockers.append("missing pyproject.toml; run `harness init` to scaffold")
     if cfg is None:
         return
-    print(f"  src_dir                {cfg.src_dir_arg}")
-    print(f"  test_dir               {cfg.test_dir_arg}")
-    print(f"  test_runner            {cfg.test_runner}")
-    print(f"  test_invoker           {cfg.test_invoker}")
-    features = cfg.features_dir_arg
-    print(f"  features_dir           {features if features is not None else '(none)'}")
+    if not cfg.src_dir.exists():
+        blockers.append(f"missing source path: {cfg.src_dir_arg}")
+    if not cfg.test_dir.exists():
+        blockers.append(f"missing test path: {cfg.test_dir_arg}")
+    for unsupported in cfg.unsupported_presets:
+        blockers.append(f"unsupported preset: {unsupported}")
 
 
-def _venv_python(project_root: Path) -> Path:
-    """Return the conventional in-project venv Python path for this platform."""
-    if sys.platform == "win32":
-        return project_root / ".venv" / "Scripts" / "python.exe"
-    return project_root / ".venv" / "bin" / "python"
+def _collect_tool_warnings(
+    project_root: Path,
+    cfg: HarnessConfig | None,
+    warnings: list[str],
+    blockers: list[str],
+) -> None:
+    if cfg is not None and cfg.test_invoker == "uv" and shutil.which("uv") is None:
+        blockers.append("test_invoker is `uv`, but `uv` was not found on PATH")
+
+    for name in _BUNDLED_TOOLS:
+        if shutil.which(name) is None:
+            warnings.append(f"tool not found on PATH: {name}")
+
+    venv_python = expected_target_interpreter(project_root)
+    if not venv_python.is_file():
+        warnings.append(f"no .venv found under project root ({venv_python})")
 
 
-def _print_summary(warnings: list[str], failures: list[str]) -> None:
-    if failures:
-        print(f"  fail {len(failures)}")
-        for msg in failures:
-            print(f"    - {msg}")
-    if warnings:
-        print(f"  warn {len(warnings)}")
-        for msg in warnings:
-            print(f"    - {msg}")
-    if not failures and not warnings:
-        print("  ok")
+def _print_configuration(
+    project_root: Path, cfg: HarnessConfig | None, pyproject_path: Path
+) -> None:
+    print(f"  project_root           {project_root} (auto-detected)")
+    if pyproject_path.is_file():
+        print(f"  pyproject.toml         {pyproject_path} (auto-detected)")
+    else:
+        print("  pyproject.toml         (missing)")
+    if cfg is None:
+        return
+    _print_cfg_value(cfg, "preset", cfg.preset or "(none)")
+    _print_cfg_value(cfg, "src_dir", cfg.src_dir_arg)
+    _print_cfg_value(cfg, "test_dir", cfg.test_dir_arg)
+    _print_cfg_value(cfg, "test_runner", cfg.test_runner)
+    _print_cfg_value(cfg, "test_invoker", cfg.test_invoker)
+    features = cfg.features_dir_arg if cfg.features_dir_arg is not None else "(none)"
+    _print_cfg_value(cfg, "features_dir", features)
+    acceptance = cfg.acceptance_runner if cfg.acceptance_runner is not None else "(auto)"
+    _print_cfg_value(cfg, "acceptance_runner", acceptance)
+    for key in (
+        "coverage_min",
+        "crap_max",
+        "enforce_crap",
+        "run_mutation_in_ci",
+        "enforce_mutation",
+        "mutation_ci_mode",
+        "run_acceptance_in_check",
+    ):
+        _print_cfg_value(cfg, key, getattr(cfg, key))
+
+
+def _print_cfg_value(cfg: HarnessConfig, key: str, value: object) -> None:
+    source = cfg.value_sources.get(key, "unknown")
+    print(f"  {key:<22} {value} ({source})")
+
+
+def _print_messages(messages: list[str], *, empty: str) -> None:
+    if not messages:
+        print(f"  {empty}")
+        return
+    for msg in messages:
+        print(f"  - {msg}")
+
+
+def _print_next_steps(blocked: bool) -> None:
+    if blocked:
+        print("  1. Fix the blockers listed above.")
+        print("  2. Run `harness doctor` again.")
+        print("  3. Run `harness check` once readiness is clear.")
+        return
+    print("  1. Run `harness check` locally.")
+    print("  2. Wire CI with `harness ci` or the reusable pyharness GitHub Action.")
+    print("  3. Optional: run `harness setup-hooks` to install local feedback hooks.")

@@ -56,6 +56,7 @@ def _print_detected_block() -> None:
         return
     print()
     print("Detected:")
+    print(f"  preset                {cfg.preset or '(none)'}")
     print(f"  project_root           {cfg.project_root}")
     print(f"  src_dir                {cfg.src_dir_arg}")
     print(f"  test_dir               {cfg.test_dir_arg}")
@@ -67,6 +68,11 @@ def _print_detected_block() -> None:
         print(f"  features_dir           {cfg.features_dir_arg}")
     if cfg.acceptance_runner is not None:
         print(f"  acceptance_runner      {cfg.acceptance_runner}")
+    if cfg.unsupported_presets:
+        print()
+        print("Config warnings:")
+        for preset in cfg.unsupported_presets:
+            print(f"  unsupported preset     {preset}")
     print()
     print("Thresholds (override via [tool.harness] or ~/.config/harness/config.toml):")
     print(f"  coverage_min           {cfg.coverage_min}")

@@ -210,6 +210,206 @@ def test_project_tool_harness_overrides_user_global(
     assert cfg.crap_max == 20.0  # user-global fills in for missing keys
 
 
+def test_baseline_preset_resolves_low_friction_defaults(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    (tmp_path / "tests").mkdir()
+    _write(
+        tmp_path / "pyproject.toml",
+        """
+        [project]
+        name = "baseline"
+        version = "0.0.0"
+
+        [tool.harness]
+        preset = "baseline"
+        """,
+    )
+    monkeypatch.chdir(tmp_path)
+
+    cfg = load_config()
+
+    assert cfg.preset == "baseline"
+    assert cfg.coverage_min == 70
+    assert cfg.crap_max == 40.0
+    assert cfg.enforce_crap is False
+    assert cfg.run_mutation_in_ci is False
+    assert cfg.enforce_mutation is False
+    assert cfg.run_acceptance_in_check is False
+    assert cfg.value_sources["coverage_min"] == "preset-derived"
+    assert cfg.value_sources["preset"] == "project-configured"
+
+
+def test_strict_preset_resolves_blocking_gate_defaults(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    (tmp_path / "tests").mkdir()
+    _write(
+        tmp_path / "pyproject.toml",
+        """
+        [project]
+        name = "strict"
+        version = "0.0.0"
+
+        [tool.harness]
+        preset = "strict"
+        """,
+    )
+    monkeypatch.chdir(tmp_path)
+
+    cfg = load_config()
+
+    assert cfg.preset == "strict"
+    assert cfg.coverage_min == 90
+    assert cfg.crap_max == 20.0
+    assert cfg.enforce_crap is True
+    assert cfg.run_mutation_in_ci is True
+    assert cfg.enforce_mutation is True
+    assert cfg.mutation_ci_mode == "full"
+    assert cfg.run_acceptance_in_check is True
+
+
+def test_legacy_preset_resolves_ratcheting_defaults(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    (tmp_path / "tests").mkdir()
+    _write(
+        tmp_path / "pyproject.toml",
+        """
+        [project]
+        name = "legacy"
+        version = "0.0.0"
+
+        [tool.harness]
+        preset = "legacy"
+        """,
+    )
+    monkeypatch.chdir(tmp_path)
+
+    cfg = load_config()
+
+    assert cfg.preset == "legacy"
+    assert cfg.coverage_min == 0
+    assert cfg.crap_max == 80.0
+    assert cfg.enforce_crap is False
+    assert cfg.mutation_min_score == 0.0
+    assert cfg.run_mutation_in_ci is False
+
+
+def test_project_explicit_value_overrides_project_preset(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    (tmp_path / "tests").mkdir()
+    _write(
+        tmp_path / "pyproject.toml",
+        """
+        [project]
+        name = "strict-override"
+        version = "0.0.0"
+
+        [tool.harness]
+        preset = "strict"
+        coverage_min = 91
+        enforce_mutation = false
+        """,
+    )
+    monkeypatch.chdir(tmp_path)
+
+    cfg = load_config()
+
+    assert cfg.preset == "strict"
+    assert cfg.coverage_min == 91
+    assert cfg.enforce_mutation is False
+    assert cfg.value_sources["coverage_min"] == "project-configured"
+
+
+def test_project_preset_overrides_user_global_explicit_values(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    (tmp_path / "tests").mkdir()
+    _write(
+        tmp_path / "pyproject.toml",
+        """
+        [project]
+        name = "project-preset"
+        version = "0.0.0"
+
+        [tool.harness]
+        preset = "baseline"
+        """,
+    )
+    home = tmp_path / "fake_home"
+    (home / ".config" / "harness").mkdir(parents=True)
+    (home / ".config" / "harness" / "config.toml").write_text(
+        "coverage_min = 88\nrun_mutation_in_ci = true\n", encoding="utf-8"
+    )
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(home / ".config"))
+    monkeypatch.chdir(tmp_path)
+
+    cfg = load_config()
+
+    assert cfg.preset == "baseline"
+    assert cfg.coverage_min == 70
+    assert cfg.run_mutation_in_ci is False
+    assert cfg.value_sources["coverage_min"] == "preset-derived"
+
+
+def test_project_explicit_values_override_user_global_preset(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    (tmp_path / "tests").mkdir()
+    _write(
+        tmp_path / "pyproject.toml",
+        """
+        [project]
+        name = "project-explicit"
+        version = "0.0.0"
+
+        [tool.harness]
+        coverage_min = 95
+        enforce_crap = true
+        """,
+    )
+    home = tmp_path / "fake_home"
+    (home / ".config" / "harness").mkdir(parents=True)
+    (home / ".config" / "harness" / "config.toml").write_text(
+        'preset = "legacy"\n', encoding="utf-8"
+    )
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(home / ".config"))
+    monkeypatch.chdir(tmp_path)
+
+    cfg = load_config()
+
+    assert cfg.preset == "legacy"
+    assert cfg.coverage_min == 95
+    assert cfg.enforce_crap is True
+    assert cfg.mutation_min_score == 0.0
+
+
+def test_unsupported_preset_is_reported_without_resolving(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    (tmp_path / "tests").mkdir()
+    _write(
+        tmp_path / "pyproject.toml",
+        """
+        [project]
+        name = "unsupported"
+        version = "0.0.0"
+
+        [tool.harness]
+        preset = "agent-safe"
+        """,
+    )
+    monkeypatch.chdir(tmp_path)
+
+    cfg = load_config()
+
+    assert cfg.preset is None
+    assert cfg.coverage_min == 80
+    assert cfg.unsupported_presets == ("project-configured: agent-safe",)
+
+
 def test_malformed_user_global_is_ignored(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """A broken user-global file must not crash load_config — just use defaults."""
     (tmp_path / "tests").mkdir()

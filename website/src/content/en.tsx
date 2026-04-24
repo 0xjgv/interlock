@@ -37,6 +37,7 @@ type ConfigRow = {
 };
 
 const CONFIG_ROWS: ConfigRow[] = [
+    { key: 'preset', type: '"baseline" | "strict" | "legacy"', default: 'unset', note: 'named adoption posture; explicit values still win' },
     // Paths / runners — CLAUDE.md:36-40
     { key: 'src_dir', type: 'string', default: 'auto-detect', note: 'src/<pkg>, top-level pkg, or [tool.uv.build-backend]' },
     { key: 'test_dir', type: 'string', default: 'auto-detect', note: 'first existing of tests/, test/, src/tests/' },
@@ -56,6 +57,7 @@ const CONFIG_ROWS: ConfigRow[] = [
     { key: 'enforce_crap', type: 'bool', default: 'true', note: 'CRAP exits 1 on offenders (set false to stay advisory)' },
     { key: 'run_mutation_in_ci', type: 'bool', default: 'false', note: 'include mutation in `harness ci`' },
     { key: 'enforce_mutation', type: 'bool', default: 'false', note: 'mutation exits 1 when score < mutation_min_score' },
+    { key: 'mutation_ci_mode', type: '"off" | "incremental" | "full"', default: '"off"', note: 'future mutation scheduling posture' },
     // Acceptance — CLAUDE.md:58-60
     { key: 'acceptance_runner', type: '"pytest-bdd" | "behave" | "off"', default: 'auto', note: 'explicit override wins' },
     { key: 'features_dir', type: 'string', default: 'auto-detect', note: 'tests/features/, features/, <test_dir>/features/' },
@@ -121,13 +123,13 @@ export const pageContent = {
         // pyproject.toml:4 — "Zero-config Python quality harness … all behind `harness <task>`."
         title: 'pyharness — Zero-config Python quality harness.',
         description:
-            // pyproject.toml:4 + README.md:3 — verbatim task list behind the single CLI.
-            'Lint, format, typecheck, test, coverage, acceptance, audit, deps, architecture, complexity, CRAP, mutation — all behind `harness <task>`.',
+            'Install pyharness, run `harness doctor`, use `harness check` locally, and wire `harness ci` in CI.',
     },
 
     toc: [
         tocItem('#overview', 'Overview'),
         tocItem('#quick-start', 'Quick start'),
+        tocItem('#ci', 'GitHub CI'),
         tocItem('#stages', 'Stages'),
         tocItem('#tasks', 'Tasks'),
         tocItem('#config', 'Configuration'),
@@ -147,9 +149,8 @@ export const pageContent = {
                     margin: 0,
                 }}
             >
-                {/* pyproject.toml:4 + README.md:3 — single-CLI pitch, verbatim task list. */}
-                Lint, format, typecheck, test, coverage, acceptance, audit, deps, architecture,
-                complexity, CRAP, mutation — all behind <code>harness &lt;task&gt;</code>.
+                Install pyharness, run <code>harness doctor</code>, use{' '}
+                <code>harness check</code> locally, and wire <code>harness ci</code> in CI.
             </p>
         </div>
     ),
@@ -163,18 +164,15 @@ export const pageContent = {
                         Overview
                     </SectionHeading>
                     <P>
-                        {/* README.md:3,5 — every tool ships with the CLI; no extra pip dance. */}
-                        Python projects bolt on ten-plus quality tools (ruff, basedpyright,
-                        coverage, pytest, pytest-bdd, lizard, mutmut, pip-audit, deptry,
-                        import-linter) each with their own config, invocation, and CI glue.
-                        pyharness ships all of them behind one CLI.
+                        pyharness packages the adoption loop for Python repositories: diagnose
+                        readiness, run local checks, and wire CI without copying tool-specific
+                        scripts into every project.
                     </P>
                     <P>
-                        {/* README.md:7-17 + CLAUDE.md:31 — zero-config, auto-detect src/test, pyproject-rooted. */}
-                        Run <Code>harness &lt;task&gt;</Code>. Source and test directories, test
-                        runner, and invoker auto-detect from the nearest{' '}
-                        <Code>pyproject.toml</Code>. Override any of them with{' '}
-                        <Code>[tool.harness]</Code> when you need to.
+                        Source and test directories, test runner, invoker, and features directory
+                        auto-detect from the nearest <Code>pyproject.toml</Code>. Choose an
+                        adoption preset when useful, then override individual keys only when you
+                        need to.
                     </P>
                 </>
             ),
@@ -195,32 +193,63 @@ export const pageContent = {
                     <SectionHeading id="quick-start" level={1}>
                         Quick start
                     </SectionHeading>
-                    {/* README.md:10-11 — install options. CLAUDE.md:5 — same instruction. */}
                     <CodeBlock lang="bash">{`# 1. Install (pipx or uv tool)
 pipx install pyharness
 # or:
 uv tool install pyharness`}</CodeBlock>
 
-                    {/* README.md:12 + CLAUDE.md:63 — harness help prints detected paths + thresholds. */}
-                    <CodeBlock lang="bash">{`# 2. See what harness detected
+                    <CodeBlock lang="bash">{`# 2. Diagnose readiness
 cd your-python-project
-harness help   # prints detected paths + resolved thresholds`}</CodeBlock>
+harness doctor`}</CodeBlock>
 
-                    {/* README.md:13,23 + CLAUDE.md:9 — check = fix + format + typecheck + test. */}
-                    <CodeBlock lang="bash">{`# 3. Run the dev loop after edits
-harness check  # fix → format → typecheck → test → suppression report`}</CodeBlock>
+                    <CodeBlock lang="bash">{`# 3. Run the local edit loop
+harness check`}</CodeBlock>
 
-                    {/* README.md:14,28 + CLAUDE.md:21-22 — setup-hooks installs git + Stop hooks. */}
-                    <CodeBlock lang="bash">{`# 4. Wire in hooks
-harness setup-hooks  # git pre-commit + Claude Code Stop (post-edit)`}</CodeBlock>
+                    <CodeBlock lang="bash">{`# 4. Wire CI
+harness ci`}</CodeBlock>
                 </>
             ),
             aside: (
                 <P>
-                    {/* README.md:17 — nothing to configure; overrides live under [tool.harness]. */}
-                    Nothing to configure. Paths, test runner, and invoker auto-detect from{' '}
-                    <Code>pyproject.toml</Code>. Override any of them with{' '}
-                    <Code>[tool.harness]</Code> when you need to.
+                    <Code>harness doctor</Code> stays static and cheap: it reports readiness,
+                    blockers, warnings, detected config, and next steps without running expensive
+                    gates.
+                </P>
+            ),
+        },
+
+        /* ── CI ── */
+        {
+            content: (
+                <>
+                    <SectionHeading id="ci" level={1}>
+                        GitHub CI
+                    </SectionHeading>
+                    <P>
+                        The reusable action installs pyharness and delegates the quality pipeline
+                        to <Code>harness ci</Code>. It writes a concise GitHub job summary when the
+                        summary file is available.
+                    </P>
+                    <CodeBlock lang="yaml">{`name: pyharness
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  pyharness:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: 0xjgv/pyharness@v1`}</CodeBlock>
+                </>
+            ),
+            aside: (
+                <P>
+                    The action does not duplicate lint, typecheck, coverage, CRAP, dependency,
+                    architecture, acceptance, or mutation logic. The CLI remains the source of
+                    truth.
                 </P>
             ),
         },
@@ -233,9 +262,8 @@ harness setup-hooks  # git pre-commit + Claude Code Stop (post-edit)`}</CodeBloc
                         Stages
                     </SectionHeading>
                     <P>
-                        {/* README.md:21 — "use these; reach for individual tasks only when debugging". */}
-                        High-level entry points. Use these; reach for individual tasks only when
-                        debugging.
+                        High-level entry points. Use <Code>doctor</Code>, <Code>check</Code>, and{' '}
+                        <Code>ci</Code> for adoption; reach for individual tasks when debugging.
                     </P>
                     {/* README.md:23-29 + CLAUDE.md:9-17 — five stages, when they run, what they run. */}
                     <CodeBlock lang="diagram" showLineNumbers={false}>{` Stage              When                       What runs
@@ -249,7 +277,7 @@ harness setup-hooks  # git pre-commit + Claude Code Stop (post-edit)`}</CodeBloc
                                                acceptance → CRAP (blocking)
  harness nightly    Cron / scheduled           coverage → mutation
                                                (always blocking on mutation_min_score)
- harness post-edit  Claude Code Stop hook      ruff fix + format on touched files
+ harness post-edit  Stable post-edit hook      ruff fix + format on touched files
                                                (silent no-op otherwise)`}</CodeBlock>
                     <P>
                         {/* README.md:33 — nightly overrides enforce_mutation by design. */}
@@ -374,9 +402,11 @@ harness mutation --min-coverage=70 --max-runtime=600`}</CodeBlock>
             aside: (
                 <P>
                     {/* README.md:56-60 — scaffolding + housekeeping tasks. cli.py:96-99 + 116-117. */}
-                    Also: <Code>init-acceptance</Code> (scaffold tests/features),{' '}
-                    <Code>setup-hooks</Code> (git + Claude hooks), <Code>clean</Code> (caches +
-                    mutation state), <Code>help</Code> (detected paths + thresholds).
+                    Also: <Code>doctor</Code> (adoption diagnostic),{' '}
+                    <Code>init-acceptance</Code> (scaffold tests/features),{' '}
+                    <Code>setup-hooks</Code> (convenience hook installer), <Code>clean</Code>{' '}
+                    (caches + mutation state), <Code>help</Code> (detected paths, preset, and
+                    thresholds).
                 </P>
             ),
         },
@@ -391,9 +421,10 @@ harness mutation --min-coverage=70 --max-runtime=600`}</CodeBlock>
                     <P>
                         {/* CLAUDE.md:31 — walks up from CWD to nearest pyproject.toml; all keys optional. */}
                         <Code>harness</Code> walks up from CWD to the nearest{' '}
-                        <Code>pyproject.toml</Code> (pytest-style rootdir) and auto-detects
-                        everything below. All keys under <Code>[tool.harness]</Code> are optional
-                        overrides.
+                        <Code>pyproject.toml</Code> and auto-detects everything below. All keys
+                        under <Code>[tool.harness]</Code> are optional. Use{' '}
+                        <Code>preset = &quot;baseline&quot;</Code>, <Code>&quot;strict&quot;</Code>, or{' '}
+                        <Code>&quot;legacy&quot;</Code> to select an adoption posture.
                     </P>
 
                     {/* CLAUDE.md:34-61 — full 19-key config block. */}
@@ -403,9 +434,8 @@ harness mutation --min-coverage=70 --max-runtime=600`}</CodeBlock>
             aside: (
                 <P>
                     {/* CLAUDE.md:67-72 — precedence cascade: CLI flag > [tool.harness] > user-global > bundled defaults. */}
-                    Precedence: CLI flags (<Code>--min=</Code>, <Code>--max=</Code>) &gt; project{' '}
-                    <Code>[tool.harness]</Code> &gt; <Code>~/.config/harness/config.toml</Code>{' '}
-                    &gt; bundled defaults (<Code>harness/defaults/</Code>).
+                    Precedence: bundled defaults &lt; user-global preset &lt; user-global explicit
+                    values &lt; project preset &lt; project explicit values &lt; CLI flags.
                 </P>
             ),
         },
@@ -424,16 +454,17 @@ harness mutation --min-coverage=70 --max-runtime=600`}</CodeBlock>
                         <Li>
                             {/* README.md:156 + harness/stages/setup_hooks.py:62-66 — writes .git/hooks/pre-commit
                                 and chmod 0755; skip with --no-verify. */}
-                            <Code>.git/hooks/pre-commit</Code> — runs{' '}
-                            <Code>harness pre-commit</Code> on staged files. Skip with{' '}
+                            <Code>.git/hooks/pre-commit</Code> — runs the stable{' '}
+                            <Code>harness pre-commit</Code> interface on staged files. Skip with{' '}
                             <Code>git commit --no-verify</Code>.
                         </Li>
                         <Li>
                             {/* README.md:157 + CLAUDE.md:22 + setup_hooks.py:68-78 — merges into existing
                                 .claude/settings.json Stop hook, idempotent (_ensure_stop_hook dedupes). */}
-                            <Code>.claude/settings.json</Code> Stop hook — runs{' '}
-                            <Code>harness post-edit</Code> after Claude Code sessions, formatting
-                            any files the session touched. Merges into existing hooks; idempotent.
+                            <Code>.claude/settings.json</Code> Stop hook — runs the stable{' '}
+                            <Code>harness post-edit</Code> interface after Claude Code sessions,
+                            formatting any files the session touched. Merges into existing hooks;
+                            idempotent.
                         </Li>
                     </List>
                     <P>
