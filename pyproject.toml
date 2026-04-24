@@ -5,7 +5,7 @@ description = "Zero-config Python quality harness: lint, format, typecheck, test
 readme = "README.md"
 requires-python = ">=3.13"
 license = {text = "MIT"}
-authors = [{name = "Juan Gaitán-Villamizar", email = "juans.gaitan@gmail.com"}]
+authors = [{name = "0xjgv", email = "juan@mail.usestilgar.com"}]
 keywords = ["quality", "linting", "testing", "coverage", "mutation-testing", "ci", "devex"]
 classifiers = [
     "Development Status :: 5 - Production/Stable",
