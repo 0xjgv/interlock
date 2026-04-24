@@ -4,7 +4,7 @@
 
 Core package code lives in `interlock/`. The CLI entrypoint is `interlock/cli.py`, shared process execution is in `interlock/runner.py`, stage orchestration is in `interlock/stages/`, and task commands live in `interlock/tasks/`. Bundled configuration templates and examples are stored in `interlock/defaults/` and shipped as package data.
 
-Tests live in `tests/`, with focused task and stage coverage under `tests/tasks/` and `tests/stages/`. BDD feature files are in `tests/features/`, with step definitions in `tests/step_defs/`. Website documentation assets live under `website/`.
+Tests live in `tests/`, with focused task and stage coverage under `tests/tasks/` and `tests/stages/`. BDD feature files are in `tests/features/`, with step definitions in `tests/step_defs/`. Website documentation assets live under `docs/`.
 
 ## Build, Test, and Development Commands
 
