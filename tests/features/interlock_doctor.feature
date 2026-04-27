@@ -1,3 +1,4 @@
+@doctor
 Feature: interlocks doctor adoption diagnostic
   As a user bootstrapping interlocks on a fresh checkout
   I want `interlocks doctor` to report readiness, blockers, warnings, and next steps

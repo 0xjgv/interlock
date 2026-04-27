@@ -233,7 +233,7 @@ CONFIG_KEYS: tuple[ConfigKeyDoc, ...] = (
         "mutation_ci_mode",
         "off|incremental|full",
         "off",
-        "CI mutation strategy (incremental/full reserved for future use)",
+        "CI mutation strategy: off skips, incremental restricts to changed files, full runs all",
         "Mutation",
     ),
     ConfigKeyDoc(
@@ -353,7 +353,6 @@ class InterlockConfig:
     enforce_crap: bool = True
     run_mutation_in_ci: bool = False
     enforce_mutation: bool = False
-    # Dormant — consumed by a future `interlocks mutation --since=<ref>` feature.
     mutation_ci_mode: MutationCIMode = "off"
     mutation_since_ref: str = "origin/main"
     # Acceptance (Gherkin) — all optional; resolved lazily by the task.

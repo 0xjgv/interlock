@@ -11,9 +11,11 @@ from pathlib import Path
 import pytest
 
 from interlocks import metrics as metrics_mod
+from interlocks.config import InterlockConfig
 from interlocks.tasks.mutation import (
     _mutant_in_changed,
     _print_survivors,
+    _resolve_min_score,
     cmd_mutation,
 )
 
@@ -129,6 +131,47 @@ def test_mutation_min_coverage_comes_from_config(
     cmd_mutation()  # advisory — must never SystemExit
     captured = capsys.readouterr()
     assert "95" in captured.out  # threshold surfaced in the skip message
+
+
+# ─────────────── _resolve_min_score precedence ─────────────────────
+
+
+def _cfg(*, enforce: bool = False, min_score: float = 80.0) -> InterlockConfig:
+    """Minimal cfg for `_resolve_min_score`; paths aren't touched."""
+    root = Path()
+    return InterlockConfig(
+        project_root=root,
+        src_dir=root / "src",
+        test_dir=root / "tests",
+        test_runner="pytest",
+        test_invoker="python",
+        enforce_mutation=enforce,
+        mutation_min_score=min_score,
+    )
+
+
+def test_resolve_min_score_cli_flag_wins_over_default(monkeypatch: pytest.MonkeyPatch) -> None:
+    """`--min-score=42.5` beats caller-supplied default."""
+    monkeypatch.setattr(sys, "argv", ["interlocks", "mutation", "--min-score=42.5"])
+    assert _resolve_min_score(_cfg(), default=99.0) == 42.5
+
+
+def test_resolve_min_score_default_wins_over_enforce(monkeypatch: pytest.MonkeyPatch) -> None:
+    """No CLI flag → caller-supplied default beats cfg.mutation_min_score."""
+    monkeypatch.setattr(sys, "argv", ["interlocks", "mutation"])
+    assert _resolve_min_score(_cfg(enforce=True, min_score=80.0), default=55.0) == 55.0
+
+
+def test_resolve_min_score_enforce_when_no_default(monkeypatch: pytest.MonkeyPatch) -> None:
+    """No CLI flag, no default → cfg.mutation_min_score when enforcing."""
+    monkeypatch.setattr(sys, "argv", ["interlocks", "mutation"])
+    assert _resolve_min_score(_cfg(enforce=True, min_score=70.0)) == 70.0
+
+
+def test_resolve_min_score_returns_none_when_advisory(monkeypatch: pytest.MonkeyPatch) -> None:
+    """No CLI flag, no default, advisory → None (no gate)."""
+    monkeypatch.setattr(sys, "argv", ["interlocks", "mutation"])
+    assert _resolve_min_score(_cfg(enforce=False)) is None
 
 
 # ─────────────── _mutant_in_changed ─────────────────────

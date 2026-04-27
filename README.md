@@ -161,13 +161,21 @@ Run `interlocks presets set baseline` to set a project preset from the CLI.
 |-------|------|-----------|
 | `interlocks check` | Local edit loop | fix -> format -> parallel(typecheck, test, acceptance when opted in) -> deps advisory -> cached CRAP advisory or refresh hint -> suppressions |
 | `interlocks pre-commit` | Git pre-commit hook | fix/format staged Python files, re-stage, typecheck, tests when source changed |
-| `interlocks ci` | Pull requests and protected branches | format-check, lint, complexity, deps, typecheck, coverage, arch, acceptance -> CRAP -> optional mutation |
-| `interlocks nightly` | Scheduled jobs | coverage -> mutation, always blocking on `mutation_min_score` |
+| `interlocks ci` | Pull requests and protected branches | format-check, lint, complexity, deps, typecheck, coverage, arch, acceptance -> CRAP -> optional mutation (per `mutation_ci_mode`) |
+| `interlocks nightly` | Scheduled jobs | coverage -> audit (warn-skips on transient pip-audit failures) -> mutation, always blocking on `mutation_min_score` |
 | `interlocks post-edit` | Editor/agent hook interface | advisory ruff fix + format on changed Python files |
 | `interlocks setup-hooks` | Convenience installer | writes hooks that call `interlocks pre-commit` and `interlocks post-edit` |
 | `interlocks clean` | Local cleanup | removes caches, build artifacts, coverage output, mutation state, and `__pycache__/` |
 
 `interlocks pre-commit` and `interlocks post-edit` are the stable hook interfaces. `interlocks setup-hooks` is a convenience command that installs a git pre-commit hook and merges a Claude Code Stop hook; rerunning it is idempotent.
+
+`mutation_ci_mode` picks how `interlocks ci` invokes mutmut:
+
+- `"off"` — skip mutation in CI (default; `run_mutation_in_ci = true` legacy flag still forces a full run)
+- `"incremental"` — restrict survivor reporting to files changed vs `mutation_since_ref` (default `origin/main`); fast PR signal
+- `"full"` — full mutmut suite
+
+Nightly always runs the full suite + score gate, so PRs trade some signal for speed; the scheduled job catches anything the incremental pass misses.
 
 ## Tasks Reference
 
@@ -257,6 +265,10 @@ It installs:
 - `.claude/settings.json` Stop hook: runs `interlocks post-edit` after Claude Code sessions and preserves existing Stop hooks.
 
 Both reference the Python that installed interlocks, so reinstall hooks after switching install locations or interpreters.
+
+## Inspiration
+
+Inspired by [Uncle Bob Martin](https://x.com/unclebobmartin/status/2047661738456121506?s=20). Since *Clean Code*, we tend to forget the fundamentals — clean code, deterministic gates, fast feedback. These fundamentals are back stronger than ever, especially as agents write more of the code.
 
 ## Maintainer Release Process
 

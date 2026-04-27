@@ -1,7 +1,14 @@
+@meta
 Feature: interlocks meta commands
   As a user adopting interlocks in a fresh project
   I want the meta commands (acceptance, init-acceptance, setup-hooks) to behave safely
   So that bootstrapping a repo is predictable end-to-end
+
+  @smoke
+  Scenario: help runs cleanly without a project
+    Given a tmp project with no features directory
+    When I run "interlocks help" in the tmp project
+    Then the command exits successfully
 
   Scenario: Acceptance is a silent no-op when features/ is missing
     Given a tmp project with no features directory

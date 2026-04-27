@@ -1,3 +1,4 @@
+@cli
 Feature: interlocks CLI surface area
   As a user about to run the quality gates
   I want `interlocks help` to list every command I rely on
@@ -30,6 +31,7 @@ Feature: interlocks CLI surface area
     And the output lists the command "version"
     And the output lists the command "help"
 
+  @smoke
   Scenario: interlocks version prints 0.1.2
     Given I run "interlocks version"
     Then the output contains "0.1.2"

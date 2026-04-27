@@ -5,7 +5,7 @@ from __future__ import annotations
 import time
 
 from interlocks import ui
-from interlocks.config import load_config
+from interlocks.config import MutationCIMode, load_config
 from interlocks.runner import run_tasks
 from interlocks.tasks.acceptance import task_acceptance
 from interlocks.tasks.arch import task_arch
@@ -41,6 +41,11 @@ def cmd_ci() -> None:
     # CRAP/mutation read coverage.xml produced by task_coverage — keep sequential.
     ui.section("Gates")
     cmd_crap()
-    if cfg.run_mutation_in_ci:
-        cmd_mutation()
+    if _should_run_mutation(cfg.mutation_ci_mode, run_in_ci=cfg.run_mutation_in_ci):
+        cmd_mutation(changed_only=cfg.mutation_ci_mode == "incremental")
     ui.stage_footer(time.monotonic() - start)
+
+
+def _should_run_mutation(mode: MutationCIMode, *, run_in_ci: bool) -> bool:
+    """Back-compat: when no mode is set, fall back to legacy ``run_mutation_in_ci``."""
+    return mode != "off" or run_in_ci

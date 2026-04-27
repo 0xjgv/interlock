@@ -10,7 +10,7 @@ from typing import IO, TYPE_CHECKING
 
 from interlocks import ui
 from interlocks.config import InterlockConfig, find_project_root, load_config
-from interlocks.git import changed_py_files_vs_main
+from interlocks.git import changed_py_files_vs
 from interlocks.metrics import MutationSummary, coverage_line_rate, read_mutation_summary
 from interlocks.runner import (
     VERBOSE,
@@ -143,11 +143,14 @@ def _print_survivors(survived: list[str], changed: set[str] | None) -> None:
         print(f"      {key}")
 
 
-def _resolve_min_score(cfg: InterlockConfig) -> float | None:
-    """CLI ``--min-score=`` wins; else ``cfg.mutation_min_score`` when enforcing; else None."""
+def _resolve_min_score(cfg: InterlockConfig, *, default: float | None = None) -> float | None:
+    """CLI ``--min-score=`` wins; else ``default`` (caller-supplied);
+    else ``cfg.mutation_min_score`` when enforcing; else None."""
     min_score_arg = arg_value("--min-score=", "")
     if min_score_arg:
         return float(min_score_arg)
+    if default is not None:
+        return default
     if cfg.enforce_mutation:
         return cfg.mutation_min_score
     return None
@@ -175,7 +178,9 @@ def _report_mutation(
     return failed
 
 
-def cmd_mutation() -> None:
+def cmd_mutation(
+    *, changed_only: bool | None = None, min_score_default: float | None = None
+) -> None:
     """Mutation score via mutmut (reads ``[tool.mutmut]``).
 
     CLI flags ``--min-coverage=`` / ``--max-runtime=`` / ``--min-score=`` win;
@@ -183,6 +188,10 @@ def cmd_mutation() -> None:
     ``cfg.mutation_max_runtime`` / ``cfg.mutation_min_score`` (defaults
     70.0 / 600 / 80.0, overridable via ``[tool.interlocks]``). Advisory by default;
     set ``enforce_mutation = true`` to exit 1 when score < ``mutation_min_score``.
+
+    Stages call programmatically: ``changed_only`` overrides ``--changed-only`` argv
+    sniffing; ``min_score_default`` supplies a fallback threshold when no
+    ``--min-score=`` flag is present (CLI flag still wins).
     """
     cfg = load_config()
     min_cov = float(arg_value("--min-coverage=", str(cfg.mutation_min_coverage)))
@@ -196,8 +205,9 @@ def cmd_mutation() -> None:
         return
 
     timeout = int(arg_value("--max-runtime=", str(cfg.mutation_max_runtime)))
-    min_score = _resolve_min_score(cfg)
-    changed = changed_py_files_vs_main() if "--changed-only" in sys.argv else None
+    min_score = _resolve_min_score(cfg, default=min_score_default)
+    changed_flag = changed_only if changed_only is not None else "--changed-only" in sys.argv
+    changed = changed_py_files_vs(cfg.mutation_since_ref) if changed_flag else None
 
     completed, log_path = _run_mutmut(python_m("mutmut"), timeout)
 

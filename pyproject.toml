@@ -73,11 +73,23 @@ pytest_args = ["-q"]
 # Ratchet back to 65+ after beefing up in-process tests for those new modules.
 mutation_min_score = 60.0
 
+# PR-CI dogfood: incremental mutation only mutates files changed vs origin/main,
+# keeping PR latency bounded. Nightly still runs the full suite + score gate.
+mutation_ci_mode = "incremental"
+
 # ── Ruff (lint + format) ────────────────────────────────────────────
 
 [tool.pytest.ini_options]
 markers = [
     "slow: marks tests that take multiple seconds (deselect with -m 'not slow')",
+    # Acceptance feature areas (pytest-bdd auto-promotes Gherkin tags to markers).
+    "cli: CLI surface acceptance scenarios",
+    "doctor: doctor diagnostic acceptance scenarios",
+    "init: greenfield scaffolding acceptance scenarios",
+    "meta: meta-command (acceptance/init-acceptance/setup-hooks) scenarios",
+    "stages: stage (check/pre-commit/ci/nightly) scenarios",
+    "tasks: per-task acceptance scenarios",
+    "smoke: fast subset for `pytest -m smoke` quick local verification",
 ]
 
 [tool.ruff]
@@ -234,3 +246,25 @@ name = "Tasks are primitives — stages compose them, not the other way"
 type = "forbidden"
 source_modules = ["interlocks.tasks"]
 forbidden_modules = ["interlocks.stages"]
+
+[[tool.importlinter.contracts]]
+# Layered subpackages — higher layers may import lower, never the reverse.
+# Catches structural cycles before they land. Order mirrors the dependency
+# graph: stages compose tasks; tasks consume metrics/git; both ride on runner;
+# runner reads config; config + ui are leaves.
+name = "Subpackages are layered (no cycles)"
+type = "layers"
+layers = [
+    "interlocks.stages",
+    "interlocks.tasks",
+    "interlocks.metrics",
+    "interlocks.git",
+    "interlocks.runner",
+    "interlocks.config",
+    "interlocks.ui",
+]
+ignore_imports = [
+    # ui needs InterlockConfig only for type annotations; the import lives
+    # inside `if TYPE_CHECKING:` and is not present at runtime.
+    "interlocks.ui -> interlocks.config",
+]

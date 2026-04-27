@@ -5,6 +5,7 @@ from __future__ import annotations
 import subprocess
 import sys
 import textwrap
+from dataclasses import dataclass
 from pathlib import Path
 
 import pytest
@@ -65,3 +66,88 @@ def test_audit_invokes_pip_audit(monkeypatch: pytest.MonkeyPatch) -> None:
     assert task.description == "Dep audit"
     assert "pip_audit" in task.cmd
     assert task.cmd[-1] == "."
+
+
+# ─────────────── allow_network_skip path (nightly) ─────────────────────
+
+
+@dataclass
+class _StubProc:
+    returncode: int
+    stdout: str = ""
+    stderr: str = ""
+
+
+def test_audit_network_skip_warns_when_pypi_unreachable(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """allow_network_skip=True → non-zero with no vuln ID classified as transient."""
+    from interlocks.tasks import audit as audit_mod
+
+    monkeypatch.setattr(
+        audit_mod,
+        "capture",
+        lambda _cmd: _StubProc(returncode=1, stderr="Could not fetch the index"),
+    )
+
+    audit_mod.cmd_audit(allow_network_skip=True)  # must not SystemExit
+
+    out = capsys.readouterr().out
+    assert "transient" in out
+
+
+def test_audit_network_skip_warns_on_ensurepip_crash(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """ensurepip / venv-setup failures look transient — warn_skip rather than fail."""
+    from interlocks.tasks import audit as audit_mod
+
+    monkeypatch.setattr(
+        audit_mod,
+        "capture",
+        lambda _cmd: _StubProc(
+            returncode=1, stderr="subprocess.CalledProcessError: ensurepip died with SIGABRT"
+        ),
+    )
+
+    audit_mod.cmd_audit(allow_network_skip=True)
+
+    assert "transient" in capsys.readouterr().out
+
+
+@pytest.mark.parametrize(
+    "vuln_id",
+    ["GHSA-xxxx-yyyy-zzzz", "CVE-2024-12345", "PYSEC-2024-100"],
+)
+def test_audit_network_skip_passes_through_real_findings(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    vuln_id: str,
+) -> None:
+    """Non-zero with a known vulnerability ID always fails — even with allow_network_skip."""
+    from interlocks.tasks import audit as audit_mod
+
+    monkeypatch.setattr(
+        audit_mod,
+        "capture",
+        lambda _cmd: _StubProc(returncode=1, stdout=f"{vuln_id}: vulnerable"),
+    )
+
+    with pytest.raises(SystemExit) as exc:
+        audit_mod.cmd_audit(allow_network_skip=True)
+
+    assert exc.value.code == 1
+    assert vuln_id in capsys.readouterr().out
+
+
+def test_audit_network_skip_clean_run_prints_ok(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """rc=0 under allow_network_skip → ok line, no exit."""
+    from interlocks.tasks import audit as audit_mod
+
+    monkeypatch.setattr(audit_mod, "capture", lambda _cmd: _StubProc(returncode=0))
+
+    audit_mod.cmd_audit(allow_network_skip=True)
+
+    assert "no known vulnerabilities" in capsys.readouterr().out.lower()

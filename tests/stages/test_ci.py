@@ -151,7 +151,7 @@ def test_ci_in_process_queues_all_tasks(
         ci_mod, "run_tasks", lambda tasks: parallel.extend(t.description for t in tasks)
     )
     monkeypatch.setattr(ci_mod, "cmd_crap", lambda: sequential.append("CRAP"))
-    monkeypatch.setattr(ci_mod, "cmd_mutation", lambda: sequential.append("Mutation"))
+    monkeypatch.setattr(ci_mod, "cmd_mutation", lambda **_kw: sequential.append("Mutation"))
 
     ci_mod.cmd_ci()
 
@@ -197,7 +197,71 @@ def test_ci_in_process_includes_mutation_when_enabled(
     sequential: list[str] = []
     monkeypatch.setattr(ci_mod, "run_tasks", lambda tasks: None)
     monkeypatch.setattr(ci_mod, "cmd_crap", lambda: sequential.append("CRAP"))
-    monkeypatch.setattr(ci_mod, "cmd_mutation", lambda: sequential.append("Mutation"))
+    monkeypatch.setattr(ci_mod, "cmd_mutation", lambda **_kw: sequential.append("Mutation"))
 
     ci_mod.cmd_ci()
     assert sequential == ["CRAP", "Mutation"]
+
+
+# ─────────────── mutation_ci_mode dispatch ─────────────────────
+
+
+def _write_mode_project(tmp_path: Path, table: str) -> None:
+    (tmp_path / "tests").mkdir()
+    (tmp_path / "pyproject.toml").write_text(
+        textwrap.dedent(
+            f"""\
+            [project]
+            name = "ci-mode"
+            version = "0.0.0"
+
+            [tool.interlocks]
+            {table}
+            """
+        ),
+        encoding="utf-8",
+    )
+
+
+@pytest.mark.parametrize(
+    ("table", "expected_sequential", "expected_changed_only"),
+    [
+        ('mutation_ci_mode = "off"', ["CRAP"], None),
+        ('mutation_ci_mode = "full"', ["CRAP", "Mutation"], False),
+        ('mutation_ci_mode = "incremental"', ["CRAP", "Mutation"], True),
+        ("run_mutation_in_ci = true", ["CRAP", "Mutation"], False),
+    ],
+    ids=["off", "full", "incremental", "legacy-bool"],
+)
+def test_ci_mode_dispatches_mutation(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    table: str,
+    expected_sequential: list[str],
+    expected_changed_only: bool | None,
+) -> None:
+    """Verify mode → mutation invocation: skip / full / incremental / legacy boolean."""
+    _write_mode_project(tmp_path, table)
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(sys, "argv", ["interlocks", "ci"])
+
+    from interlocks.stages import ci as ci_mod
+
+    sequential: list[str] = []
+    captured_kwargs: list[dict[str, object]] = []
+    monkeypatch.setattr(ci_mod, "run_tasks", lambda tasks: None)
+    monkeypatch.setattr(ci_mod, "cmd_crap", lambda: sequential.append("CRAP"))
+
+    def fake_mutation(**kwargs: object) -> None:
+        sequential.append("Mutation")
+        captured_kwargs.append(kwargs)
+
+    monkeypatch.setattr(ci_mod, "cmd_mutation", fake_mutation)
+
+    ci_mod.cmd_ci()
+
+    assert sequential == expected_sequential
+    if expected_changed_only is None:
+        assert captured_kwargs == []
+    else:
+        assert captured_kwargs == [{"changed_only": expected_changed_only}]

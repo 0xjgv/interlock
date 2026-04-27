@@ -1,3 +1,4 @@
+@stages
 Feature: interlocks stage commands on a minimal inline project
   As a downstream adopter of interlocks
   I want each stage (check / pre-commit / ci / nightly) to run cleanly on a

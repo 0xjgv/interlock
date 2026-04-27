@@ -1,3 +1,4 @@
+@tasks
 Feature: interlocks task commands run against a real tmp project
   As a user running quality gates
   I want each `interlocks <task>` to behave sensibly on a freshly-scaffolded project

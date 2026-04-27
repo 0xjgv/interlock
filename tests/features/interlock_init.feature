@@ -1,3 +1,4 @@
+@init
 Feature: Greenfield scaffold via `interlocks init`
   As a user starting a new Python project
   I want `interlocks init` to drop a working pyproject.toml and tests/ layout
