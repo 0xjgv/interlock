@@ -50,55 +50,6 @@ def test_project_override(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> No
     assert cfg.mutation_since_ref == "origin/develop"
 
 
-def test_user_global_override(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    (tmp_path / "tests").mkdir()
-    _write(
-        tmp_path / "pyproject.toml",
-        """
-        [project]
-        name = "ug"
-        version = "0.0.0"
-        """,
-    )
-    home = tmp_path / "fake_home"
-    (home / ".config" / "interlocks").mkdir(parents=True)
-    (home / ".config" / "interlocks" / "config.toml").write_text(
-        'mutation_ci_mode = "full"\nmutation_since_ref = "main"\n',
-        encoding="utf-8",
-    )
-    monkeypatch.setenv("XDG_CONFIG_HOME", str(home / ".config"))
-    monkeypatch.chdir(tmp_path)
-    cfg = load_config()
-    assert cfg.mutation_ci_mode == "full"
-    assert cfg.mutation_since_ref == "main"
-
-
-def test_project_wins_over_user_global(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    (tmp_path / "tests").mkdir()
-    _write(
-        tmp_path / "pyproject.toml",
-        """
-        [project]
-        name = "pwins"
-        version = "0.0.0"
-
-        [tool.interlocks]
-        mutation_ci_mode = "incremental"
-        """,
-    )
-    home = tmp_path / "fake_home"
-    (home / ".config" / "interlocks").mkdir(parents=True)
-    (home / ".config" / "interlocks" / "config.toml").write_text(
-        'mutation_ci_mode = "full"\nmutation_since_ref = "origin/dev"\n',
-        encoding="utf-8",
-    )
-    monkeypatch.setenv("XDG_CONFIG_HOME", str(home / ".config"))
-    monkeypatch.chdir(tmp_path)
-    cfg = load_config()
-    assert cfg.mutation_ci_mode == "incremental"  # project wins
-    assert cfg.mutation_since_ref == "origin/dev"  # user-global fills in
-
-
 def test_invalid_mode_falls_back_to_default(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

@@ -6,7 +6,6 @@ from __future__ import annotations
 import re
 import sys
 import time
-import tomllib
 from typing import TYPE_CHECKING
 
 from interlocks import ui
@@ -14,6 +13,7 @@ from interlocks.config import (
     clear_cache,
     kv_with_source,
     load_config,
+    load_optional_config,
     preset_defaults,
     preset_description,
     supported_presets,
@@ -29,6 +29,7 @@ from interlocks.stages.setup_hooks import cmd_hooks
 from interlocks.tasks.acceptance import cmd_acceptance
 from interlocks.tasks.arch import cmd_arch
 from interlocks.tasks.audit import cmd_audit
+from interlocks.tasks.config import cmd_config
 from interlocks.tasks.coverage import cmd_coverage
 from interlocks.tasks.crap import cmd_crap
 from interlocks.tasks.deps import cmd_deps
@@ -53,7 +54,7 @@ if TYPE_CHECKING:
 
 def cmd_help() -> None:
     start = time.monotonic()
-    cfg = _load_optional_config()
+    cfg = load_optional_config()
     ui.command_banner("help", cfg)
     ui.section("Usage")
     print("  Usage: interlocks <command>")
@@ -105,7 +106,7 @@ def cmd_presets() -> None:
         fail_skip(_presets_usage())
 
     presets = supported_presets()
-    cfg = _load_optional_config()
+    cfg = load_optional_config()
     ui.command_banner("presets", cfg)
     ui.section("Current")
     ui.kv_block([("preset", cfg.preset if cfg is not None and cfg.preset else "(none)")])
@@ -189,13 +190,6 @@ def _write_project_preset(pyproject: Path, preset: str) -> None:
     pyproject.write_text(text[:body_start] + updated_body + text[body_end:], encoding="utf-8")
 
 
-def _load_optional_config() -> InterlockConfig | None:
-    try:
-        return load_config()
-    except (OSError, tomllib.TOMLDecodeError):
-        return None
-
-
 def _print_detected_block(cfg: InterlockConfig | None) -> None:
     if cfg is None:
         return
@@ -219,7 +213,7 @@ def _print_detected_block(cfg: InterlockConfig | None) -> None:
         ui.section("Config Warnings")
         ui.kv_block([("unsupported preset", p) for p in cfg.unsupported_presets])
     ui.section("Thresholds")
-    print("  Override via [tool.interlocks] or ~/.config/interlocks/config.toml.")
+    print("  Override via [tool.interlocks] in pyproject.toml.")
     ui.kv_block([
         ("coverage_min", str(cfg.coverage_min)),
         ("crap_max", str(cfg.crap_max)),
@@ -287,6 +281,10 @@ TASK_GROUPS: list[tuple[str, dict[str, tuple[Callable[..., None], str]]]] = [
     (
         "Utility",
         {
+            "config": (
+                cmd_config,
+                "Show all [tool.interlocks] keys with defaults and current values",
+            ),
             "doctor": (cmd_doctor, "Preflight diagnostic: paths, tools, venv"),
             "init": (cmd_init, "Scaffold a greenfield pyproject.toml + tests/ in CWD"),
             "presets": (cmd_presets, "Show preset options or set one with `presets set <preset>`"),

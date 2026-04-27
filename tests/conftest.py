@@ -41,17 +41,13 @@ _DEFAULT_TEST_FILES: Mapping[str, str] = {
 
 
 @pytest.fixture(autouse=True)
-def _isolate_test_env(
-    monkeypatch: pytest.MonkeyPatch, tmp_path_factory: pytest.TempPathFactory
-) -> None:
-    """Clear config cache, scrub GIT_* leaks, and pin XDG_CONFIG_HOME at an empty dir.
+def _isolate_test_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Clear config cache and scrub GIT_* leaks.
 
     Without the GIT_* scrub, tests that shell out to `git` inherit `GIT_DIR`
     from an enclosing `git commit` hook and corrupt the outer repo.
     """
     interlock_config.clear_cache()
-    empty = tmp_path_factory.mktemp("empty_xdg")
-    monkeypatch.setenv("XDG_CONFIG_HOME", str(empty))
     for var in _GIT_ENV_LEAKS:
         monkeypatch.delenv(var, raising=False)
     monkeypatch.setenv("GIT_CONFIG_GLOBAL", os.devnull)

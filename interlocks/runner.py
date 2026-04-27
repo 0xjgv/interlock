@@ -31,7 +31,14 @@ _DUMP_HEAD_LINES = 40
 _DUMP_TAIL_LINES = 20
 
 # Commands that must work without a project — diagnostics, scaffolding, meta.
-PREFLIGHT_EXEMPT: frozenset[str] = frozenset({"doctor", "init", "presets", "version", "help"})
+PREFLIGHT_EXEMPT: frozenset[str] = frozenset({
+    "config",
+    "doctor",
+    "init",
+    "presets",
+    "version",
+    "help",
+})
 
 _BIN = Path(sys.executable).parent
 

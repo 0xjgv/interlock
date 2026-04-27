@@ -26,6 +26,7 @@ Feature: interlocks CLI surface area
     And the output lists the command "post-edit"
     And the output lists the command "setup-hooks"
     And the output lists the command "clean"
+    And the output lists the command "config"
     And the output lists the command "version"
     And the output lists the command "help"
 
@@ -37,3 +38,11 @@ Feature: interlocks CLI surface area
     Given I run "interlocks help --quiet"
     Then the output does not contain "command=help"
     And the output does not contain "── "
+
+  Scenario: Agent reads config reference
+    Given I run "interlocks config"
+    Then the output contains "preset"
+    And the output contains "coverage_min"
+    And the output contains "── Precedence"
+    And the output contains "── Examples"
+    And the output does not contain "user-global"

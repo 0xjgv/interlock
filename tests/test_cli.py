@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import dataclasses
 import re
 import sys
 import textwrap
@@ -11,7 +12,14 @@ from pathlib import Path
 import pytest
 
 from interlocks.cli import TASK_GROUPS, TASKS, cmd_help, cmd_presets, main
-from interlocks.config import clear_cache, load_config, preset_defaults
+from interlocks.config import (
+    CONFIG_KEYS,
+    InterlockConfig,
+    clear_cache,
+    load_config,
+    preset_defaults,
+)
+from interlocks.tasks.config import cmd_config
 
 
 @pytest.fixture
@@ -222,7 +230,6 @@ def test_cmd_presets_clears_config_cache(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, clean_config_cache: None, argv: list[str]
 ) -> None:
     _setup_minimal_project(tmp_path, monkeypatch)
-    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "xdg"))
 
     assert load_config().preset is None
 
@@ -320,3 +327,105 @@ def test_main_skips_flag_args(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(sys, "argv", ["interlocks", "--verbose", "help"])
     main()
     assert calls == ["ran"]
+
+
+# ─────────────── interlocks config ──────────────────────────────────
+
+
+_INTERNAL_CONFIG_FIELDS: frozenset[str] = frozenset({
+    "project_root",
+    "value_sources",
+    "unsupported_presets",
+})
+
+
+def test_config_keys_match_dataclass_fields() -> None:
+    """``CONFIG_KEYS`` must document every public ``InterlockConfig`` field."""
+    documented = {k.name for k in CONFIG_KEYS}
+    fields = {f.name for f in dataclasses.fields(InterlockConfig)} - _INTERNAL_CONFIG_FIELDS
+    assert documented == fields
+
+
+def test_cmd_config_lists_all_keys(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    clean_config_cache: None,
+) -> None:
+    (tmp_path / "pkg").mkdir()
+    (tmp_path / "pkg" / "__init__.py").write_text("", encoding="utf-8")
+    (tmp_path / "tests").mkdir()
+    (tmp_path / "pyproject.toml").write_text(
+        textwrap.dedent(
+            """
+            [project]
+            name = "pkg"
+            version = "0.0.0"
+
+            [tool.interlocks]
+            preset = "baseline"
+            """
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.chdir(tmp_path)
+
+    cmd_config()
+
+    out = capsys.readouterr().out
+    assert "command=config" in out
+    assert "── Status" in out
+    assert "── Resolved values" in out
+    assert "── Config keys" in out
+    assert "── Precedence" in out
+    assert "── Examples" in out
+    assert "── Next steps" in out
+    for key in CONFIG_KEYS:
+        assert key.name in out
+    # Preset-derived value renders for baseline coverage_min == 70.
+    assert re.search(r"coverage_min\s+70 \(preset-derived\)", out)
+
+
+def test_cmd_config_no_pyproject(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    clean_config_cache: None,
+) -> None:
+    monkeypatch.chdir(tmp_path)
+
+    cmd_config()
+
+    out = capsys.readouterr().out
+    assert "(none — run `interlocks init`)" in out
+    assert "Scaffold a project:" in out
+    # Defaults still listed.
+    assert re.search(r"coverage_min\s+80 \(bundled-default\)", out)
+
+
+def test_cmd_config_falls_back_when_pyproject_malformed(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    clean_config_cache: None,
+) -> None:
+    (tmp_path / "pyproject.toml").write_text("not = [valid toml\n", encoding="utf-8")
+    monkeypatch.chdir(tmp_path)
+
+    cmd_config()  # must not raise
+
+    out = capsys.readouterr().out
+    assert "── Config keys" in out
+    for key in CONFIG_KEYS:
+        assert key.name in out
+
+
+def test_cmd_help_does_not_mention_user_global(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Drift guard: the user-global config layer is gone — never reference it."""
+    cmd_help()
+    out = capsys.readouterr().out
+    assert "user-global" not in out
+    assert "XDG_CONFIG_HOME" not in out
+    assert "~/.config/interlocks" not in out

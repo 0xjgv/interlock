@@ -154,60 +154,7 @@ def test_invalid_threshold_types_fall_back_to_defaults(
     assert cfg.crap_max == 30.0
 
 
-# ─────────────── user-global cascade ────────────────────────────────
-
-
-def test_user_global_config_overrides_bundled_defaults(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    """``~/.config/interlocks/config.toml`` (root keys) applies when project has none."""
-    (tmp_path / "tests").mkdir()
-    _write(
-        tmp_path / "pyproject.toml",
-        """
-        [project]
-        name = "ug"
-        version = "0.0.0"
-        """,
-    )
-    home = tmp_path / "fake_home"
-    (home / ".config" / "interlocks").mkdir(parents=True)
-    (home / ".config" / "interlocks" / "config.toml").write_text(
-        "coverage_min = 88\ncrap_max = 20.0\n", encoding="utf-8"
-    )
-    monkeypatch.setenv("XDG_CONFIG_HOME", str(home / ".config"))
-    monkeypatch.chdir(tmp_path)
-    cfg = load_config()
-    assert cfg.coverage_min == 88
-    assert cfg.crap_max == 20.0
-
-
-def test_project_tool_interlock_overrides_user_global(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    """Project `[tool.interlocks]` wins over ``~/.config/interlocks/config.toml``."""
-    (tmp_path / "tests").mkdir()
-    _write(
-        tmp_path / "pyproject.toml",
-        """
-        [project]
-        name = "pwins"
-        version = "0.0.0"
-
-        [tool.interlocks]
-        coverage_min = 95
-        """,
-    )
-    home = tmp_path / "fake_home"
-    (home / ".config" / "interlocks").mkdir(parents=True)
-    (home / ".config" / "interlocks" / "config.toml").write_text(
-        "coverage_min = 88\ncrap_max = 20.0\n", encoding="utf-8"
-    )
-    monkeypatch.setenv("XDG_CONFIG_HOME", str(home / ".config"))
-    monkeypatch.chdir(tmp_path)
-    cfg = load_config()
-    assert cfg.coverage_min == 95  # project wins
-    assert cfg.crap_max == 20.0  # user-global fills in for missing keys
+# ─────────────── presets ───────────────────────────────────────────
 
 
 def test_baseline_preset_resolves_low_friction_defaults(
@@ -323,69 +270,6 @@ def test_project_explicit_value_overrides_project_preset(
     assert cfg.value_sources["coverage_min"] == "project-configured"
 
 
-def test_project_preset_overrides_user_global_explicit_values(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    (tmp_path / "tests").mkdir()
-    _write(
-        tmp_path / "pyproject.toml",
-        """
-        [project]
-        name = "project-preset"
-        version = "0.0.0"
-
-        [tool.interlocks]
-        preset = "baseline"
-        """,
-    )
-    home = tmp_path / "fake_home"
-    (home / ".config" / "interlocks").mkdir(parents=True)
-    (home / ".config" / "interlocks" / "config.toml").write_text(
-        "coverage_min = 88\nrun_mutation_in_ci = true\n", encoding="utf-8"
-    )
-    monkeypatch.setenv("XDG_CONFIG_HOME", str(home / ".config"))
-    monkeypatch.chdir(tmp_path)
-
-    cfg = load_config()
-
-    assert cfg.preset == "baseline"
-    assert cfg.coverage_min == 70
-    assert cfg.run_mutation_in_ci is False
-    assert cfg.value_sources["coverage_min"] == "preset-derived"
-
-
-def test_project_explicit_values_override_user_global_preset(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    (tmp_path / "tests").mkdir()
-    _write(
-        tmp_path / "pyproject.toml",
-        """
-        [project]
-        name = "project-explicit"
-        version = "0.0.0"
-
-        [tool.interlocks]
-        coverage_min = 95
-        enforce_crap = true
-        """,
-    )
-    home = tmp_path / "fake_home"
-    (home / ".config" / "interlocks").mkdir(parents=True)
-    (home / ".config" / "interlocks" / "config.toml").write_text(
-        'preset = "legacy"\n', encoding="utf-8"
-    )
-    monkeypatch.setenv("XDG_CONFIG_HOME", str(home / ".config"))
-    monkeypatch.chdir(tmp_path)
-
-    cfg = load_config()
-
-    assert cfg.preset == "legacy"
-    assert cfg.coverage_min == 95
-    assert cfg.enforce_crap is True
-    assert cfg.mutation_min_score == 0.0
-
-
 def test_unsupported_preset_is_reported_without_resolving(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -408,28 +292,6 @@ def test_unsupported_preset_is_reported_without_resolving(
     assert cfg.preset is None
     assert cfg.coverage_min == 80
     assert cfg.unsupported_presets == ("project-configured: agent-safe",)
-
-
-def test_malformed_user_global_is_ignored(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    """A broken user-global file must not crash load_config — just use defaults."""
-    (tmp_path / "tests").mkdir()
-    _write(
-        tmp_path / "pyproject.toml",
-        """
-        [project]
-        name = "broken-ug"
-        version = "0.0.0"
-        """,
-    )
-    home = tmp_path / "fake_home"
-    (home / ".config" / "interlocks").mkdir(parents=True)
-    (home / ".config" / "interlocks" / "config.toml").write_text(
-        "not = [valid toml\n", encoding="utf-8"
-    )
-    monkeypatch.setenv("XDG_CONFIG_HOME", str(home / ".config"))
-    monkeypatch.chdir(tmp_path)
-    cfg = load_config()  # must not raise
-    assert cfg.coverage_min == 80
 
 
 # ─────────────── load_config overrides ──────────────────────────────

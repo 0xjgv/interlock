@@ -7,7 +7,6 @@ autodetected defaults. Stdlib-only.
 
 from __future__ import annotations
 
-import os
 import sys
 import tomllib
 from dataclasses import dataclass, field
@@ -34,7 +33,6 @@ _SOURCE_AUTO = "auto-detected"
 _SOURCE_DEFAULT = "bundled-default"
 _SOURCE_PRESET = "preset-derived"
 _SOURCE_PROJECT = "project-configured"
-_SOURCE_USER = "user-global"
 
 _SUPPORTED_PRESETS: tuple[Preset, ...] = ("baseline", "strict", "legacy")
 _PRESET_DESCRIPTIONS: dict[Preset, str] = {
@@ -112,6 +110,160 @@ def kv_with_source(cfg: InterlockConfig, key: str, value: object) -> tuple[str, 
     return (key, f"{value} ({source})")
 
 
+ConfigKeyGroup = Literal[
+    "Paths", "Runner", "Preset", "Thresholds", "Gates", "Mutation", "Acceptance"
+]
+
+
+@dataclass(frozen=True)
+class ConfigKeyDoc:
+    """Documentation entry for one ``[tool.interlocks]`` key.
+
+    Source of truth for descriptions, types, and section grouping rendered by
+    ``interlocks config``. The dataclass remains the source of truth for
+    runtime values and defaults; this table only adds human-readable metadata.
+    """
+
+    name: str
+    type: str
+    default: str
+    description: str
+    group: ConfigKeyGroup
+
+
+CONFIG_KEYS: tuple[ConfigKeyDoc, ...] = (
+    ConfigKeyDoc(
+        "src_dir",
+        "str",
+        "auto",
+        "Source dir (autodetected from src/<pkg>, top-level pkg, or build-backend)",
+        "Paths",
+    ),
+    ConfigKeyDoc(
+        "test_dir",
+        "str",
+        "auto",
+        "Test dir (first existing of tests/, test/, src/tests/)",
+        "Paths",
+    ),
+    ConfigKeyDoc(
+        "features_dir",
+        "str",
+        "auto",
+        "Gherkin features dir (tests/features/, features/, or <test_dir>/features/)",
+        "Paths",
+    ),
+    ConfigKeyDoc(
+        "test_runner",
+        "pytest|unittest",
+        "auto",
+        "Test runner — autodetected from pytest config/deps/imports",
+        "Runner",
+    ),
+    ConfigKeyDoc(
+        "test_invoker",
+        "python|uv",
+        "auto",
+        "Invocation prefix — uv when uv.lock present, else python",
+        "Runner",
+    ),
+    ConfigKeyDoc(
+        "pytest_args",
+        "list[str]",
+        "[]",
+        "Extra args appended to pytest commands",
+        "Runner",
+    ),
+    ConfigKeyDoc(
+        "preset",
+        "baseline|strict|legacy",
+        "(none)",
+        "Apply a preset bundle of defaults; explicit keys still win",
+        "Preset",
+    ),
+    ConfigKeyDoc("coverage_min", "int", "80", "coverage.py fail-under", "Thresholds"),
+    ConfigKeyDoc(
+        "crap_max",
+        "float",
+        "30.0",
+        "CRAP ceiling: complexity * (1 - coverage)^2",
+        "Thresholds",
+    ),
+    ConfigKeyDoc("complexity_max_ccn", "int", "15", "lizard CCN cap", "Thresholds"),
+    ConfigKeyDoc("complexity_max_args", "int", "7", "lizard argument count cap", "Thresholds"),
+    ConfigKeyDoc("complexity_max_loc", "int", "100", "lizard LOC cap per function", "Thresholds"),
+    ConfigKeyDoc("enforce_crap", "bool", "true", "CRAP exits 1 on offenders", "Gates"),
+    ConfigKeyDoc(
+        "run_mutation_in_ci",
+        "bool",
+        "false",
+        "Include mutation in `interlocks ci`",
+        "Gates",
+    ),
+    ConfigKeyDoc(
+        "enforce_mutation",
+        "bool",
+        "false",
+        "Mutation exits 1 below mutation_min_score",
+        "Gates",
+    ),
+    ConfigKeyDoc(
+        "run_acceptance_in_check",
+        "bool",
+        "false",
+        "Run acceptance scenarios inside `interlocks check`",
+        "Gates",
+    ),
+    ConfigKeyDoc(
+        "mutation_min_coverage",
+        "float",
+        "70.0",
+        "Skip mutation when suite coverage below this",
+        "Mutation",
+    ),
+    ConfigKeyDoc("mutation_max_runtime", "int", "600", "Seconds before SIGTERM", "Mutation"),
+    ConfigKeyDoc(
+        "mutation_min_score",
+        "float",
+        "80.0",
+        "Kill ratio (%) enforced when blocking",
+        "Mutation",
+    ),
+    ConfigKeyDoc(
+        "mutation_ci_mode",
+        "off|incremental|full",
+        "off",
+        "CI mutation strategy (incremental/full reserved for future use)",
+        "Mutation",
+    ),
+    ConfigKeyDoc(
+        "mutation_since_ref",
+        "str",
+        "origin/main",
+        "Base ref for incremental mutation",
+        "Mutation",
+    ),
+    ConfigKeyDoc(
+        "acceptance_runner",
+        "pytest-bdd|behave|off",
+        "auto",
+        "Gherkin runner (pytest-bdd default; behave auto-detected)",
+        "Acceptance",
+    ),
+)
+
+
+CONFIG_KEY_GROUP_ORDER: tuple[ConfigKeyGroup, ...] = (
+    "Paths",
+    "Runner",
+    "Preset",
+    "Thresholds",
+    "Gates",
+    "Mutation",
+    "Acceptance",
+)
+
+
 class InterlockConfigError(Exception):
     """Raised when project configuration is missing or malformed."""
 
@@ -145,31 +297,6 @@ def _load_pyproject(project_root: Path) -> dict[str, Any]:
 def _interlock_table(pyproject: dict[str, Any]) -> dict[str, Any]:
     table = pyproject.get("tool", {}).get("interlocks", {})
     return table if isinstance(table, dict) else {}
-
-
-def _user_global_config_path() -> Path:
-    """``~/.config/interlocks/config.toml`` — respects ``$XDG_CONFIG_HOME``."""
-    root = os.environ.get("XDG_CONFIG_HOME") or str(Path.home() / ".config")
-    return Path(root) / "interlocks" / "config.toml"
-
-
-def _user_global_table() -> dict[str, Any]:
-    """Root-level keys from ``~/.config/interlocks/config.toml``, or ``{}`` on any failure.
-
-    The file is dedicated to interlocks, so keys live at the root (no ``[tool.interlocks]``
-    wrapper). Intended mainly for threshold overrides — same keys as pyproject's
-    ``[tool.interlocks]``. Path fields (``src_dir``/``test_dir``) are project-specific
-    and should not be set here.
-    """
-    path = _user_global_config_path()
-    if not path.is_file():
-        return {}
-    try:
-        with path.open("rb") as f:
-            data = tomllib.load(f)
-    except (OSError, tomllib.TOMLDecodeError):
-        return {}
-    return data if isinstance(data, dict) else {}
 
 
 def _runner_override(table: dict[str, Any]) -> TestRunner | None:
@@ -305,6 +432,19 @@ def load_config(start: Path | None = None) -> InterlockConfig:
     return _load_config_cached(find_project_root(start))
 
 
+def load_optional_config(start: Path | None = None) -> InterlockConfig | None:
+    """Load config, returning ``None`` instead of raising on read/parse failure.
+
+    Use at the CLI surface for read-only commands (``help``, ``presets``, ``config``)
+    that should still render with bundled defaults when ``pyproject.toml`` is
+    malformed or unreadable.
+    """
+    try:
+        return load_config(start)
+    except (OSError, tomllib.TOMLDecodeError):
+        return None
+
+
 def require_pyproject(cfg: InterlockConfig) -> None:
     """Raise ``InterlockConfigError`` when ``cfg.project_root`` has no ``pyproject.toml``.
 
@@ -319,11 +459,8 @@ def require_pyproject(cfg: InterlockConfig) -> None:
 @cache
 def _load_config_cached(project_root: Path) -> InterlockConfig:
     pyproject = _load_pyproject(project_root)
-    user_table = _user_global_table()
     project_table = _interlock_table(pyproject)
-    table, value_sources, preset, unsupported_presets = _resolve_config_table(
-        user_table, project_table
-    )
+    table, value_sources, preset, unsupported_presets = _resolve_config_table(project_table)
 
     test_dir_override = table.get("test_dir")
     src_dir_override = table.get("src_dir")
@@ -404,28 +541,27 @@ _ENUM_PARSERS = {
 
 
 def _resolve_config_table(
-    user_table: dict[str, Any], project_table: dict[str, Any]
+    project_table: dict[str, Any],
 ) -> tuple[dict[str, Any], dict[str, str], Preset | None, tuple[str, ...]]:
-    """Resolve config using preset defaults before explicit values per layer."""
+    """Resolve config using preset defaults before explicit project values."""
     resolved: dict[str, Any] = {}
     sources: dict[str, str] = {}
     active_preset: Preset | None = None
     unsupported: list[str] = []
 
-    for table, source in ((user_table, _SOURCE_USER), (project_table, _SOURCE_PROJECT)):
-        preset = _preset_override(table)
-        if preset is not None:
-            resolved.update(_PRESET_DEFAULTS[preset])
-            sources.update(dict.fromkeys(_PRESET_DEFAULTS[preset], _SOURCE_PRESET))
-            resolved["preset"] = preset
-            sources["preset"] = source
-            active_preset = preset
-        elif isinstance(table.get("preset"), str):
-            unsupported.append(f"{source}: {table['preset']}")
+    preset = _preset_override(project_table)
+    if preset is not None:
+        resolved.update(_PRESET_DEFAULTS[preset])
+        sources.update(dict.fromkeys(_PRESET_DEFAULTS[preset], _SOURCE_PRESET))
+        resolved["preset"] = preset
+        sources["preset"] = _SOURCE_PROJECT
+        active_preset = preset
+    elif isinstance(project_table.get("preset"), str):
+        unsupported.append(f"{_SOURCE_PROJECT}: {project_table['preset']}")
 
-        explicit = _explicit_config_overrides(table)
-        resolved.update(explicit)
-        sources.update(dict.fromkeys(explicit, source))
+    explicit = _explicit_config_overrides(project_table)
+    resolved.update(explicit)
+    sources.update(dict.fromkeys(explicit, _SOURCE_PROJECT))
 
     return resolved, sources, active_preset, tuple(unsupported)
 
@@ -478,7 +614,7 @@ def _complete_value_sources(
         if value is None:
             complete[key] = _SOURCE_AUTO
         else:
-            complete.setdefault(key, _SOURCE_PROJECT if key in table else _SOURCE_USER)
+            complete.setdefault(key, _SOURCE_PROJECT)
     complete.setdefault("pytest_args", _SOURCE_DEFAULT)
     complete.setdefault(
         "preset", _SOURCE_DEFAULT if table.get("preset") is None else _SOURCE_PROJECT

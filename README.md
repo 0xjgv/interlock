@@ -84,7 +84,7 @@ interlocks is complementary to LLM-based reviewers such as CodeRabbit, Greptile,
 
 ## Adoption Presets
 
-Presets are optional defaults under `[tool.interlocks]` or `~/.config/interlocks/config.toml`. Explicit values in the same layer override preset defaults, so you can manually tune thresholds in `pyproject.toml` after choosing a preset.
+Presets are optional defaults under `[tool.interlocks]`. Explicit values in the same layer override preset defaults, so you can manually tune thresholds in `pyproject.toml` after choosing a preset.
 
 ```toml
 [tool.interlocks]
@@ -147,19 +147,9 @@ run_acceptance_in_check = false
 Precedence, lowest to highest:
 
 1. Bundled dataclass defaults.
-2. User-global preset defaults from `~/.config/interlocks/config.toml`.
-3. User-global explicit values.
-4. Project preset defaults from `[tool.interlocks]`.
-5. Project explicit values.
-6. CLI flags inside tasks, such as `--min=`, `--max=`, `--max-runtime=`, `--min-score=`, and `--min-coverage=`.
-
-Example user-global config:
-
-```toml
-# ~/.config/interlocks/config.toml
-preset = "baseline"
-coverage_min = 85
-```
+2. Project preset defaults from `[tool.interlocks]`.
+3. Project explicit values.
+4. CLI flags inside tasks, such as `--min=`, `--max=`, `--max-runtime=`, `--min-score=`, and `--min-coverage=`.
 
 Run `interlocks help` to see the active preset and resolved values.
 Run `interlocks presets` to see preset options, their main thresholds, and copyable config.
@@ -209,6 +199,7 @@ Scaffolding:
 
 Utility:
 
+- `config`: list every `[tool.interlocks]` key with type, default, description, and current resolved value (read-only). Single source of truth for agents driving setup.
 - `doctor`: adoption diagnostic. Exempt from the `pyproject.toml` preflight gate.
 - `help`: command list plus detected paths, active preset, and thresholds.
 - `presets`: show preset options, current values, copyable config, and set a project preset with `interlocks presets set <preset>`.

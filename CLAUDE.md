@@ -19,6 +19,7 @@
 - CRAP: `interlocks crap --max=30` — complexity × coverage gate (blocking by default; `enforce_crap = false` to stay advisory)
 - Mutation: `interlocks mutation --min-coverage=70 --max-runtime=600` — mutmut (advisory unless `enforce_mutation = true` or `--min-score=` is set; see `interlocks nightly`)
 - Trust: `interlocks trust` — trust-score report (verdict + suspicious tests + hot files), read-only; `--refresh` re-runs coverage first, `--verbose` for full breakdown, `--no-trend` to skip the `.interlocks/trust.json` cache
+- Config: `interlocks config` — list every `[tool.interlocks]` key with type, default, description, and current resolved value (read-only)
 - Setup: `interlocks setup-hooks` to install git pre-commit hook
 - Auto-format: runs automatically after Claude edits via `Stop` hook (post-edit)
 
@@ -69,7 +70,6 @@ Highest wins:
 
 1. CLI flags (`--min=`, `--max=`, `--max-runtime=`, …)
 2. Project `[tool.interlocks]` in the nearest `pyproject.toml`
-3. User-global `~/.config/interlocks/config.toml` (respects `$XDG_CONFIG_HOME`) — same keys, no `[tool.interlocks]` wrapper
-4. Bundled defaults (above) + bundled tool configs under `interlocks/defaults/` — `ruff.toml`, `pyrightconfig.json`, `coveragerc`, `importlinter_template.ini`
+3. Bundled defaults (above) + bundled tool configs under `interlocks/defaults/` — `ruff.toml`, `pyrightconfig.json`, `coveragerc`, `importlinter_template.ini`
 
 When a target project declares its own `[tool.<tool>]` (or a sidecar like `ruff.toml`/`.coveragerc`/`pyrightconfig.json`/`.importlinter`), the bundled default is skipped and the project's config applies directly.
