@@ -59,12 +59,21 @@ def test_format_cli_modifies_unformatted_file(tmp_project: Path) -> None:
     assert f.read_text(encoding="utf-8") != UNFORMATTED
 
 
-def test_format_no_exit_does_not_raise(tmp_project: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_format_no_exit_does_not_raise(
+    tmp_project: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
     from interlocks.tasks.format import cmd_format
 
-    (tmp_project / "sample.py").write_text(UNFORMATTED, encoding="utf-8")
+    src = tmp_project / "sample.py"
+    src.write_text(UNFORMATTED, encoding="utf-8")
     monkeypatch.chdir(tmp_project)
-    cmd_format(no_exit=True)  # must not raise SystemExit
+    cmd_format(no_exit=True)
+
+    assert src.read_text(encoding="utf-8") != UNFORMATTED
+    out = capsys.readouterr().out
+    assert "[format]" in out
 
 
 def test_format_injects_bundled_config_in_bare_project(

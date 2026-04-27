@@ -60,13 +60,18 @@ def test_require_pyproject_points_at_init(tmp_path: Path) -> None:
 
 
 def test_preflight_exempt_commands_never_check(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
 ) -> None:
     """Utility commands must work without a pyproject."""
     monkeypatch.chdir(tmp_path)
     clear_cache()
     for command in ("help", "doctor", "init", "presets", "version"):
-        preflight(command)  # must not raise or exit
+        preflight(command)
+
+    captured = capsys.readouterr()
+    assert captured.err == ""
 
 
 def test_preflight_exits_two_when_gated_command_has_no_pyproject(

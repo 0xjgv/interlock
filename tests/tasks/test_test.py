@@ -53,12 +53,20 @@ def test_test_cli(tmp_project: Path, source: str, expected_rc: int) -> None:
     assert result.returncode == expected_rc
 
 
-def test_test_passing_in_process(tmp_project: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_test_passing_in_process(
+    tmp_project: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
     from interlocks.tasks.test import cmd_test
 
     (tmp_project / "tests" / "test_sample.py").write_text(PASSING, encoding="utf-8")
     monkeypatch.chdir(tmp_project)
-    cmd_test()  # no SystemExit on passing suite
+    cmd_test()
+
+    out = capsys.readouterr().out
+    assert "[test]" in out
+    assert any(token in out for token in ("ok", "passed", "1 test"))
 
 
 def test_test_failing_in_process(tmp_project: Path, monkeypatch: pytest.MonkeyPatch) -> None:

@@ -58,7 +58,9 @@ def tmp_project(tmp_path: Path) -> Path:
 
 
 def test_coverage_passes_when_threshold_met(
-    tmp_project: Path, monkeypatch: pytest.MonkeyPatch
+    tmp_project: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
 ) -> None:
     (tmp_project / "tests" / "test_mod.py").write_text(_COVERING_TEST_SRC, encoding="utf-8")
     monkeypatch.chdir(tmp_project)
@@ -66,7 +68,11 @@ def test_coverage_passes_when_threshold_met(
 
     from interlocks.tasks.coverage import cmd_coverage
 
-    cmd_coverage(min_pct=80)  # 100% covered → no SystemExit
+    cmd_coverage(min_pct=80)
+
+    out = capsys.readouterr().out
+    assert "[coverage]" in out
+    assert (tmp_project / ".coverage").is_file()
 
 
 def test_coverage_fails_below_threshold(

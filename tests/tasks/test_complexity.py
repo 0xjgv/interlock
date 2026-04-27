@@ -50,14 +50,20 @@ def tmp_project(tmp_path: Path) -> Path:
 
 
 def test_complexity_passes_on_simple_code(
-    tmp_project: Path, monkeypatch: pytest.MonkeyPatch
+    tmp_project: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
 ) -> None:
     (tmp_project / "interlocks" / "mod.py").write_text(_SIMPLE_SRC, encoding="utf-8")
     monkeypatch.chdir(tmp_project)
 
     from interlocks.tasks.complexity import cmd_complexity
 
-    cmd_complexity()  # no SystemExit → lizard happy
+    cmd_complexity()
+
+    out = capsys.readouterr().out
+    assert "[complexity]" in out
+    assert "ok" in out
 
 
 def test_complexity_fails_on_tangled_function(

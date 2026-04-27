@@ -46,12 +46,20 @@ def test_lint_cli(tmp_project: Path, source: str, expected_rc: int) -> None:
     assert result.returncode == expected_rc
 
 
-def test_lint_clean_in_process(tmp_project: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_lint_clean_in_process(
+    tmp_project: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
     from interlocks.tasks.lint import cmd_lint
 
     (tmp_project / "sample.py").write_text(CLEAN, encoding="utf-8")
     monkeypatch.chdir(tmp_project)
-    cmd_lint()  # no SystemExit on clean input
+    cmd_lint()
+
+    out = capsys.readouterr().out
+    assert "[lint]" in out
+    assert "ok" in out
 
 
 def test_lint_violating_in_process(tmp_project: Path, monkeypatch: pytest.MonkeyPatch) -> None:

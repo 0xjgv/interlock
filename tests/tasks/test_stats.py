@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import ast
 import json
 import os
 import subprocess
@@ -21,6 +22,7 @@ from interlocks.tasks.stats import (
     _compute_trust,
     _emoji,
     _flag_suspicious,
+    _inspect_tree,
     _read_prev_trust,
     _write_trust,
     cmd_trust,
@@ -238,6 +240,33 @@ def test_flag_suspicious_methods_caught(test_dir: Path) -> None:
     rows = _collect_test_inspections(test_dir)
     flagged = {r.name for r in _flag_suspicious(rows)}
     assert "TestFoo.test_method_no_asserts" in flagged
+
+
+def test_inspect_counts_pytest_raises_as_assertion() -> None:
+    src = textwrap.dedent("""\
+        import pytest
+        def test_x():
+            with pytest.raises(ValueError, match="bad"):
+                do_thing()
+    """)
+    tree = ast.parse(src)
+    [insp] = _inspect_tree(tree, "test_x.py")
+    assert insp.assert_count == 1
+    assert insp.trivial_asserts == 0
+
+
+def test_inspect_counts_pytest_warns_and_deprecated_call() -> None:
+    src = textwrap.dedent("""\
+        import pytest
+        def test_x():
+            with pytest.warns(DeprecationWarning):
+                f()
+            with pytest.deprecated_call():
+                g()
+    """)
+    tree = ast.parse(src)
+    [insp] = _inspect_tree(tree, "test_x.py")
+    assert insp.assert_count == 2
 
 
 # ─────────────── trust.json cache ──────────────────────────────

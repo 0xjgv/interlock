@@ -39,12 +39,20 @@ def tmp_project(tmp_path: Path) -> Path:
     return tmp_path
 
 
-def test_typecheck_clean_exits_zero(tmp_project: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_typecheck_clean_exits_zero(
+    tmp_project: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
     from interlocks.tasks.typecheck import cmd_typecheck
 
     (tmp_project / "interlocks" / "mod.py").write_text(CLEAN, encoding="utf-8")
     monkeypatch.chdir(tmp_project)
-    cmd_typecheck()  # returns without raising SystemExit
+    cmd_typecheck()
+
+    out = capsys.readouterr().out
+    assert "[typecheck]" in out
+    assert "ok" in out
 
 
 def test_typecheck_violating_exits_nonzero(

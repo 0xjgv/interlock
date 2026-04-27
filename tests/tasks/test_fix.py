@@ -61,13 +61,22 @@ def test_fix_cli_modifies_fixable_file(tmp_project: Path) -> None:
     assert "import os" not in f.read_text(encoding="utf-8")
 
 
-def test_fix_no_exit_does_not_raise(tmp_project: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_fix_no_exit_does_not_raise(
+    tmp_project: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
     from interlocks.tasks.fix import cmd_fix
 
     # F821 undefined-name — ruff can't auto-fix, exits 1.
-    (tmp_project / "sample.py").write_text("x = undefined_name\n", encoding="utf-8")
+    src = tmp_project / "sample.py"
+    src.write_text("x = undefined_name\n", encoding="utf-8")
     monkeypatch.chdir(tmp_project)
-    cmd_fix(no_exit=True)  # must not raise SystemExit
+    cmd_fix(no_exit=True)
+
+    assert src.read_text(encoding="utf-8") == "x = undefined_name\n"
+    out = capsys.readouterr().out
+    assert "[fix]" in out
 
 
 def test_fix_injects_bundled_config_in_bare_project(

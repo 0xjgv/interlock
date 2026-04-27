@@ -32,12 +32,22 @@ def tmp_project(tmp_path: Path) -> Path:
     return tmp_path
 
 
-def test_format_check_clean_exits_zero(tmp_project: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_format_check_clean_exits_zero(
+    tmp_project: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
     from interlocks.tasks.format_check import cmd_format_check
 
-    (tmp_project / "sample.py").write_text(CLEAN, encoding="utf-8")
+    src = tmp_project / "sample.py"
+    src.write_text(CLEAN, encoding="utf-8")
     monkeypatch.chdir(tmp_project)
-    cmd_format_check()  # returns without raising SystemExit
+    cmd_format_check()
+
+    assert src.read_text(encoding="utf-8") == CLEAN
+    out = capsys.readouterr().out
+    assert "[format]" in out
+    assert "ok" in out
 
 
 def test_format_check_unformatted_exits_nonzero(

@@ -187,6 +187,8 @@ def _inspect_function(fn: ast.FunctionDef, rel_path: str, *, qualname: str) -> T
             asserts += 1
             first = child.args[0] if child.args else None
             trivial += _is_trivial(first)
+        elif isinstance(child, ast.With) and _is_pytest_assert_with(child):
+            asserts += 1
     end_line = fn.end_lineno or fn.lineno
     return TestInspection(
         file=rel_path,
@@ -203,6 +205,25 @@ def _is_self_assert_call(call: ast.Call) -> bool:
     if not isinstance(func, ast.Attribute) or not func.attr.startswith("assert"):
         return False
     return isinstance(func.value, ast.Name) and func.value.id in {"self", "cls"}
+
+
+_PYTEST_ASSERT_CMS = frozenset({"raises", "warns", "deprecated_call"})
+
+
+def _is_pytest_assert_with(node: ast.With) -> bool:
+    for item in node.items:
+        call = item.context_expr
+        if not isinstance(call, ast.Call):
+            continue
+        func = call.func
+        if (
+            isinstance(func, ast.Attribute)
+            and isinstance(func.value, ast.Name)
+            and func.value.id == "pytest"
+            and func.attr in _PYTEST_ASSERT_CMS
+        ):
+            return True
+    return False
 
 
 def _flag_suspicious(inspections: list[TestInspection]) -> list[TestInspection]:
