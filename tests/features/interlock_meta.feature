@@ -5,16 +5,19 @@ Feature: interlocks meta commands
   So that bootstrapping a repo is predictable end-to-end
 
   @smoke
+  # req: meta-help-no-project
   Scenario: help runs cleanly without a project
     Given a tmp project with no features directory
     When I run "interlocks help" in the tmp project
     Then the command exits successfully
 
+  # req: meta-acceptance-noop
   Scenario: Acceptance is a silent no-op when features/ is missing
     Given a tmp project with no features directory
     When I run "interlocks acceptance" in the tmp project
     Then the command exits successfully
 
+  # req: meta-init-acceptance
   Scenario: init-acceptance scaffolds the canonical layout and refuses to overwrite
     Given a tmp project without tests/features/
     When I run "interlocks init-acceptance" in the tmp project
@@ -25,6 +28,7 @@ Feature: interlocks meta commands
     When I run "interlocks init-acceptance" in the tmp project a second time
     Then the command exits with a non-zero status
 
+  # req: meta-setup-hooks
   Scenario: setup-hooks installs an executable pre-commit hook
     Given a tmp project with a .git directory
     When I run "interlocks setup-hooks" in the tmp project

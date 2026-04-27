@@ -4,6 +4,7 @@ Feature: Greenfield scaffold via `interlocks init`
   I want `interlocks init` to drop a working pyproject.toml and tests/ layout
   So that `interlocks check` has something to run from the first commit
 
+  # req: init-empty-dir
   Scenario: Empty directory is scaffolded
     Given an empty directory
     When I run "interlocks init" there
@@ -12,6 +13,7 @@ Feature: Greenfield scaffold via `interlocks init`
     And the file "tests/__init__.py" exists
     And the file "tests/test_smoke.py" exists
 
+  # req: init-preserve-existing
   Scenario: Existing pyproject.toml is preserved
     Given a directory containing a pyproject.toml
     When I run "interlocks init" there

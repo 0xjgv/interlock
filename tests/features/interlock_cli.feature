@@ -4,6 +4,7 @@ Feature: interlocks CLI surface area
   I want `interlocks help` to list every command I rely on
   So that I can see at a glance what's wired up
 
+  # req: cli-commands
   Scenario: Core commands are advertised
     Given I run "interlocks help"
     Then the output lists the command "fix"
@@ -13,6 +14,7 @@ Feature: interlocks CLI surface area
     And the output lists the command "test"
     And the output lists the command "audit"
     And the output lists the command "deps"
+    And the output lists the command "deps-freshness"
     And the output lists the command "arch"
     And the output lists the command "acceptance"
     And the output lists the command "init"
@@ -33,19 +35,30 @@ Feature: interlocks CLI surface area
     And the output lists the command "help"
 
   @smoke
+  # req: cli-version
   Scenario: interlocks version prints 0.1.2
     Given I run "interlocks version"
     Then the output contains "0.1.2"
 
+  # req: cli-quiet
   Scenario: interlocks help --quiet skips banner and section headers
     Given I run "interlocks help --quiet"
     Then the output does not contain "command=help"
     And the output does not contain "── "
 
+  # req: cli-config
   Scenario: Agent reads config reference
     Given I run "interlocks config"
     Then the output contains "preset"
     And the output contains "coverage_min"
+    And the output contains "audit_severity_threshold"
+    And the output contains "pr_ci_runtime_budget_seconds"
     And the output contains "── Precedence"
     And the output contains "── Examples"
     And the output does not contain "user-global"
+
+  # req: cli-evaluate-guidance
+  Scenario: Evaluate gap guidance includes closure command
+    Given I run "interlocks evaluate" on a project with a traceability gap
+    Then the output contains "── Next Actions"
+    And the output contains "Close with `"

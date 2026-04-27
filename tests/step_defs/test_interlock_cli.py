@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import subprocess
 import sys
+import textwrap
 from pathlib import Path
 
 from pytest_bdd import given, parsers, scenarios, then
@@ -17,13 +18,51 @@ scenarios(str(Path(__file__).parent.parent / "features" / "interlock_cli.feature
 
 @given(parsers.parse('I run "interlocks {subcmd}"'), target_fixture="cli_output")
 def _run_interlock(subcmd: str) -> str:
+    return _run_interlocks(Path.cwd(), *subcmd.split())
+
+
+@given(
+    parsers.parse('I run "interlocks {subcmd}" on a project with a traceability gap'),
+    target_fixture="cli_output",
+)
+def _run_interlock_with_traceability_gap(subcmd: str, tmp_path: Path) -> str:
+    _write_traceability_gap_project(tmp_path)
+    return _run_interlocks(tmp_path, *subcmd.split())
+
+
+def _run_interlocks(cwd: Path, *args: str) -> str:
     result = subprocess.run(
-        [sys.executable, "-m", "interlocks.cli", *subcmd.split()],
+        [sys.executable, "-m", "interlocks.cli", *args],
+        cwd=cwd,
         capture_output=True,
         text=True,
         check=False,
     )
     return result.stdout + result.stderr
+
+
+def _write_traceability_gap_project(root: Path) -> None:
+    (root / "pkg").mkdir()
+    (root / "pkg" / "__init__.py").write_text("", encoding="utf-8")
+    (root / "tests" / "features").mkdir(parents=True)
+    (root / "tests" / "features" / "checkout.feature").write_text(
+        "Feature: checkout\n\n  Scenario: paid order succeeds\n    Given buyer has cart\n",
+        encoding="utf-8",
+    )
+    (root / "pyproject.toml").write_text(
+        textwrap.dedent(
+            """\
+            [project]
+            name = "traceability-gap"
+            version = "0.0.0"
+
+            [tool.interlocks]
+            src_dir = "pkg"
+            test_dir = "tests"
+            """
+        ),
+        encoding="utf-8",
+    )
 
 
 @then(parsers.parse('the output lists the command "{name}"'))

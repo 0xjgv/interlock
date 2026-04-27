@@ -4,6 +4,7 @@ Feature: interlocks doctor adoption diagnostic
   I want `interlocks doctor` to report readiness, blockers, warnings, and next steps
   So that I can decide whether to run local checks or fix setup first
 
+  # req: doctor-readiness
   Scenario: Doctor reports adoption readiness
     Given I run "interlocks doctor"
     Then the output contains "── Readiness"
@@ -14,6 +15,7 @@ Feature: interlocks doctor adoption diagnostic
     And the output contains "── Next Steps"
     And the output contains "src_dir"
 
+  # req: doctor-setup-checklist
   Scenario: Setup Checklist surfaces artifact rows with tag labels
     Given I run "interlocks doctor"
     Then the output contains "[pyproject]"

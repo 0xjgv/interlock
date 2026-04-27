@@ -27,6 +27,7 @@ TestRunner = Literal["pytest", "unittest"]
 TestInvoker = Literal["python", "uv"]
 AcceptanceRunner = Literal["pytest-bdd", "behave", "off"]
 MutationCIMode = Literal["off", "incremental", "full"]
+AuditSeverityThreshold = Literal["low", "medium", "high", "critical"]
 Preset = Literal["baseline", "strict", "legacy"]
 
 _SOURCE_AUTO = "auto-detected"
@@ -111,7 +112,15 @@ def kv_with_source(cfg: InterlockConfig, key: str, value: object) -> tuple[str, 
 
 
 ConfigKeyGroup = Literal[
-    "Paths", "Runner", "Preset", "Thresholds", "Gates", "Mutation", "Acceptance"
+    "Paths",
+    "Runner",
+    "Preset",
+    "Thresholds",
+    "Gates",
+    "Mutation",
+    "Acceptance",
+    "Dependencies",
+    "Evidence",
 ]
 
 
@@ -250,6 +259,55 @@ CONFIG_KEYS: tuple[ConfigKeyDoc, ...] = (
         "Gherkin runner (pytest-bdd default; behave auto-detected)",
         "Acceptance",
     ),
+    ConfigKeyDoc(
+        "evaluate_dependency_freshness",
+        "bool",
+        "false",
+        "Score dependency freshness policy in `interlocks evaluate`",
+        "Dependencies",
+    ),
+    ConfigKeyDoc(
+        "dependency_freshness_command",
+        "str",
+        "interlocks deps-freshness",
+        "Focused command that checks outdated dependencies when run explicitly",
+        "Dependencies",
+    ),
+    ConfigKeyDoc(
+        "dependency_freshness_stage",
+        "str",
+        "interlocks nightly",
+        "Stage that owns slower dependency freshness verification",
+        "Dependencies",
+    ),
+    ConfigKeyDoc(
+        "audit_severity_threshold",
+        "low|medium|high|critical",
+        "(none)",
+        "Severity threshold used when evaluating high-severity audit policy",
+        "Dependencies",
+    ),
+    ConfigKeyDoc(
+        "pr_ci_runtime_budget_seconds",
+        "int",
+        "0",
+        "Max acceptable `interlocks ci` runtime; 0 disables PR speed scoring",
+        "Evidence",
+    ),
+    ConfigKeyDoc(
+        "pr_ci_evidence_max_age_hours",
+        "int",
+        "24",
+        "Max age for cached `interlocks ci` runtime evidence",
+        "Evidence",
+    ),
+    ConfigKeyDoc(
+        "ci_evidence_path",
+        "str",
+        ".interlocks/ci.json",
+        "Local JSON timing evidence written by `interlocks ci`",
+        "Evidence",
+    ),
 )
 
 
@@ -261,6 +319,8 @@ CONFIG_KEY_GROUP_ORDER: tuple[ConfigKeyGroup, ...] = (
     "Gates",
     "Mutation",
     "Acceptance",
+    "Dependencies",
+    "Evidence",
 )
 
 
@@ -331,6 +391,13 @@ def _mutation_ci_mode_override(table: dict[str, Any]) -> MutationCIMode | None:
     return None
 
 
+def _audit_severity_threshold_override(table: dict[str, Any]) -> AuditSeverityThreshold | None:
+    value = table.get("audit_severity_threshold")
+    if value in ("low", "medium", "high", "critical"):
+        return value
+    return None
+
+
 @dataclass(frozen=True)
 class InterlockConfig:
     project_root: Path
@@ -359,6 +426,13 @@ class InterlockConfig:
     acceptance_runner: AcceptanceRunner | None = None
     features_dir: Path | None = None
     run_acceptance_in_check: bool = False
+    evaluate_dependency_freshness: bool = False
+    dependency_freshness_command: str = "interlocks deps-freshness"
+    dependency_freshness_stage: str = "interlocks nightly"
+    audit_severity_threshold: AuditSeverityThreshold | None = None
+    pr_ci_runtime_budget_seconds: int = 0
+    pr_ci_evidence_max_age_hours: int = 24
+    ci_evidence_path: Path = Path(".interlocks/ci.json")
     value_sources: dict[str, str] = field(default_factory=dict)
     unsupported_presets: tuple[str, ...] = ()
 
@@ -481,6 +555,18 @@ def _load_config_cached(project_root: Path) -> InterlockConfig:
     )
     test_invoker: TestInvoker = invoker_override or detect_test_invoker(project_root)
     run_acceptance_in_check, mutation_ci_mode, mutation_since_ref = _resolve_flags(table)
+    audit_severity_threshold = _audit_severity_threshold_override(table)
+    dependency_freshness_command = _string_value(
+        table, "dependency_freshness_command", InterlockConfig.dependency_freshness_command
+    )
+    dependency_freshness_stage = _string_value(
+        table, "dependency_freshness_stage", InterlockConfig.dependency_freshness_stage
+    )
+    ci_evidence_path = _resolved_path(
+        table.get("ci_evidence_path"),
+        project_root / InterlockConfig.ci_evidence_path,
+        project_root,
+    )
 
     overrides = {
         "src_dir": src_dir_override,
@@ -503,6 +589,10 @@ def _load_config_cached(project_root: Path) -> InterlockConfig:
         run_acceptance_in_check=run_acceptance_in_check,
         mutation_ci_mode=mutation_ci_mode,
         mutation_since_ref=mutation_since_ref,
+        dependency_freshness_command=dependency_freshness_command,
+        dependency_freshness_stage=dependency_freshness_stage,
+        audit_severity_threshold=audit_severity_threshold,
+        ci_evidence_path=ci_evidence_path,
         value_sources=_complete_value_sources(value_sources, table, overrides=overrides),
         unsupported_presets=unsupported_presets,
         **_threshold_overrides(table),
@@ -514,6 +604,11 @@ def _resolved_path[T](override: object, fallback: T, project_root: Path) -> Path
     if isinstance(override, str):
         return (project_root / override).resolve()
     return fallback
+
+
+def _string_value(table: dict[str, Any], key: str, default: str) -> str:
+    value = table.get(key)
+    return value if isinstance(value, str) else default
 
 
 def _resolve_flags(table: dict[str, Any]) -> tuple[bool, MutationCIMode, str]:
@@ -530,12 +625,21 @@ def _resolve_flags(table: dict[str, Any]) -> tuple[bool, MutationCIMode, str]:
     return run_acceptance_in_check, mutation_ci_mode, mutation_since_ref
 
 
-_STRING_KEYS = ("src_dir", "test_dir", "mutation_since_ref", "features_dir")
+_STRING_KEYS = (
+    "src_dir",
+    "test_dir",
+    "mutation_since_ref",
+    "features_dir",
+    "dependency_freshness_command",
+    "dependency_freshness_stage",
+    "ci_evidence_path",
+)
 _ENUM_PARSERS = {
     "test_runner": _runner_override,
     "test_invoker": _invoker_override,
     "acceptance_runner": _acceptance_runner_override,
     "mutation_ci_mode": _mutation_ci_mode_override,
+    "audit_severity_threshold": _audit_severity_threshold_override,
 }
 
 
@@ -606,6 +710,13 @@ def _complete_value_sources(
         "mutation_ci_mode",
         "mutation_since_ref",
         "run_acceptance_in_check",
+        "evaluate_dependency_freshness",
+        "dependency_freshness_command",
+        "dependency_freshness_stage",
+        "audit_severity_threshold",
+        "pr_ci_runtime_budget_seconds",
+        "pr_ci_evidence_max_age_hours",
+        "ci_evidence_path",
     )
     for key in default_keys:
         complete.setdefault(key, _SOURCE_DEFAULT)
@@ -627,9 +738,16 @@ _INT_THRESHOLDS = (
     "complexity_max_loc",
     "complexity_max_args",
     "mutation_max_runtime",
+    "pr_ci_runtime_budget_seconds",
+    "pr_ci_evidence_max_age_hours",
 )
 _FLOAT_THRESHOLDS = ("crap_max", "mutation_min_coverage", "mutation_min_score")
-_BOOL_THRESHOLDS = ("enforce_crap", "run_mutation_in_ci", "enforce_mutation")
+_BOOL_THRESHOLDS = (
+    "enforce_crap",
+    "run_mutation_in_ci",
+    "enforce_mutation",
+    "evaluate_dependency_freshness",
+)
 
 
 def _threshold_overrides(table: dict[str, Any]) -> dict[str, Any]:
@@ -644,7 +762,7 @@ def _threshold_overrides(table: dict[str, Any]) -> dict[str, Any]:
         if value is not None:
             overrides[key] = value
     for key in _FLOAT_THRESHOLDS:
-        value = _coerce_float(table.get(key))
+        value = coerce_float(table.get(key))
         if value is not None:
             overrides[key] = value
     for key in _BOOL_THRESHOLDS:
@@ -664,7 +782,8 @@ def _coerce_int(raw: object) -> int | None:
     return None
 
 
-def _coerce_float(raw: object) -> float | None:
+def coerce_float(raw: object) -> float | None:
+    """Coerce ``raw`` to float when it is a number; return ``None`` for booleans/non-numbers."""
     if raw is None or isinstance(raw, bool):
         return None
     if isinstance(raw, (int, float)):

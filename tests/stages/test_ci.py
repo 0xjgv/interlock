@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import subprocess
 import sys
 import textwrap
@@ -137,6 +138,16 @@ def test_ci_fails_on_violation(tmp_project: Path, dirty_src: str, expected_fragm
     assert expected_fragment in result.stdout
 
 
+def test_ci_writes_runtime_evidence(tmp_project: Path) -> None:
+    result = _run_ci(tmp_project)
+
+    assert result.returncode == 0, f"stdout={result.stdout}\nstderr={result.stderr}"
+    data = json.loads((tmp_project / ".interlocks" / "ci.json").read_text(encoding="utf-8"))
+    assert data["command"] == "interlocks ci"
+    assert data["passed"] is True
+    assert data["elapsed_seconds"] > 0
+
+
 def test_ci_in_process_queues_all_tasks(
     monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
@@ -170,6 +181,39 @@ def test_ci_in_process_queues_all_tasks(
     expected_sequential = ["CRAP"] + (["Mutation"] if cfg.run_mutation_in_ci else [])
     assert sequential == expected_sequential
     assert "CI Checks" in capsys.readouterr().out
+
+
+def test_ci_writes_failing_runtime_evidence(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    (tmp_path / "tests").mkdir()
+    (tmp_path / "pyproject.toml").write_text(
+        textwrap.dedent(
+            """\
+            [project]
+            name = "ci-evidence"
+            version = "0.0.0"
+            """
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(sys, "argv", ["interlocks", "ci"])
+
+    from interlocks.stages import ci as ci_mod
+
+    def fail_tasks(_tasks: object) -> None:
+        raise SystemExit(7)
+
+    monkeypatch.setattr(ci_mod, "run_tasks", fail_tasks)
+
+    with pytest.raises(SystemExit) as exc:
+        ci_mod.cmd_ci()
+
+    assert exc.value.code == 7
+    data = json.loads((tmp_path / ".interlocks" / "ci.json").read_text(encoding="utf-8"))
+    assert data["passed"] is False
 
 
 def test_ci_in_process_includes_mutation_when_enabled(

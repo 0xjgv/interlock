@@ -10,6 +10,9 @@ from pathlib import Path
 
 import pytest
 
+from interlocks.runner import Task
+from interlocks.tasks import audit as audit_mod
+
 _PYPROJECT = textwrap.dedent(
     """\
     [project]
@@ -51,9 +54,6 @@ def test_audit_clean_deps_passes(tmp_project: Path) -> None:
 
 def test_audit_invokes_pip_audit(monkeypatch: pytest.MonkeyPatch) -> None:
     """Fast in-process check: cmd_audit builds a Task wrapping pip-audit and calls run()."""
-    from interlocks.runner import Task
-    from interlocks.tasks import audit as audit_mod
-
     captured: dict[str, Task] = {}
 
     def fake_run(task: Task, **_: object) -> None:
@@ -66,6 +66,37 @@ def test_audit_invokes_pip_audit(monkeypatch: pytest.MonkeyPatch) -> None:
     assert task.description == "Dep audit"
     assert "pip_audit" in task.cmd
     assert task.cmd[-1] == "."
+
+
+def test_audit_prints_configured_severity_policy(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    (tmp_path / "pyproject.toml").write_text(
+        textwrap.dedent(
+            """\
+            [project]
+            name = "audit-policy"
+            version = "0.0.0"
+
+            [tool.interlocks]
+            audit_severity_threshold = "high"
+            """
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(
+        audit_mod,
+        "_pip_audit_task",
+        lambda: Task("Dep audit", [sys.executable, "-c", "pass"], label="audit"),
+    )
+    monkeypatch.setattr(audit_mod, "run", lambda _task: None)
+
+    audit_mod.cmd_audit()
+
+    assert "Audit severity policy: fail on high+ vulnerabilities" in capsys.readouterr().out
 
 
 # ─────────────── allow_network_skip path (nightly) ─────────────────────
@@ -82,8 +113,6 @@ def test_audit_network_skip_warns_when_pypi_unreachable(
     monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
     """allow_network_skip=True → non-zero with no vuln ID classified as transient."""
-    from interlocks.tasks import audit as audit_mod
-
     monkeypatch.setattr(
         audit_mod,
         "capture",
@@ -100,8 +129,6 @@ def test_audit_network_skip_warns_on_ensurepip_crash(
     monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
     """ensurepip / venv-setup failures look transient — warn_skip rather than fail."""
-    from interlocks.tasks import audit as audit_mod
-
     monkeypatch.setattr(
         audit_mod,
         "capture",
@@ -125,8 +152,6 @@ def test_audit_network_skip_passes_through_real_findings(
     vuln_id: str,
 ) -> None:
     """Non-zero with a known vulnerability ID always fails — even with allow_network_skip."""
-    from interlocks.tasks import audit as audit_mod
-
     monkeypatch.setattr(
         audit_mod,
         "capture",
@@ -144,8 +169,6 @@ def test_audit_network_skip_clean_run_prints_ok(
     monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
     """rc=0 under allow_network_skip → ok line, no exit."""
-    from interlocks.tasks import audit as audit_mod
-
     monkeypatch.setattr(audit_mod, "capture", lambda _cmd: _StubProc(returncode=0))
 
     audit_mod.cmd_audit(allow_network_skip=True)

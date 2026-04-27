@@ -10,8 +10,9 @@
 - Pre-commit: `interlocks pre-commit` — staged files only (auto via git hook)
 - CI: `interlocks ci` — read-only lint, format check, typecheck, dep hygiene, complexity gate (lizard, CCN 15), tests with coverage, blocking CRAP gate (`enforce_crap = false` to opt out; `run_mutation_in_ci = true` to add mutation)
 - Nightly: `interlocks nightly` — long-running gates (coverage + mutation, blocking on `mutation_min_score`); schedule via cron/GitHub Actions
-- Audit: `interlocks audit` — audit dependencies for known vulnerabilities (via pip-audit)
+- Audit: `interlocks audit` — audit dependencies for known vulnerabilities (via pip-audit); `audit_severity_threshold` makes severity policy visible to `evaluate`
 - Deps: `interlocks deps` — dependency hygiene (unused/missing/transitive) via deptry; auto-passes `--known-first-party` from `src_dir`. Override with `[tool.deptry]` in pyproject.
+- Deps freshness: `interlocks deps-freshness` — explicit package-index freshness check (not in default PR CI); `evaluate_dependency_freshness = true` makes policy count in `evaluate`
 - Arch: `interlocks arch` — architectural contracts via import-linter. Uses `[tool.importlinter]` when present; otherwise runs a default contract forbidding `src_dir` from importing `test_dir`. Skips with a nudge if `test_dir` isn't a Python package.
 - Acceptance: `interlocks acceptance` — Gherkin scenarios via pytest-bdd (default, shares coverage with `test`). Falls back to behave when `features/steps/` + `features/environment.py` are present or `acceptance_runner = "behave"`. No-ops silently when no `features/` directory exists. `run_acceptance_in_check = true` opts the `check` stage into running it. Blocking in `ci`.
 - Scaffold: `interlocks init-acceptance` — writes `tests/features/example.feature`, `tests/step_defs/test_example.py`, `tests/step_defs/conftest.py`. Refuses to overwrite.
@@ -60,6 +61,15 @@ enforce_mutation = false       # mutation exits 1 when score < mutation_min_scor
 acceptance_runner = "pytest-bdd" # "pytest-bdd" | "behave" | "off" (auto if unset)
 features_dir = "tests/features"  # auto: tests/features/, features/, <test_dir>/features/
 run_acceptance_in_check = false  # true → run scenarios inside `interlocks check`
+
+# Evaluation policy / cached evidence
+evaluate_dependency_freshness = false        # true → score explicit freshness policy
+dependency_freshness_command = "interlocks deps-freshness"
+dependency_freshness_stage = "interlocks nightly"
+audit_severity_threshold = "high"           # low|medium|high|critical
+pr_ci_runtime_budget_seconds = 0             # 0 disables PR speed scoring
+pr_ci_evidence_max_age_hours = 24
+ci_evidence_path = ".interlocks/ci.json"
 ```
 
 - `interlocks help` prints detected paths + resolved thresholds.

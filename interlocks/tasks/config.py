@@ -92,6 +92,8 @@ _RESOLVED_RENDERERS: dict[str, Callable[[InterlockConfig], object]] = {
     "acceptance_runner": lambda cfg: (
         cfg.acceptance_runner if cfg.acceptance_runner is not None else "(auto)"
     ),
+    "audit_severity_threshold": lambda cfg: cfg.audit_severity_threshold or "(none)",
+    "ci_evidence_path": lambda cfg: cfg.relpath(cfg.ci_evidence_path),
 }
 
 

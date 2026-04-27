@@ -7,7 +7,7 @@ import sys
 import tomllib
 from pathlib import Path
 
-from interlocks.config import find_project_root
+from interlocks.config import find_project_root, load_config
 from interlocks.runner import Task, capture, fail, ok, python_m, run, warn_skip
 
 # pip-audit emits one of these IDs only when it actually finds a vulnerability;
@@ -51,6 +51,9 @@ def cmd_audit(*, allow_network_skip: bool = False) -> None:
     runners, or pip-audit's own venv setup glitches don't crash the caller.
     Real findings still fail.
     """
+    cfg = load_config()
+    if cfg.audit_severity_threshold is not None:
+        ok(f"Audit severity policy: fail on {cfg.audit_severity_threshold}+ vulnerabilities")
     task = _pip_audit_task()
     if not allow_network_skip:
         run(task)

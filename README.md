@@ -142,6 +142,16 @@ mutation_since_ref = "origin/main"
 acceptance_runner = "pytest-bdd"  # "pytest-bdd" | "behave" | "off"
 features_dir = "tests/features"
 run_acceptance_in_check = false
+
+# Evaluation policy / cached evidence
+evaluate_dependency_freshness = false
+# Explicit freshness check; not part of default PR CI.
+dependency_freshness_command = "interlocks deps-freshness"
+dependency_freshness_stage = "interlocks nightly"
+audit_severity_threshold = "high"  # "low" | "medium" | "high" | "critical"
+pr_ci_runtime_budget_seconds = 0
+pr_ci_evidence_max_age_hours = 24
+ci_evidence_path = ".interlocks/ci.json"
 ```
 
 Precedence, lowest to highest:
@@ -161,7 +171,7 @@ Run `interlocks presets set baseline` to set a project preset from the CLI.
 |-------|------|-----------|
 | `interlocks check` | Local edit loop | fix -> format -> parallel(typecheck, test, acceptance when opted in) -> deps advisory -> cached CRAP advisory or refresh hint -> suppressions |
 | `interlocks pre-commit` | Git pre-commit hook | fix/format staged Python files, re-stage, typecheck, tests when source changed |
-| `interlocks ci` | Pull requests and protected branches | format-check, lint, complexity, deps, typecheck, coverage, arch, acceptance -> CRAP -> optional mutation (per `mutation_ci_mode`) |
+| `interlocks ci` | Pull requests and protected branches | format-check, lint, complexity, deps, typecheck, coverage, arch, acceptance -> CRAP -> optional mutation (per `mutation_ci_mode`); writes `.interlocks/ci.json` timing evidence |
 | `interlocks nightly` | Scheduled jobs | coverage -> audit (warn-skips on transient pip-audit failures) -> mutation, always blocking on `mutation_min_score` |
 | `interlocks post-edit` | Editor/agent hook interface | advisory ruff fix + format on changed Python files |
 | `interlocks setup-hooks` | Convenience installer | writes hooks that call `interlocks pre-commit` and `interlocks post-edit` |
@@ -189,8 +199,9 @@ Correctness:
 
 Hygiene:
 
-- `audit`: pip-audit CVE scan.
+- `audit`: pip-audit CVE scan; `audit_severity_threshold` makes high-severity policy explicit in `evaluate`.
 - `deps`: deptry unused, missing, and transitive import checks.
+- `deps-freshness`: explicit package-index check for outdated dependencies; not part of default PR CI.
 - `arch`: import-linter contracts; default contract forbids source importing tests.
 
 Advanced gates:
@@ -199,6 +210,7 @@ Advanced gates:
 - `crap --max=N [--changed-only]`: CRAP complexity x coverage gate. Blocking depends on `enforce_crap`.
 - `mutation --max-runtime=N [--min-coverage=N] [--min-score=N] [--changed-only]`: mutmut. Advisory unless `enforce_mutation = true` or `--min-score=` is passed.
 - `trust [--refresh] [--no-trend]`: actionable trust report combining coverage, CRAP, mutation, suspicious-test AST inspection, recent git diff, and next actions. `--refresh` runs coverage first with `--min=0`.
+- `evaluate`: static quality checklist; reports gap-closure command, task/stage kind, and rationale without running tests, audits, mutation, or package-index lookups.
 
 Scaffolding:
 

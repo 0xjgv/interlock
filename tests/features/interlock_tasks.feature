@@ -4,35 +4,41 @@ Feature: interlocks task commands run against a real tmp project
   I want each `interlocks <task>` to behave sensibly on a freshly-scaffolded project
   So that the tool is safe to adopt on any layout
 
+  # req: task-audit
   Scenario: audit reports no vulnerabilities for a project with no deps
     Given a tmp project with layout "audit"
     When I run "interlocks audit" in that project
     Then the exit code is 0 or the output mentions "No known vulnerabilities"
 
+  # req: task-deps
   Scenario: deps flags a declared-but-unused dependency
     Given a tmp project with layout "deps"
     When I run "interlocks deps" in that project
     Then the exit code is not 0
     And the output contains "DEP002"
 
+  # req: task-arch
   Scenario: arch passes with the default contract when src and tests are packages
     Given a tmp project with layout "arch"
     When I run "interlocks arch" in that project
     Then the exit code is 0
     And the output contains "[arch]"
 
+  # req: task-coverage
   Scenario: coverage passes when a trivial test exercises the module
     Given a tmp project with layout "coverage"
     When I run "interlocks coverage --min=0" in that project
     Then the exit code is 0
     And the output contains "[coverage]"
 
+  # req: task-crap
   Scenario: crap passes when no function exceeds the threshold
     Given a tmp project with layout "crap"
     When I run "interlocks crap" in that project
     Then the exit code is 0
     And the output contains "CRAP"
 
+  # req: task-mutation
   Scenario: mutation skips cleanly without coverage data
     Given a tmp project with layout "mutation"
     When I run "interlocks mutation" in that project

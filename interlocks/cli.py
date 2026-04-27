@@ -33,6 +33,7 @@ from interlocks.tasks.config import cmd_config
 from interlocks.tasks.coverage import cmd_coverage
 from interlocks.tasks.crap import cmd_crap
 from interlocks.tasks.deps import cmd_deps
+from interlocks.tasks.deps_freshness import cmd_deps_freshness
 from interlocks.tasks.doctor import cmd_doctor
 from interlocks.tasks.evaluate import cmd_evaluate
 from interlocks.tasks.fix import cmd_fix
@@ -249,6 +250,10 @@ TASK_GROUPS: list[tuple[str, dict[str, tuple[Callable[..., None], str]]]] = [
             "test": (cmd_test, "Run tests (auto-detects pytest vs unittest)"),
             "audit": (cmd_audit, "Audit dependencies for known vulnerabilities"),
             "deps": (cmd_deps, "Dep hygiene: unused/missing/transitive (deptry)"),
+            "deps-freshness": (
+                cmd_deps_freshness,
+                "Check outdated dependencies via explicit package-index lookup",
+            ),
             "arch": (cmd_arch, "Architectural contracts (import-linter; default: src ↛ tests)"),
             "acceptance": (
                 cmd_acceptance,

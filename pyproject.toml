@@ -76,6 +76,9 @@ mutation_min_score = 60.0
 # PR-CI dogfood: incremental mutation only mutates files changed vs origin/main,
 # keeping PR latency bounded. Nightly still runs the full suite + score gate.
 mutation_ci_mode = "incremental"
+evaluate_dependency_freshness = true
+audit_severity_threshold = "high"
+pr_ci_runtime_budget_seconds = 600
 
 # ── Ruff (lint + format) ────────────────────────────────────────────
 

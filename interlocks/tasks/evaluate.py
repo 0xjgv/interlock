@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import configparser
+import json
 import math
 import re
 import time
@@ -12,7 +13,7 @@ from pathlib import Path
 from typing import Any, Literal
 
 from interlocks import ui
-from interlocks.config import InterlockConfig, load_optional_config
+from interlocks.config import InterlockConfig, coerce_float, load_optional_config
 from interlocks.defaults_path import has_project_config
 from interlocks.setup_state import (
     CI_ACTION_NEEDLES,
@@ -21,12 +22,20 @@ from interlocks.setup_state import (
 )
 
 Status = Literal["ok", "warn", "fail"]
+ClosureKind = Literal["task", "stage"]
 
 _REQ_MARKER = re.compile(r"(?:^|\s)@req-[A-Za-z0-9_.:-]+|#\s*req\s*:", re.IGNORECASE)
 _SCENARIO = re.compile(r"^Scenario(?: Outline)?:")
 _CONTRACT_TYPES = frozenset({"forbidden", "layers", "acyclic", "independence"})
-_ITEM_COUNT = 8
+_ITEM_COUNT = 11
 _MAX_TOTAL = _ITEM_COUNT * 3
+
+
+@dataclass(frozen=True)
+class ClosurePath:
+    command: str
+    kind: ClosureKind
+    rationale: str
 
 
 @dataclass(frozen=True)
@@ -37,6 +46,7 @@ class EvaluationItem:
     status: Status = "ok"
     detail: str = ""
     next_action: str | None = None
+    closure: ClosurePath | None = None
 
 
 @dataclass(frozen=True)
@@ -45,6 +55,23 @@ class EvaluationReport:
     total: int
     max_total: int
     verdict: str
+
+
+@dataclass(frozen=True)
+class CIEvidence:
+    elapsed_seconds: float
+    created_at: float
+    passed: bool
+
+
+_EVALUATE = ClosurePath("interlocks evaluate", "task", "static config and metadata checklist")
+_ACCEPTANCE_TRACE = ClosurePath(
+    "interlocks evaluate",
+    "task",
+    "traceability is feature metadata; interlocks acceptance only runs scenarios",
+)
+_CI_STAGE = ClosurePath("interlocks ci", "stage", "PR-grade merge gate owner")
+_NIGHTLY_STAGE = ClosurePath("interlocks nightly", "stage", "long-running gate owner")
 
 
 def cmd_evaluate() -> None:
@@ -66,7 +93,7 @@ def cmd_evaluate() -> None:
     ])
 
     ui.section("Next Actions")
-    actions = [item.next_action for item in report.items if item.next_action is not None]
+    actions = [_format_action(item) for item in report.items if item.next_action is not None]
     ui.message_list(actions, empty="No local evaluation gaps detected.")
     ui.command_footer(start)
 
@@ -90,7 +117,10 @@ def evaluate(cfg: InterlockConfig) -> EvaluationReport:
         _mutation_item(cfg),
         _complexity_item(cfg),
         _dependency_rules_item(cfg),
+        _dependency_freshness_item(cfg),
         _security_item(),
+        _audit_severity_item(cfg),
+        _pr_speed_item(cfg),
         _ci_item(cfg),
     ]
     total = sum(item.score for item in items)
@@ -114,26 +144,24 @@ def _feature_scenarios_with_traceability(feature_file: Path) -> tuple[int, int]:
     total = 0
     traced = 0
     pending_req = False
-    seen_scenario = False
-    current_traced = False
 
     for line in feature_file.read_text(encoding="utf-8").splitlines():
         stripped = line.strip()
         has_req = _REQ_MARKER.search(stripped) is not None
         if _SCENARIO.match(stripped):
-            traced += int(seen_scenario and current_traced)
             total += 1
-            seen_scenario = True
-            current_traced = pending_req or has_req
+            traced += int(pending_req or has_req)
             pending_req = False
             continue
-        if not has_req:
+        if not stripped:
+            pending_req = False
             continue
-        if seen_scenario:
-            current_traced = True
-        else:
+        if has_req:
             pending_req = True
-    traced += int(seen_scenario and current_traced)
+            continue
+        if stripped.startswith(("@", "#")):
+            continue
+        pending_req = False
     return total, traced
 
 
@@ -182,7 +210,13 @@ def _acceptance_item(cfg: InterlockConfig) -> EvaluationItem:
 
     if not feature_files:
         return _item(
-            "acceptance", 0, detail, "Run `interlocks init-acceptance` to scaffold feature files."
+            "acceptance",
+            0,
+            detail,
+            "Run `interlocks init-acceptance` to scaffold feature files.",
+            closure=ClosurePath(
+                "interlocks init-acceptance", "task", "scaffolds acceptance feature files"
+            ),
         )
     if scenario_total == 0:
         return _item(
@@ -190,6 +224,7 @@ def _acceptance_item(cfg: InterlockConfig) -> EvaluationItem:
             1,
             detail,
             f"Add at least one Scenario under {cfg.features_dir_arg or 'features/'}.",
+            closure=_ACCEPTANCE_TRACE,
         )
     if traced == scenario_total and ci_wired:
         return _item("acceptance", 3, detail)
@@ -199,6 +234,9 @@ def _acceptance_item(cfg: InterlockConfig) -> EvaluationItem:
             1,
             detail,
             "Enable acceptance runner so `interlocks ci` can run feature scenarios.",
+            closure=ClosurePath(
+                "interlocks acceptance", "task", "executes Gherkin scenarios outside evaluate"
+            ),
         )
     missing = scenario_total - traced
     return _item(
@@ -206,6 +244,7 @@ def _acceptance_item(cfg: InterlockConfig) -> EvaluationItem:
         2 if traced else 1,
         detail,
         f"Add @req-* tags or # req: comments to {missing} acceptance scenario(s).",
+        closure=_ACCEPTANCE_TRACE,
     )
 
 
@@ -265,10 +304,23 @@ def _mutation_item(cfg: InterlockConfig) -> EvaluationItem:
             0,
             detail,
             "Add [tool.mutmut] or make source/tests discoverable by mutmut defaults.",
+            closure=_NIGHTLY_STAGE,
         )
     if not ci_enabled:
-        return _item("mutation", 1, detail, 'Set mutation_ci_mode = "incremental" or "full".')
-    return _item("mutation", 2, detail, "Set enforce_mutation = true and mutation_min_score > 0.")
+        return _item(
+            "mutation",
+            1,
+            detail,
+            'Set mutation_ci_mode = "incremental" or "full".',
+            closure=_NIGHTLY_STAGE,
+        )
+    return _item(
+        "mutation",
+        2,
+        detail,
+        "Set enforce_mutation = true and mutation_min_score > 0.",
+        closure=_NIGHTLY_STAGE,
+    )
 
 
 def _complexity_item(cfg: InterlockConfig) -> EvaluationItem:
@@ -300,6 +352,30 @@ def _dependency_rules_item(cfg: InterlockConfig) -> EvaluationItem:
     return _item("deps", 2, detail, "Wire task_arch() into `interlocks ci`.")
 
 
+def _dependency_freshness_item(cfg: InterlockConfig) -> EvaluationItem:
+    detail = "outdated-package policy is explicit"
+    closure = ClosurePath(
+        cfg.dependency_freshness_command,
+        "task",
+        (
+            "package-index freshness is explicit; "
+            f"{cfg.dependency_freshness_stage} owns slow verification outside default PR CI"
+        ),
+    )
+    if cfg.evaluate_dependency_freshness:
+        return _item("deps-freshness", 3, detail)
+    return _item(
+        "deps-freshness",
+        0,
+        detail,
+        (
+            "Set evaluate_dependency_freshness = true and run "
+            f"`{cfg.dependency_freshness_command}` outside default PR CI."
+        ),
+        closure=closure,
+    )
+
+
 def _security_item() -> EvaluationItem:
     audit_exposed = _cli_source_contains('"audit"')
     audit_in_ci = _ci_source_contains("task_audit(")
@@ -318,6 +394,98 @@ def _security_item() -> EvaluationItem:
             "Wire task_audit() into `interlocks ci`.",
         )
     return _item("security", 2, detail, "Wire task_deps() into `interlocks ci`.")
+
+
+def _audit_severity_item(cfg: InterlockConfig) -> EvaluationItem:
+    audit_exposed = _cli_source_contains('"audit"')
+    audit_in_ci = _ci_source_contains("task_audit(")
+    detail = "severity threshold for vulnerability audit"
+    closure = ClosurePath("interlocks audit", "task", "vulnerability audit owns severity policy")
+
+    if not audit_exposed:
+        return _item(
+            "audit-severity",
+            0,
+            detail,
+            "Expose `interlocks audit` before configuring severity policy.",
+            closure=closure,
+        )
+    if not audit_in_ci:
+        return _item(
+            "audit-severity",
+            1,
+            detail,
+            "Wire task_audit() into `interlocks ci` before relying on severity policy.",
+            closure=_CI_STAGE,
+        )
+    if cfg.audit_severity_threshold is not None:
+        return _item("audit-severity", 3, detail)
+    return _item(
+        "audit-severity",
+        2,
+        detail,
+        'Set audit_severity_threshold = "high" for explicit high-severity policy.',
+        closure=closure,
+    )
+
+
+def _pr_speed_item(cfg: InterlockConfig) -> EvaluationItem:
+    detail = "CI runtime budget + fresh evidence"
+    if cfg.pr_ci_runtime_budget_seconds <= 0:
+        return _item(
+            "pr-speed",
+            0,
+            detail,
+            "Set pr_ci_runtime_budget_seconds to declare the PR CI runtime budget.",
+            closure=_CI_STAGE,
+        )
+
+    evidence = _read_ci_evidence(cfg)
+    if evidence is None:
+        return _item(
+            "pr-speed",
+            1,
+            detail,
+            (
+                "Run `interlocks ci` to write timing evidence to "
+                f"{cfg.relpath(cfg.ci_evidence_path)}."
+            ),
+            closure=_CI_STAGE,
+        )
+
+    age_hours = _evidence_age_hours(evidence)
+    if age_hours > cfg.pr_ci_evidence_max_age_hours:
+        return _item(
+            "pr-speed",
+            1,
+            detail,
+            (
+                "Refresh stale CI timing evidence; "
+                f"current age is {age_hours:.1f}h and max is "
+                f"{cfg.pr_ci_evidence_max_age_hours}h."
+            ),
+            closure=_CI_STAGE,
+        )
+    if not evidence.passed:
+        return _item(
+            "pr-speed",
+            1,
+            detail,
+            "Fix failing `interlocks ci` evidence before scoring PR speed.",
+            closure=_CI_STAGE,
+        )
+    if evidence.elapsed_seconds <= cfg.pr_ci_runtime_budget_seconds:
+        return _item("pr-speed", 3, detail)
+    return _item(
+        "pr-speed",
+        2,
+        detail,
+        (
+            f"Reduce `interlocks ci` runtime from {evidence.elapsed_seconds:.1f}s "
+            f"to <= {cfg.pr_ci_runtime_budget_seconds}s."
+        ),
+        closure=_CI_STAGE,
+    )
 
 
 def _ci_item(cfg: InterlockConfig) -> EvaluationItem:
@@ -341,7 +509,7 @@ def _print_checklist(items: list[EvaluationItem]) -> None:
     detail_width = max(len(item.detail) for item in items)
     for item in items:
         print(
-            f"  [{item.category}]".ljust(17)
+            f"  [{item.category}]".ljust(21)
             + f"{item.detail:<{detail_width}}  {item.score}/{item.max_score}"
         )
 
@@ -351,14 +519,29 @@ def _item(
     score: int,
     detail: str,
     next_action: str | None = None,
+    *,
+    closure: ClosurePath | None = None,
 ) -> EvaluationItem:
     status: Status = "ok" if score == 3 else "fail" if score == 0 else "warn"
+    if next_action is not None and closure is None:
+        closure = _CI_STAGE if category in _CI_CATEGORIES else _EVALUATE
     return EvaluationItem(
         category=category,
         score=score,
         status=status,
         detail=detail,
         next_action=next_action,
+        closure=closure,
+    )
+
+
+def _format_action(item: EvaluationItem) -> str:
+    action = f"[{item.category}] {item.next_action}"
+    if item.closure is None:
+        return action
+    return (
+        f"{action} Close with `{item.closure.command}` "
+        f"({item.closure.kind}) — {item.closure.rationale}."
     )
 
 
@@ -370,6 +553,25 @@ def _traceability_totals(feature_files: list[Path]) -> tuple[int, int]:
         total += file_total
         traced += file_traced
     return total, traced
+
+
+def _read_ci_evidence(cfg: InterlockConfig) -> CIEvidence | None:
+    try:
+        data = json.loads(cfg.ci_evidence_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None
+    if not isinstance(data, dict):
+        return None
+    elapsed = coerce_float(data.get("elapsed_seconds"))
+    created_at = coerce_float(data.get("created_at"))
+    passed = data.get("passed")
+    if elapsed is None or created_at is None or not isinstance(passed, bool):
+        return None
+    return CIEvidence(elapsed_seconds=elapsed, created_at=created_at, passed=passed)
+
+
+def _evidence_age_hours(evidence: CIEvidence) -> float:
+    return max(0.0, (time.time() - evidence.created_at) / 3600)
 
 
 def _tool_section(pyproject: dict[str, Any], name: str) -> object:
@@ -464,3 +666,15 @@ def _verdict(total: int, max_total: int) -> str:
     if ratio >= 0.67:
         return "GAPS"
     return "NEEDS WORK"
+
+
+_CI_CATEGORIES = frozenset({
+    "unit-tests",
+    "coverage",
+    "complexity",
+    "deps",
+    "security",
+    "audit-severity",
+    "pr-speed",
+    "ci",
+})
