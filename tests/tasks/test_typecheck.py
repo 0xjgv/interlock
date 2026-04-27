@@ -1,8 +1,8 @@
 """Integration tests for interlocks.tasks.typecheck.
 
 ``cmd_typecheck`` targets whatever ``load_config().src_dir`` resolves to. The
-fixture here creates a flat ``interlock/`` package so autodetect picks it up. A
-subprocess with ``cwd=tmp_project`` would find the tmp dir's ``interlock/``
+fixture here creates a flat ``interlocks/`` package so autodetect picks it up. A
+subprocess with ``cwd=tmp_project`` would find the tmp dir's ``interlocks/``
 before the installed package (ModuleNotFoundError on ``interlocks.cli``), so we
 invoke the function directly under ``monkeypatch.chdir``.
 """
@@ -33,7 +33,7 @@ VIOLATING = "def bad() -> int:\n    return 'not an int'\n"  # return-type mismat
 @pytest.fixture
 def tmp_project(tmp_path: Path) -> Path:
     (tmp_path / "pyproject.toml").write_text(PYPROJECT, encoding="utf-8")
-    pkg = tmp_path / "interlock"
+    pkg = tmp_path / "interlocks"
     pkg.mkdir()
     (pkg / "__init__.py").write_text("", encoding="utf-8")
     return tmp_path
@@ -42,7 +42,7 @@ def tmp_project(tmp_path: Path) -> Path:
 def test_typecheck_clean_exits_zero(tmp_project: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     from interlocks.tasks.typecheck import cmd_typecheck
 
-    (tmp_project / "interlock" / "mod.py").write_text(CLEAN, encoding="utf-8")
+    (tmp_project / "interlocks" / "mod.py").write_text(CLEAN, encoding="utf-8")
     monkeypatch.chdir(tmp_project)
     cmd_typecheck()  # returns without raising SystemExit
 
@@ -52,7 +52,7 @@ def test_typecheck_violating_exits_nonzero(
 ) -> None:
     from interlocks.tasks.typecheck import cmd_typecheck
 
-    (tmp_project / "interlock" / "mod.py").write_text(VIOLATING, encoding="utf-8")
+    (tmp_project / "interlocks" / "mod.py").write_text(VIOLATING, encoding="utf-8")
     monkeypatch.chdir(tmp_project)
     with pytest.raises(SystemExit) as excinfo:
         cmd_typecheck()
@@ -76,7 +76,7 @@ def test_typecheck_injects_bundled_config_in_bare_project(
     from interlocks.tasks.typecheck import task_typecheck
 
     (tmp_path / "pyproject.toml").write_text(_BARE_PYPROJECT, encoding="utf-8")
-    pkg = tmp_path / "interlock"
+    pkg = tmp_path / "interlocks"
     pkg.mkdir()
     (pkg / "__init__.py").write_text("", encoding="utf-8")
     monkeypatch.chdir(tmp_path)
@@ -105,7 +105,7 @@ def test_typecheck_omits_config_when_project_has_pyrightconfig_sidecar(
 
     (tmp_path / "pyproject.toml").write_text(_BARE_PYPROJECT, encoding="utf-8")
     (tmp_path / "pyrightconfig.json").write_text("{}\n", encoding="utf-8")
-    pkg = tmp_path / "interlock"
+    pkg = tmp_path / "interlocks"
     pkg.mkdir()
     (pkg / "__init__.py").write_text("", encoding="utf-8")
     monkeypatch.chdir(tmp_path)

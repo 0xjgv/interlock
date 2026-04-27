@@ -1,4 +1,4 @@
-"""GitHub Action helper for running interlock CI and writing job summaries."""
+"""GitHub Action helper for running interlocks CI and writing job summaries."""
 
 from __future__ import annotations
 
@@ -13,11 +13,11 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
 
 
-DEFAULT_COMMAND = "interlock ci"
+DEFAULT_COMMAND = "interlocks ci"
 
 
 def main(argv: Sequence[str] | None = None) -> None:
-    """Run the configured interlock command and exit with its return code."""
+    """Run the configured interlocks command and exit with its return code."""
     args = list(sys.argv[1:] if argv is None else argv)
     command = _command_from_args(args)
     returncode = run_command(command)
@@ -38,7 +38,7 @@ def write_summary(command: Sequence[str], returncode: int) -> None:
         return
     result = "passed" if returncode == 0 else f"failed (exit {returncode})"
     body = "\n".join([
-        "## interlock CI",
+        "## interlocks CI",
         "",
         f"- Command: `{shlex.join(command)}`",
         f"- Result: {result}",
@@ -52,7 +52,7 @@ def _command_from_args(args: Sequence[str]) -> list[str]:
     if not args:
         return shlex.split(DEFAULT_COMMAND)
     if args[0] != "--command":
-        raise SystemExit("usage: python -m interlocks.github_action [--command 'interlock ci']")
+        raise SystemExit("usage: python -m interlocks.github_action [--command 'interlocks ci']")
     if len(args) != 2:
         raise SystemExit("--command requires one command string")
     return shlex.split(args[1])

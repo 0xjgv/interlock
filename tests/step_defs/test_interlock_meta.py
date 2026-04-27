@@ -72,8 +72,8 @@ def _project_with_git(tmp_project: Path) -> Path:
     return tmp_project
 
 
-@when(parsers.parse('I run "interlock {subcmd}" in the tmp project'))
-@when(parsers.parse('I run "interlock {subcmd}" in the tmp project a second time'))
+@when(parsers.parse('I run "interlocks {subcmd}" in the tmp project'))
+@when(parsers.parse('I run "interlocks {subcmd}" in the tmp project a second time'))
 def _run_cmd(
     project: Path,
     subcmd: str,

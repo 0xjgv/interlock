@@ -35,7 +35,7 @@ def _dir_with_pyproject(tmp_path: Path) -> InitContext:
     return InitContext(project=tmp_path)
 
 
-@when(parsers.parse('I run "interlock {subcmd}" there'))
+@when(parsers.parse('I run "interlocks {subcmd}" there'))
 def _run_interlock(ctx: InitContext, subcmd: str) -> None:
     ctx.result = subprocess.run(
         [sys.executable, "-m", "interlocks.cli", *subcmd.split()],

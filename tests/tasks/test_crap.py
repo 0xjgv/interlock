@@ -19,7 +19,7 @@ _MODULE_SRC = textwrap.dedent(
 _TEST_SRC = textwrap.dedent(
     """\
     import unittest
-    from interlock.mod import inc
+    from interlocks.mod import inc
 
     class TestInc(unittest.TestCase):
         def test_inc(self):
@@ -35,7 +35,7 @@ _PYPROJECT = textwrap.dedent(
     requires-python = ">=3.13"
 
     [tool.coverage.run]
-    source = ["interlock"]
+    source = ["interlocks"]
     branch = true
 
     [tool.coverage.report]
@@ -52,9 +52,9 @@ def _run_coverage(cwd: Path) -> None:
 
 @pytest.fixture
 def tmp_project(tmp_path: Path) -> Path:
-    """Project with `interlock/mod.py` + covering test under `tests/`."""
+    """Project with `interlocks/mod.py` + covering test under `tests/`."""
     (tmp_path / "pyproject.toml").write_text(_PYPROJECT, encoding="utf-8")
-    pkg = tmp_path / "interlock"
+    pkg = tmp_path / "interlocks"
     pkg.mkdir()
     (pkg / "__init__.py").write_text("", encoding="utf-8")
     (pkg / "mod.py").write_text(_MODULE_SRC, encoding="utf-8")
@@ -86,13 +86,13 @@ def test_crap_passes_on_healthy_project(
 def test_crap_default_threshold_from_config(
     tmp_project: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    """`[tool.interlock] crap_max = 5.0` surfaces in the 'all below N' success line."""
+    """`[tool.interlocks] crap_max = 5.0` surfaces in the 'all below N' success line."""
     (tmp_project / "pyproject.toml").write_text(
-        _PYPROJECT + "\n[tool.interlock]\ncrap_max = 5.0\n", encoding="utf-8"
+        _PYPROJECT + "\n[tool.interlocks]\ncrap_max = 5.0\n", encoding="utf-8"
     )
     monkeypatch.chdir(tmp_project)
     monkeypatch.syspath_prepend(str(tmp_project))
-    monkeypatch.setattr(sys, "argv", ["interlock", "crap"])  # no --max= override
+    monkeypatch.setattr(sys, "argv", ["interlocks", "crap"])  # no --max= override
     _run_coverage(tmp_project)
 
     from interlocks.tasks.crap import cmd_crap
@@ -105,13 +105,13 @@ def test_crap_default_threshold_from_config(
 def test_crap_cli_max_overrides_config(
     tmp_project: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    """`--max=N` on argv wins over `[tool.interlock] crap_max`."""
+    """`--max=N` on argv wins over `[tool.interlocks] crap_max`."""
     (tmp_project / "pyproject.toml").write_text(
-        _PYPROJECT + "\n[tool.interlock]\ncrap_max = 5.0\n", encoding="utf-8"
+        _PYPROJECT + "\n[tool.interlocks]\ncrap_max = 5.0\n", encoding="utf-8"
     )
     monkeypatch.chdir(tmp_project)
     monkeypatch.syspath_prepend(str(tmp_project))
-    monkeypatch.setattr(sys, "argv", ["interlock", "crap", "--max=42.5"])
+    monkeypatch.setattr(sys, "argv", ["interlocks", "crap", "--max=42.5"])
     _run_coverage(tmp_project)
 
     from interlocks.tasks.crap import cmd_crap

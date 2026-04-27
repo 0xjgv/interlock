@@ -24,7 +24,7 @@ def _tmp_project(tmp_path: Path) -> Path:
 
 
 @when(
-    parsers.parse('I run "interlock {stage}" in the tmp project'),
+    parsers.parse('I run "interlocks {stage}" in the tmp project'),
     target_fixture="stage_result",
 )
 def _run_stage(tmp_project: Path, stage: str) -> subprocess.CompletedProcess[str]:

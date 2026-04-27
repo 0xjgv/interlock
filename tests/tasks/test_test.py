@@ -111,7 +111,7 @@ def test_cmd_check_skips_tests_without_test_dir(
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    """`interlock check` in a greenfield project skips tests + exits clean."""
+    """`interlocks check` in a greenfield project skips tests + exits clean."""
     from interlocks.config import clear_cache
     from interlocks.stages.check import cmd_check
 

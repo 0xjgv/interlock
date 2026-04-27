@@ -1,7 +1,7 @@
 [project]
 name = "interlocks"
 version = "0.1.0"
-description = "Zero-config Python quality interlock: lint, format, typecheck, test, coverage, acceptance, audit, deps, architecture, complexity, CRAP, mutation — all behind `interlock <task>` (or `il <task>`)."
+description = "Zero-config Python quality interlocks: lint, format, typecheck, test, coverage, acceptance, audit, deps, architecture, complexity, CRAP, mutation — all behind `interlocks <task>` (or `il <task>`)."
 readme = "README.md"
 requires-python = ">=3.13"
 license = {text = "MIT"}
@@ -25,14 +25,13 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/0xjgv/interlock"
-Repository = "https://github.com/0xjgv/interlock"
-Issues = "https://github.com/0xjgv/interlock/issues"
-Changelog = "https://github.com/0xjgv/interlock/blob/main/CHANGELOG.md"
+Homepage = "https://github.com/0xjgv/interlocks"
+Repository = "https://github.com/0xjgv/interlocks"
+Issues = "https://github.com/0xjgv/interlocks/issues"
+Changelog = "https://github.com/0xjgv/interlocks/blob/main/CHANGELOG.md"
 
 [project.scripts]
 interlocks = "interlocks.cli:main"
-interlock = "interlocks.cli:main"
 ilocks = "interlocks.cli:main"
 ilock = "interlocks.cli:main"
 ils = "interlocks.cli:main"
@@ -57,9 +56,9 @@ dev = [
     "pytest-bdd>=8.1",
 ]
 
-# ── Interlock (self-config; all keys optional — defaults come from auto-detect) ──
+# ── interlocks (self-config; all keys optional — defaults come from auto-detect) ──
 
-[tool.interlock]
+[tool.interlocks]
 preset = "strict"
 src_dir = "interlocks"
 test_dir = "tests"
@@ -86,7 +85,7 @@ target-version = "py313"
 line-length = 99
 preview = true
 # interlocks/defaults/ holds bundled data files (templates copied into user
-# projects); they're not interlock source and ship their own ruff config.
+# projects); they're not interlocks source and ship their own ruff config.
 extend-exclude = ["interlocks/defaults"]
 
 [tool.ruff.lint]
@@ -125,7 +124,7 @@ ignore = [
 "interlocks/runner.py" = [
     "S404",     # subprocess module import (intentional — task runner)
     "S603",     # subprocess call without shell=true check (intentional)
-    "S607",     # partial executable path (intentional — tools co-installed with interlock)
+    "S607",     # partial executable path (intentional — tools co-installed with interlocks)
 ]
 "interlocks/git.py" = [
     "S404",     # subprocess module import (intentional — git wrapper)
@@ -139,7 +138,7 @@ ignore = [
 "interlocks/tasks/mutation.py" = [
     "S404",     # subprocess module import (intentional — invokes mutmut)
     "S603",     # subprocess call without shell=true check (intentional)
-    "S607",     # partial executable path (intentional — tools co-installed with interlock)
+    "S607",     # partial executable path (intentional — tools co-installed with interlocks)
 ]
 "tests/**/*.py" = [
     "ANN",      # type annotations relaxed in tests
@@ -211,7 +210,7 @@ pytest_add_cli_args = [
 
 [tool.deptry]
 # Bundled templates ship as data files and import target-project deps
-# (pytest-bdd, etc.) that interlock itself doesn't ship with.
+# (pytest-bdd, etc.) that interlocks itself doesn't ship with.
 extend_exclude = ["interlocks/defaults"]
 
 [tool.deptry.per_rule_ignores]

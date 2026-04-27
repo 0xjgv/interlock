@@ -17,12 +17,12 @@ import interlocks
 
 scenarios(str(Path(__file__).parent.parent / "features" / "interlock_doctor.feature"))
 
-# Point the subprocess at this checkout's interlock even when an outer
+# Point the subprocess at this checkout's interlocks even when an outer
 # interpreter's site-packages shadows it (same concern as test_doctor.py).
 _INTERLOCK_PARENT = str(Path(interlocks.__file__).resolve().parent.parent)
 
 
-@given(parsers.parse('I run "interlock {subcmd}"'), target_fixture="cli_output")
+@given(parsers.parse('I run "interlocks {subcmd}"'), target_fixture="cli_output")
 def _run_interlock(subcmd: str) -> str:
     env = os.environ.copy()
     existing = env.get("PYTHONPATH", "")

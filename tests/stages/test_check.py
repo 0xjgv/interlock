@@ -1,4 +1,4 @@
-"""Integration tests for `interlock check` (fix + format + typecheck + test + suppressions)."""
+"""Integration tests for `interlocks check` (fix + format + typecheck + test + suppressions)."""
 
 from __future__ import annotations
 
@@ -32,7 +32,7 @@ _PYPROJECT = textwrap.dedent(
     """
 )
 
-_INIT_SRC = '"""Tmp project package."""\n\nfrom interlock.core import add\n\n__all__ = ["add"]\n'
+_INIT_SRC = '"""Tmp project package."""\n\nfrom interlocks.core import add\n\n__all__ = ["add"]\n'
 
 _CLEAN_SRC = textwrap.dedent(
     '''\
@@ -50,7 +50,7 @@ _TEST_SRC = textwrap.dedent(
 
     import unittest
 
-    from interlock.core import add
+    from interlocks.core import add
 
 
     class TestAdd(unittest.TestCase):
@@ -65,8 +65,8 @@ def tmp_project(make_tmp_project: TmpProjectFactory) -> Path:
     return make_tmp_project(
         pyproject=_PYPROJECT,
         src_files={
-            "interlock/__init__.py": _INIT_SRC,
-            "interlock/core.py": _CLEAN_SRC,
+            "interlocks/__init__.py": _INIT_SRC,
+            "interlocks/core.py": _CLEAN_SRC,
         },
         test_files={
             "__init__.py": "",
@@ -115,12 +115,12 @@ def test_check_fixes_trivially_fixable_lint(tmp_project: Path) -> None:
             return a + b
         '''
     )
-    (tmp_project / "interlock" / "core.py").write_text(dirty, encoding="utf-8")
+    (tmp_project / "interlocks" / "core.py").write_text(dirty, encoding="utf-8")
 
     result = _run_check(tmp_project)
 
     assert result.returncode == 0, f"stdout={result.stdout}\nstderr={result.stderr}"
-    assert "import os" not in (tmp_project / "interlock" / "core.py").read_text(encoding="utf-8")
+    assert "import os" not in (tmp_project / "interlocks" / "core.py").read_text(encoding="utf-8")
 
 
 def test_check_in_process_dispatches_stages(

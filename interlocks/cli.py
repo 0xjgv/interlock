@@ -55,7 +55,7 @@ def cmd_help() -> None:
     cfg = _load_optional_config()
     ui.command_banner("help", cfg)
     ui.section("Usage")
-    print("  Usage: interlock <command>")
+    print("  Usage: interlocks <command>")
     ui.section("Commands")
     width = max(len(name) for name in TASKS) + 2
     for group_name, group in TASK_GROUPS:
@@ -68,7 +68,7 @@ def cmd_help() -> None:
     ui.command_footer(start)
 
 
-_TOOL_INTERLOCK_HEADER = re.compile(r"^\[tool\.interlock\]\s*$", re.MULTILINE)
+_TOOL_INTERLOCK_HEADER = re.compile(r"^\[tool\.interlocks\]\s*$", re.MULTILINE)
 _NEXT_HEADER = re.compile(r"^\[", re.MULTILINE)
 _PRESET_LINE = re.compile(r"^(?P<indent>[ \t]*)preset\s*=.*$", re.MULTILINE)
 
@@ -117,21 +117,21 @@ def cmd_presets() -> None:
     ui.section("Next Steps")
     print("  Set a project preset with the CLI:")
     print()
-    print("    interlock presets set baseline")
+    print("    interlocks presets set baseline")
     print()
     print("  Or add this to pyproject.toml:")
     print()
-    print('    [tool.interlock]\n    preset = "baseline"')
+    print('    [tool.interlocks]\n    preset = "baseline"')
     print()
     print("  Preset thresholds are defaults. You can manually override any threshold")
-    print("  in the same [tool.interlock] table in pyproject.toml.")
+    print("  in the same [tool.interlocks] table in pyproject.toml.")
     ui.command_footer(start)
 
 
 def _cmd_presets_set(args: list[str], *, start: float) -> None:
     presets = supported_presets()
     if len(args) != 1:
-        fail_skip(f"usage: interlock presets set <{'|'.join(presets)}>")
+        fail_skip(f"usage: interlocks presets set <{'|'.join(presets)}>")
     preset = args[0]
     if preset not in presets:
         fail_skip(f"unsupported preset: {preset} (expected {'|'.join(presets)})")
@@ -139,12 +139,12 @@ def _cmd_presets_set(args: list[str], *, start: float) -> None:
     cfg = load_config()
     pyproject = cfg.project_root / "pyproject.toml"
     if not pyproject.is_file():
-        fail_skip("presets set: no pyproject.toml — run `interlock init` to scaffold")
+        fail_skip("presets set: no pyproject.toml — run `interlocks init` to scaffold")
 
     ui.command_banner("presets set", cfg)
     ui.section("Preset")
     _write_project_preset(pyproject, preset)
-    ok(f"set [tool.interlock] preset = {preset!r} in {cfg.relpath(pyproject)}")
+    ok(f"set [tool.interlocks] preset = {preset!r} in {cfg.relpath(pyproject)}")
     ui.command_footer(start)
 
 
@@ -154,7 +154,7 @@ def _write_project_preset(pyproject: Path, preset: str) -> None:
     match = _TOOL_INTERLOCK_HEADER.search(text)
     if match is None:
         suffix = "" if text.endswith("\n") else "\n"
-        body = f"{text}{suffix}\n[tool.interlock]\n{replacement}\n"
+        body = f"{text}{suffix}\n[tool.interlocks]\n{replacement}\n"
         pyproject.write_text(body, encoding="utf-8")
         return
 
@@ -203,7 +203,7 @@ def _print_detected_block(cfg: InterlockConfig | None) -> None:
         ui.section("Config Warnings")
         ui.kv_block([("unsupported preset", p) for p in cfg.unsupported_presets])
     ui.section("Thresholds")
-    print("  Override via [tool.interlock] or ~/.config/interlock/config.toml.")
+    print("  Override via [tool.interlocks] or ~/.config/interlocks/config.toml.")
     ui.kv_block([
         ("coverage_min", str(cfg.coverage_min)),
         ("crap_max", str(cfg.crap_max)),
@@ -243,7 +243,7 @@ TASK_GROUPS: list[tuple[str, dict[str, tuple[Callable[..., None], str]]]] = [
             "crap": (cmd_crap, "CRAP complexity x coverage gate"),
             "mutation": (
                 cmd_mutation,
-                "Mutation testing via mutmut (advisory; see `interlock nightly`)",
+                "Mutation testing via mutmut (advisory; see `interlocks nightly`)",
             ),
         },
     ),
@@ -274,7 +274,7 @@ TASK_GROUPS: list[tuple[str, dict[str, tuple[Callable[..., None], str]]]] = [
             "doctor": (cmd_doctor, "Preflight diagnostic: paths, tools, venv"),
             "init": (cmd_init, "Scaffold a greenfield pyproject.toml + tests/ in CWD"),
             "presets": (cmd_presets, "Show preset options or set one with `presets set <preset>`"),
-            "version": (cmd_version, "print interlock version"),
+            "version": (cmd_version, "print interlocks version"),
         },
     ),
     (

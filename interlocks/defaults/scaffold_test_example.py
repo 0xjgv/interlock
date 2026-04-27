@@ -1,4 +1,4 @@
-"""Trivial smoke test; proves the interlock can collect and run the suite."""
+"""Trivial smoke test; proves the interlocks can collect and run the suite."""
 
 from __future__ import annotations
 

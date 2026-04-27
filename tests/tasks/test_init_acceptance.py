@@ -1,4 +1,4 @@
-"""Tests for `interlock init-acceptance`."""
+"""Tests for `interlocks init-acceptance`."""
 
 from __future__ import annotations
 

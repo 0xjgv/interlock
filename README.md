@@ -5,12 +5,12 @@ Adopt one Python quality loop across a repository or an organization:
 ```bash
 pipx install interlocks       # or: uv tool install interlocks
 cd your-python-project
-interlock doctor               # readiness, detected config, blockers, next steps
-interlock check                # local edit loop
-interlock ci                   # CI parity
+interlocks doctor               # readiness, detected config, blockers, next steps
+interlocks check                # local edit loop
+interlocks ci                   # CI parity
 ```
 
-interlock bundles ruff, basedpyright, pytest, pytest-bdd, coverage, mutmut, deptry, import-linter, pip-audit, and lizard behind one CLI. New repositories can start with auto-detected paths and bundled tool defaults; mature repositories can opt into named presets or explicit `[tool.interlock]` thresholds when they need stronger gates.
+interlocks bundles ruff, basedpyright, pytest, pytest-bdd, coverage, mutmut, deptry, import-linter, pip-audit, and lizard behind one CLI. New repositories can start with auto-detected paths and bundled tool defaults; mature repositories can opt into named presets or explicit `[tool.interlocks]` thresholds when they need stronger gates.
 
 ## First-Run Adoption Loop
 
@@ -28,17 +28,17 @@ Every underlying tool ships with the CLI. No per-project dev dependency list is 
 
 ```bash
 cd your-python-project
-interlock doctor
+interlocks doctor
 ```
 
 `doctor` is the safe first command. It performs static local inspection only: nearest `pyproject.toml`, detected source/test/features paths, runner, invoker, active preset, resolved gate values, PATH visibility, blockers, warnings, and shortest next steps. It does not run tests, typecheck, coverage, mutation, dependency audit, or network checks.
 
-If the repository is ready, `doctor` points you at `interlock check` and CI wiring. If it is blocked, it prioritizes the minimum setup fixes first, such as `interlock init`, missing paths, unreadable config, unsupported presets, or missing runnable tool resolution.
+If the repository is ready, `doctor` points you at `interlocks check` and CI wiring. If it is blocked, it prioritizes the minimum setup fixes first, such as `interlocks init`, missing paths, unreadable config, unsupported presets, or missing runnable tool resolution.
 
 ### 3. Run Local Checks
 
 ```bash
-interlock check
+interlocks check
 ```
 
 `check` runs the local edit loop: fix, format, typecheck, tests, optional acceptance tests, advisory dependency hygiene, cached CRAP feedback when fresh coverage exists, and the suppressions report. It is the command to run after edits before pushing.
@@ -48,13 +48,13 @@ interlock check
 The direct CI command is:
 
 ```bash
-interlock ci
+interlocks ci
 ```
 
 For GitHub Actions, copy this workflow:
 
 ```yaml
-name: interlock
+name: interlocks
 
 on:
   pull_request:
@@ -62,14 +62,14 @@ on:
     branches: [main]
 
 jobs:
-  interlock:
+  interlocks:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-      - uses: 0xjgv/interlock@v1
+      - uses: 0xjgv/interlocks@v1
 ```
 
-The reusable action installs interlock, runs `interlock ci`, and writes a concise `GITHUB_STEP_SUMMARY` when GitHub provides the summary file. The action does not duplicate lint, typecheck, coverage, CRAP, dependency, architecture, acceptance, or mutation logic; the CLI remains the source of truth.
+The reusable action installs interlocks, runs `interlocks ci`, and writes a concise `GITHUB_STEP_SUMMARY` when GitHub provides the summary file. The action does not duplicate lint, typecheck, coverage, CRAP, dependency, architecture, acceptance, or mutation logic; the CLI remains the source of truth.
 
 ## Why This Matters for AI-Authored Code
 
@@ -80,14 +80,14 @@ When agents write most of the PRs, human review stops being the quality floor. D
 - `coverage` and complexity trends feed drift telemetry — signal that agent output is regressing before users notice.
 - `trust` combines those into one actionable report, so reviewers (human or LLM-based) have a stable ground truth.
 
-interlock is complementary to LLM-based reviewers such as CodeRabbit, Greptile, or Diamond. They catch style, design, and intent. interlock catches what is machine-verifiable: complexity, coverage, mutation survival, dependency hygiene, architectural drift. Runs in seconds, same command locally and in CI.
+interlocks is complementary to LLM-based reviewers such as CodeRabbit, Greptile, or Diamond. They catch style, design, and intent. interlocks catches what is machine-verifiable: complexity, coverage, mutation survival, dependency hygiene, architectural drift. Runs in seconds, same command locally and in CI.
 
 ## Adoption Presets
 
-Presets are optional defaults under `[tool.interlock]` or `~/.config/interlock/config.toml`. Explicit values in the same layer override preset defaults, so you can manually tune thresholds in `pyproject.toml` after choosing a preset.
+Presets are optional defaults under `[tool.interlocks]` or `~/.config/interlocks/config.toml`. Explicit values in the same layer override preset defaults, so you can manually tune thresholds in `pyproject.toml` after choosing a preset.
 
 ```toml
-[tool.interlock]
+[tool.interlocks]
 preset = "baseline"  # "baseline" | "strict" | "legacy"
 ```
 
@@ -95,11 +95,11 @@ preset = "baseline"  # "baseline" | "strict" | "legacy"
 - `strict` is for mature repositories: stronger thresholds, blocking CRAP and mutation, mutation in CI, acceptance in `check`.
 - `legacy` is for ratcheting existing repositories: very permissive thresholds, advisory gates, mutation off in CI.
 
-`agent-safe` is intentionally unsupported. If configured, `interlock doctor` reports it as an unsupported preset instead of resolving agent-specific defaults.
+`agent-safe` is intentionally unsupported. If configured, `interlocks doctor` reports it as an unsupported preset instead of resolving agent-specific defaults.
 
 ## Configuration
 
-Nothing is required. `interlock` walks up from CWD to the nearest `pyproject.toml` and auto-detects:
+Nothing is required. `interlocks` walks up from CWD to the nearest `pyproject.toml` and auto-detects:
 
 - project root: first directory with `pyproject.toml`
 - test runner: pytest if pytest config/deps/imports are present, otherwise unittest
@@ -108,10 +108,10 @@ Nothing is required. `interlock` walks up from CWD to the nearest `pyproject.tom
 - test invoker: `uv run` when `uv.lock` exists, else `python -m`
 - features dir: first existing of `tests/features/`, `features/`, `<test_dir>/features/`
 
-Override anything via `[tool.interlock]` in `pyproject.toml`:
+Override anything via `[tool.interlocks]` in `pyproject.toml`:
 
 ```toml
-[tool.interlock]
+[tool.interlocks]
 preset = "baseline"
 
 # Paths / runners
@@ -147,37 +147,37 @@ run_acceptance_in_check = false
 Precedence, lowest to highest:
 
 1. Bundled dataclass defaults.
-2. User-global preset defaults from `~/.config/interlock/config.toml`.
+2. User-global preset defaults from `~/.config/interlocks/config.toml`.
 3. User-global explicit values.
-4. Project preset defaults from `[tool.interlock]`.
+4. Project preset defaults from `[tool.interlocks]`.
 5. Project explicit values.
 6. CLI flags inside tasks, such as `--min=`, `--max=`, `--max-runtime=`, `--min-score=`, and `--min-coverage=`.
 
 Example user-global config:
 
 ```toml
-# ~/.config/interlock/config.toml
+# ~/.config/interlocks/config.toml
 preset = "baseline"
 coverage_min = 85
 ```
 
-Run `interlock help` to see the active preset and resolved values.
-Run `interlock presets` to see preset options, their main thresholds, and copyable config.
-Run `interlock presets set baseline` to set a project preset from the CLI.
+Run `interlocks help` to see the active preset and resolved values.
+Run `interlocks presets` to see preset options, their main thresholds, and copyable config.
+Run `interlocks presets set baseline` to set a project preset from the CLI.
 
 ## Stages
 
 | Stage | When | What runs |
 |-------|------|-----------|
-| `interlock check` | Local edit loop | fix -> format -> parallel(typecheck, test, acceptance when opted in) -> deps advisory -> cached CRAP advisory or refresh hint -> suppressions |
-| `interlock pre-commit` | Git pre-commit hook | fix/format staged Python files, re-stage, typecheck, tests when source changed |
-| `interlock ci` | Pull requests and protected branches | format-check, lint, complexity, deps, typecheck, coverage, arch, acceptance -> CRAP -> optional mutation |
-| `interlock nightly` | Scheduled jobs | coverage -> mutation, always blocking on `mutation_min_score` |
-| `interlock post-edit` | Editor/agent hook interface | advisory ruff fix + format on changed Python files |
-| `interlock setup-hooks` | Convenience installer | writes hooks that call `interlock pre-commit` and `interlock post-edit` |
-| `interlock clean` | Local cleanup | removes caches, build artifacts, coverage output, mutation state, and `__pycache__/` |
+| `interlocks check` | Local edit loop | fix -> format -> parallel(typecheck, test, acceptance when opted in) -> deps advisory -> cached CRAP advisory or refresh hint -> suppressions |
+| `interlocks pre-commit` | Git pre-commit hook | fix/format staged Python files, re-stage, typecheck, tests when source changed |
+| `interlocks ci` | Pull requests and protected branches | format-check, lint, complexity, deps, typecheck, coverage, arch, acceptance -> CRAP -> optional mutation |
+| `interlocks nightly` | Scheduled jobs | coverage -> mutation, always blocking on `mutation_min_score` |
+| `interlocks post-edit` | Editor/agent hook interface | advisory ruff fix + format on changed Python files |
+| `interlocks setup-hooks` | Convenience installer | writes hooks that call `interlocks pre-commit` and `interlocks post-edit` |
+| `interlocks clean` | Local cleanup | removes caches, build artifacts, coverage output, mutation state, and `__pycache__/` |
 
-`interlock pre-commit` and `interlock post-edit` are the stable hook interfaces. `interlock setup-hooks` is a convenience command that installs a git pre-commit hook and merges a Claude Code Stop hook; rerunning it is idempotent.
+`interlocks pre-commit` and `interlocks post-edit` are the stable hook interfaces. `interlocks setup-hooks` is a convenience command that installs a git pre-commit hook and merges a Claude Code Stop hook; rerunning it is idempotent.
 
 ## Tasks Reference
 
@@ -211,12 +211,12 @@ Utility:
 
 - `doctor`: adoption diagnostic. Exempt from the `pyproject.toml` preflight gate.
 - `help`: command list plus detected paths, active preset, and thresholds.
-- `presets`: show preset options, current values, copyable config, and set a project preset with `interlock presets set <preset>`.
-- `version`: print the installed interlock version.
+- `presets`: show preset options, current values, copyable config, and set a project preset with `interlocks presets set <preset>`.
+- `version`: print the installed interlocks version.
 
 ## Acceptance Tests
 
-Drop `.feature` files under `tests/features/` and step definitions under `tests/step_defs/`; `interlock acceptance` runs them via pytest-bdd and shares coverage with `test`. Or run `interlock init-acceptance` for a working example.
+Drop `.feature` files under `tests/features/` and step definitions under `tests/step_defs/`; `interlocks acceptance` runs them via pytest-bdd and shares coverage with `test`. Or run `interlocks init-acceptance` for a working example.
 
 Runner detection order:
 
@@ -225,11 +225,11 @@ Runner detection order:
 3. `behave` declared as a dependency but not `pytest-bdd`.
 4. Default to pytest-bdd.
 
-Acceptance always runs in `interlock ci` when a features directory exists. It is opt-in for `interlock check` via `run_acceptance_in_check = true`.
+Acceptance always runs in `interlocks ci` when a features directory exists. It is opt-in for `interlocks check` via `run_acceptance_in_check = true`.
 
 ## Bundled Tool Defaults
 
-When the target project has no config for a given tool, interlock injects its bundled default.
+When the target project has no config for a given tool, interlocks injects its bundled default.
 
 | File | Consumed by | Detected via | Injected flag |
 |------|-------------|--------------|---------------|
@@ -243,50 +243,50 @@ When the target project has no config for a given tool, interlock injects its bu
 | `scaffold_pyproject.toml` | `init` | none | read plus `{project_name}` substitution |
 | `scaffold_test_example.py` | `init` | none | direct copy |
 
-`interlock deps` and `interlock mutation` ship no bundled fallback: deptry applies its built-ins, and mutmut reads the project's `pyproject.toml`.
+`interlocks deps` and `interlocks mutation` ship no bundled fallback: deptry applies its built-ins, and mutmut reads the project's `pyproject.toml`.
 
 ## Hooks
 
 Use the stable hook interfaces directly when integrating with your own hook manager:
 
 ```bash
-interlock pre-commit
-interlock post-edit
+interlocks pre-commit
+interlocks post-edit
 ```
 
-Use the convenience installer when you want interlock to write the common hooks:
+Use the convenience installer when you want interlocks to write the common hooks:
 
 ```bash
-interlock setup-hooks
+interlocks setup-hooks
 ```
 
 It installs:
 
-- `.git/hooks/pre-commit`: runs `interlock pre-commit`. Skip with `git commit --no-verify` when necessary.
-- `.claude/settings.json` Stop hook: runs `interlock post-edit` after Claude Code sessions and preserves existing Stop hooks.
+- `.git/hooks/pre-commit`: runs `interlocks pre-commit`. Skip with `git commit --no-verify` when necessary.
+- `.claude/settings.json` Stop hook: runs `interlocks post-edit` after Claude Code sessions and preserves existing Stop hooks.
 
-Both reference the Python that installed interlock, so reinstall hooks after switching install locations or interpreters.
+Both reference the Python that installed interlocks, so reinstall hooks after switching install locations or interpreters.
 
 ## Maintainer Release Process
 
 Package identity:
 
-- PyPI distribution: `interlock`
-- import package: `interlock`
-- CLI command: `interlock`
+- PyPI distribution: `interlocks`
+- import package: `interlocks`
+- CLI command: `interlocks`
 
 Trusted Publishing setup:
 
-- PyPI: owner `0xjgv`, repo `interlock`, workflow `release.yml`, environment `pypi`
-- TestPyPI: owner `0xjgv`, repo `interlock`, workflow `release.yml`, environment `testpypi`
+- PyPI: owner `0xjgv`, repo `interlocks`, workflow `release.yml`, environment `pypi`
+- TestPyPI: owner `0xjgv`, repo `interlocks`, workflow `release.yml`, environment `testpypi`
 - No PyPI API token required.
 
 Release checklist:
 
 1. Set `pyproject.toml` version to `0.1.0`.
-2. Set `interlock/__init__.py` `__version__` to `0.1.0`.
+2. Set `interlocks/__init__.py` `__version__` to `0.1.0`.
 3. Update `CHANGELOG.md` for `0.1.0`.
-4. Run `uv run interlock ci`.
+4. Run `uv run interlocks ci`.
 5. Run `uv build`.
 6. Trigger `release` manually to publish to TestPyPI.
 7. Create matching tag `v0.1.0`.

@@ -1,8 +1,8 @@
-# Template pyproject.toml for publishing `interlock-mutmut` to PyPI.
+# Template pyproject.toml for publishing `interlocks-mutmut` to PyPI.
 #
-# This file is NOT the pyproject for interlock itself. It is dropped into a
+# This file is NOT the pyproject for interlocks itself. It is dropped into a
 # local clone of https://github.com/boxed/mutmut (checked out to the SHA
-# interlock pins) in place of upstream's pyproject.toml, then built and
+# interlocks pins) in place of upstream's pyproject.toml, then built and
 # published via `uv build && uv publish`. See PUBLISH.md in this directory
 # for the step-by-step walkthrough.
 #
@@ -11,15 +11,15 @@
 # (version 3.5.0). Keep it in sync when bumping the pinned SHA.
 
 [project]
-name = "interlock-mutmut"
+name = "interlocks-mutmut"
 version = "3.5.0"
-description = "interlock-published fork of mutmut for PyPI-only installs (no git required at install time)."
-keywords = ["mutmut", "mutant", "mutation", "test", "testing", "interlock"]
+description = "interlocks-published fork of mutmut for PyPI-only installs (no git required at install time)."
+keywords = ["mutmut", "mutant", "mutation", "test", "testing", "interlocks"]
 authors = [
     { name = "Anders Hovmöller", email = "boxed@killingar.net" },
 ]
 maintainers = [
-    { name = "interlock maintainers" },
+    { name = "interlocks maintainers" },
 ]
 requires-python = ">=3.10"
 readme = "README.rst"
@@ -52,7 +52,7 @@ dependencies = [
 [project.urls]
 Homepage = "https://github.com/boxed/mutmut"
 Upstream = "https://github.com/boxed/mutmut"
-Interlock = "https://github.com/0xjgv/interlock"
+interlocks = "https://github.com/0xjgv/interlocks"
 Documentation = "https://mutmut.readthedocs.io/en/latest/"
 Repository = "https://github.com/boxed/mutmut"
 Issues = "https://github.com/boxed/mutmut/issues"

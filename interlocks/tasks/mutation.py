@@ -29,7 +29,7 @@ _BRAILLE_SPINNER = frozenset("⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏⠟⠯⠷⠾⠽⠻")
 
 
 def _mutant_in_changed(mutant_key: str, changed: set[str]) -> bool:
-    """Mutant keys look like `interlocks.foo.x_bar__mutmut_1`; match vs `interlock/foo.py`.
+    """Mutant keys look like `interlocks.foo.x_bar__mutmut_1`; match vs `interlocks/foo.py`.
 
     The trailing dot-component is the mutmut-mangled function name (``x_<name>``),
     which isn't part of the module file path — strip it before resolving.
@@ -63,7 +63,7 @@ def _drain(stream: IO[str], on_line: Callable[[str], None]) -> None:
 
 
 def _ensure_log_path() -> Path:
-    log_dir = find_project_root() / ".interlock"
+    log_dir = find_project_root() / ".interlocks"
     log_dir.mkdir(parents=True, exist_ok=True)
     return log_dir / "mutation.log"
 
@@ -71,7 +71,7 @@ def _ensure_log_path() -> Path:
 def _run_mutmut(mutmut: list[str], timeout: int) -> tuple[bool, Path]:
     """Run `mutmut run`, SIGTERM after `timeout`. Capture+filter output.
 
-    Full mutmut stream is mirrored to ``.interlock/mutation.log`` so noisy lines
+    Full mutmut stream is mirrored to ``.interlocks/mutation.log`` so noisy lines
     (spinner ticks, fork ``DeprecationWarning``) can be hidden by default while
     remaining recoverable on failure. ``--verbose`` passes through unfiltered;
     ``--quiet`` prints nothing here (the ok/fail row carries the verdict).
@@ -181,14 +181,14 @@ def cmd_mutation() -> None:
     CLI flags ``--min-coverage=`` / ``--max-runtime=`` / ``--min-score=`` win;
     otherwise thresholds come from ``cfg.mutation_min_coverage`` /
     ``cfg.mutation_max_runtime`` / ``cfg.mutation_min_score`` (defaults
-    70.0 / 600 / 80.0, overridable via ``[tool.interlock]``). Advisory by default;
+    70.0 / 600 / 80.0, overridable via ``[tool.interlocks]``). Advisory by default;
     set ``enforce_mutation = true`` to exit 1 when score < ``mutation_min_score``.
     """
     cfg = load_config()
     min_cov = float(arg_value("--min-coverage=", str(cfg.mutation_min_coverage)))
     rate = coverage_line_rate()
     if rate is None:
-        warn_skip("mutation: no coverage data — run `interlock coverage` first")
+        warn_skip("mutation: no coverage data — run `interlocks coverage` first")
         return
     pct = rate * 100
     if pct < min_cov:

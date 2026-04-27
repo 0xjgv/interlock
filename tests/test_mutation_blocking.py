@@ -67,7 +67,7 @@ def tmp_project(tmp_path: Path) -> Path:
 def _write_pyproject(project: Path, *, enforce: bool, min_score: float = 99.0) -> None:
     (project / "pyproject.toml").write_text(
         _PYPROJECT
-        + "\n[tool.interlock]\n"
+        + "\n[tool.interlocks]\n"
         + "mutation_min_coverage = 0\n"
         + f"mutation_min_score = {min_score}\n"
         + f"enforce_mutation = {str(enforce).lower()}\n",
@@ -84,7 +84,7 @@ def test_mutation_exits_when_enforced_and_below_threshold(
     monkeypatch.chdir(tmp_project)
     monkeypatch.syspath_prepend(str(tmp_project))
     _run_coverage(tmp_project)
-    monkeypatch.setattr(sys, "argv", ["interlock", "mutation", "--max-runtime=30"])
+    monkeypatch.setattr(sys, "argv", ["interlocks", "mutation", "--max-runtime=30"])
 
     from interlocks.tasks.mutation import cmd_mutation
 
@@ -106,7 +106,7 @@ def test_mutation_stays_advisory_when_not_enforced(
     monkeypatch.chdir(tmp_project)
     monkeypatch.syspath_prepend(str(tmp_project))
     _run_coverage(tmp_project)
-    monkeypatch.setattr(sys, "argv", ["interlock", "mutation", "--max-runtime=30"])
+    monkeypatch.setattr(sys, "argv", ["interlocks", "mutation", "--max-runtime=30"])
 
     from interlocks.tasks.mutation import cmd_mutation
 

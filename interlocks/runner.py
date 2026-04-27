@@ -131,7 +131,7 @@ def preflight(command: str) -> None:
     try:
         require_pyproject(load_config())
     except InterlockConfigError as exc:
-        print(f"interlock: {exc}", file=sys.stderr)
+        print(f"interlocks: {exc}", file=sys.stderr)
         sys.exit(2)
 
 

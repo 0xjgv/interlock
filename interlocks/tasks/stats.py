@@ -218,7 +218,7 @@ def _flag_suspicious(inspections: list[TestInspection]) -> list[TestInspection]:
 
 
 def _cache_path(project_root: Path) -> Path:
-    return project_root / ".interlock" / "trust.json"
+    return project_root / ".interlocks" / "trust.json"
 
 
 def _load_history(cache: Path) -> list[dict[str, object]]:
@@ -348,7 +348,7 @@ def _render_next_actions(report: TrustReport, *, verbose: bool) -> None:
         _render_suspicious_actions(report.suspicious, verbose=verbose)
     if report.crap_rows:
         _render_crap_actions(report.crap_rows, verbose=verbose)
-    print("    Refresh with `interlock trust --refresh --no-trend` or `interlock ci`.")
+    print("    Refresh with `interlocks trust --refresh --no-trend` or `interlocks ci`.")
 
 
 def _render_suspicious_actions(rows: list[TestInspection], *, verbose: bool) -> None:
@@ -382,7 +382,7 @@ def _render_stages(report: TrustReport) -> None:
     parts.append(f"suspicious {len(report.suspicious)}")
     ui.section("Signals")
     print("  " + "   ".join(parts))
-    print("  run `interlock trust --verbose` for full breakdown")
+    print("  run `interlocks trust --verbose` for full breakdown")
 
 
 def _delta_arrow(delta: float) -> str:
@@ -415,12 +415,12 @@ def cmd_trust() -> None:
         cmd_coverage(min_pct=0)
 
     if not Path(".coverage").exists():
-        warn_skip("trust: no coverage data — run `interlock coverage` first")
+        warn_skip("trust: no coverage data — run `interlocks coverage` first")
         ui.command_footer(start)
         return
     cov_file = generate_coverage_xml()
     if not cov_file.exists():
-        warn_skip("trust: coverage.xml not generated — run `interlock coverage` first")
+        warn_skip("trust: coverage.xml not generated — run `interlocks coverage` first")
         ui.command_footer(start)
         return
 

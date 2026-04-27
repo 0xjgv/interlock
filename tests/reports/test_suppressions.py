@@ -16,7 +16,7 @@ from interlocks.reports.suppressions import (
 SRC_NAME = "pkg"
 TEST_NAME = "tests"
 _PYPROJECT = f"""\
-[tool.interlock]
+[tool.interlocks]
 src_dir = "{SRC_NAME}"
 test_dir = "{TEST_NAME}"
 """

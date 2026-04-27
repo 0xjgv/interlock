@@ -1,4 +1,4 @@
-"""Integration tests for `interlock pre-commit` stage."""
+"""Integration tests for `interlocks pre-commit` stage."""
 
 from __future__ import annotations
 
@@ -36,8 +36,8 @@ def _git_capture(cwd: Path, *args: str) -> str:
 @pytest.fixture
 def tmp_project(tmp_path: Path) -> Path:
     (tmp_path / "pyproject.toml").write_text(PYPROJECT, encoding="utf-8")
-    # interlock/ exists but without __init__.py so it doesn't shadow the installed pkg
-    (tmp_path / "interlock").mkdir()
+    # interlocks/ exists but without __init__.py so it doesn't shadow the installed pkg
+    (tmp_path / "interlocks").mkdir()
     (tmp_path / "tests").mkdir()
     _git(tmp_path, "init", "-q")
     _git(tmp_path, "config", "user.email", "t@e.co")

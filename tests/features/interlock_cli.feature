@@ -1,10 +1,10 @@
-Feature: Interlock CLI surface area
+Feature: interlocks CLI surface area
   As a user about to run the quality gates
-  I want `interlock help` to list every command I rely on
+  I want `interlocks help` to list every command I rely on
   So that I can see at a glance what's wired up
 
   Scenario: Core commands are advertised
-    Given I run "interlock help"
+    Given I run "interlocks help"
     Then the output lists the command "fix"
     And the output lists the command "format"
     And the output lists the command "lint"
@@ -29,11 +29,11 @@ Feature: Interlock CLI surface area
     And the output lists the command "version"
     And the output lists the command "help"
 
-  Scenario: interlock version prints 0.1.0
-    Given I run "interlock version"
+  Scenario: interlocks version prints 0.1.0
+    Given I run "interlocks version"
     Then the output contains "0.1.0"
 
-  Scenario: interlock help --quiet skips banner and section headers
-    Given I run "interlock help --quiet"
+  Scenario: interlocks help --quiet skips banner and section headers
+    Given I run "interlocks help --quiet"
     Then the output does not contain "command=help"
     And the output does not contain "── "

@@ -4,11 +4,11 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Interlock — The machine-verifiable floor for AI-authored Python.</title>
+  <title>interlocks — The machine-verifiable floor for AI-authored Python.</title>
   <meta name="description"
-    content="Interlock gives Python teams one opinionated command surface for local checks and CI. Deterministic gates for lint, typecheck, tests, coverage, complexity, CRAP, and mutation — every agent PR trips them before merge." />
+    content="interlocks gives Python teams one opinionated command surface for local checks and CI. Deterministic gates for lint, typecheck, tests, coverage, complexity, CRAP, and mutation — every agent PR trips them before merge." />
   <meta property="og:title"
-    content="Interlock — The machine-verifiable floor for AI-authored Python." />
+    content="interlocks — The machine-verifiable floor for AI-authored Python." />
   <meta property="og:description"
     content="Deterministic gates for lint, typecheck, tests, coverage, complexity, CRAP, and mutation. Try it instantly with uvx or pipx." />
   <link rel="icon"
@@ -418,8 +418,8 @@
 <body>
   <header class="top">
     <div class="top-inner">
-      <div class="logo">INTERLOCK</div>
-      <a href="https://github.com/0xjgv/interlock" class="cta-primary">View on GitHub
+      <div class="logo">interlocks</div>
+      <a href="https://github.com/0xjgv/interlocks" class="cta-primary">View on GitHub
         &rarr;</a>
     </div>
   </header>
@@ -453,19 +453,20 @@
           </div>
         </div>
         <p class="install-alt">or <code>pipx run --spec interlocks il doctor</code></p>
-        <p class="install-alt">Package: <code>interlocks</code>. Commands: <code>interlock</code> and <code>il</code>.</p>
+        <p class="install-alt">Package: <code>interlocks</code>. Commands:
+          <code>interlocks</code> and <code>il</code>.</p>
         <a class="cta-primary" href="#stages">Run your first check &rarr;</a>
       </div>
     </section>
 
     <div class="section-divider" aria-hidden="true"></div>
 
-    <!-- 2. Terminal demo: `interlock check` -->
+    <!-- 2. Terminal demo: `interlocks check` -->
 
-    <h2 class="section-title">`interlock check` &mdash; the local edit loop</h2>
+    <h2 class="section-title">`interlocks check` &mdash; the local edit loop</h2>
     <div class="terminal-demo">
-      <pre class="block">$ interlock check
-interlock v0.1.0  ·  preset=baseline  ·  runner=pytest  ·  invoker=uv
+      <pre class="block">$ interlocks check
+interlocks v0.1.0  ·  preset=baseline  ·  runner=pytest  ·  invoker=uv
 
 ── Quality Checks ──────────────────────────────────────────
   [fix]         ruff check --fix                      ok
@@ -482,7 +483,7 @@ interlock v0.1.0  ·  preset=baseline  ·  runner=pytest  ·  invoker=uv
 
 ── Suppressions ────────────────────────────────────────────
   ruff : noqa              0
-  basedpyright : ignore    1   interlock/runner.py:42
+  basedpyright : ignore    1   interlocks/runner.py:42
   pytest.skip              2
 
 Completed in 7.4s</pre>
@@ -500,48 +501,49 @@ Completed in 7.4s</pre>
       </p>
       <ul class="stages-list">
         <li>
-          <span class="stage-name">interlock check</span>
+          <span class="stage-name">interlocks check</span>
           <span class="stage-when">&mdash; after edits, before pushing</span>
           <span class="stage-what">fix &rarr; format &rarr; parallel(typecheck, test,
             acceptance when opted in) &rarr; deps advisory &rarr; cached CRAP advisory
             &rarr; suppressions report.</span>
         </li>
         <li>
-          <span class="stage-name">interlock pre-commit</span>
+          <span class="stage-name">interlocks pre-commit</span>
           <span class="stage-when">&mdash; git pre-commit hook</span>
           <span class="stage-what">fix and format staged Python files, re-stage,
             typecheck, run tests when source changed. Skip with
             <code>git commit --no-verify</code>.</span>
         </li>
         <li>
-          <span class="stage-name">interlock ci</span>
+          <span class="stage-name">interlocks ci</span>
           <span class="stage-when">&mdash; pull requests and protected branches</span>
           <span class="stage-what">format-check, lint, complexity (lizard, CCN 15), deps,
             typecheck, coverage, optional arch/acceptance &rarr; blocking CRAP &rarr;
             optional mutation.</span>
         </li>
         <li>
-          <span class="stage-name">interlock nightly</span>
+          <span class="stage-name">interlocks nightly</span>
           <span class="stage-when">&mdash; scheduled job</span>
           <span class="stage-what">coverage then mutation, always blocking on
             <code>mutation_min_score</code>. Wire via cron or a GitHub Actions
             schedule.</span>
         </li>
         <li>
-          <span class="stage-name">interlock post-edit</span>
+          <span class="stage-name">interlocks post-edit</span>
           <span class="stage-when">&mdash; editor / agent hook</span>
           <span class="stage-what">advisory ruff fix and format on changed Python files.
             Installed as a Claude Code Stop hook by <code>setup-hooks</code>.</span>
         </li>
         <li>
-          <span class="stage-name">interlock setup-hooks</span>
+          <span class="stage-name">interlocks setup-hooks</span>
           <span class="stage-when">&mdash; hook installer</span>
-          <span class="stage-what">installs the git pre-commit hook and merges the Claude Code
-            Stop hook that runs <code>interlock post-edit</code>. Rerunnable and
+          <span class="stage-what">installs the git pre-commit hook and merges the Claude
+            Code
+            Stop hook that runs <code>interlocks post-edit</code>. Rerunnable and
             idempotent.</span>
         </li>
         <li>
-          <span class="stage-name">interlock clean</span>
+          <span class="stage-name">interlocks clean</span>
           <span class="stage-when">&mdash; local cleanup</span>
           <span class="stage-what">removes caches, build artifacts, coverage output,
             mutation state, and <code>__pycache__/</code>.</span>
@@ -582,12 +584,12 @@ Completed in 7.4s</pre>
         The team wants a baseline by EOD.
       </p>
       <p>You run <code>pipx install interlocks</code> or
-        <code>uv tool install interlocks</code>, then <code>interlock doctor</code>.
+        <code>uv tool install interlocks</code>, then <code>interlocks doctor</code>.
         It prints
         detected source and test directories, the active preset, resolved thresholds, and
         the
         two commands you need next. You commit a three-line GitHub workflow that calls
-        <code>0xjgv/interlock@v1</code>. Locally, <code>interlock check</code> runs the
+        <code>0xjgv/interlocks@v1</code>. Locally, <code>interlocks check</code> runs the
         same
         gates CI will run, minus the heavy ones.
       </p>
@@ -597,7 +599,7 @@ Completed in 7.4s</pre>
         edited
         eleven tool configs.</p>
       <p class="verdict-line">Result: green CI in one PR. Config: zero.</p>
-      <a class="section-cta" href="https://github.com/0xjgv/interlock">Read the docs on
+      <a class="section-cta" href="https://github.com/0xjgv/interlocks">Read the docs on
         GitHub &rarr;</a>
     </div>
 
@@ -606,14 +608,14 @@ Completed in 7.4s</pre>
     <!-- Footer -->
 
     <footer class="site">
-      <span>INTERLOCK v0.1.0 &middot; MIT</span>
+      <span>interlocks v0.1.0 &middot; MIT</span>
       <span>Forged with &#9874;&#65039;</span>
-      <a href="https://github.com/0xjgv/interlock">GitHub</a>
+      <a href="https://github.com/0xjgv/interlocks">GitHub</a>
     </footer>
     <div class="section-divider" aria-hidden="true"></div>
   </div>
   <div class="wordmark-fade" aria-hidden="true">
-    <p>INTERLOCK</p>
+    <p>interlocks</p>
   </div>
 
   <script>

@@ -27,6 +27,6 @@ def task_test() -> Task | None:
 def cmd_test() -> None:
     task = task_test()
     if task is None:
-        warn_skip("test: no test dir detected — run `interlock init` to scaffold tests/")
+        warn_skip("test: no test dir detected — run `interlocks init` to scaffold tests/")
         return
     run(task)

@@ -84,7 +84,7 @@ def test_mutation_skips_when_coverage_missing(
     """No .coverage → cmd_mutation should warn_skip, never SystemExit."""
     monkeypatch.chdir(tmp_project)
     # Defaults (min-coverage=70) apply; no coverage.xml exists → skip path.
-    monkeypatch.setattr(sys, "argv", ["interlock", "mutation"])
+    monkeypatch.setattr(sys, "argv", ["interlocks", "mutation"])
 
     cmd_mutation()  # no SystemExit expected
 
@@ -101,7 +101,7 @@ def test_mutation_runs_and_prints_score(
     monkeypatch.syspath_prepend(str(tmp_project))
     _run_coverage(tmp_project)
     monkeypatch.setattr(
-        sys, "argv", ["interlock", "mutation", "--max-runtime=30", "--min-coverage=0"]
+        sys, "argv", ["interlocks", "mutation", "--max-runtime=30", "--min-coverage=0"]
     )
 
     cmd_mutation()  # advisory — must never SystemExit
@@ -119,12 +119,12 @@ def test_mutation_min_coverage_comes_from_config(
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    """[tool.interlock] mutation_min_coverage = 95 → skip message mentions 95.0%."""
+    """[tool.interlocks] mutation_min_coverage = 95 → skip message mentions 95.0%."""
     (tmp_project / "pyproject.toml").write_text(
-        _PYPROJECT + "\n[tool.interlock]\nmutation_min_coverage = 95\n", encoding="utf-8"
+        _PYPROJECT + "\n[tool.interlocks]\nmutation_min_coverage = 95\n", encoding="utf-8"
     )
     primed_coverage_xml('<?xml version="1.0" ?><coverage line-rate="0.5"></coverage>')
-    monkeypatch.setattr(sys, "argv", ["interlock", "mutation"])
+    monkeypatch.setattr(sys, "argv", ["interlocks", "mutation"])
 
     cmd_mutation()  # advisory — must never SystemExit
     captured = capsys.readouterr()

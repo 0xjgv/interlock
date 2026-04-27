@@ -1,6 +1,6 @@
 """Shared CLI render primitives: banner, sections, rows, kv blocks, footer.
 
-Single source of truth for `interlock` stage output. Stdlib-only. Honors `$NO_COLOR`
+Single source of truth for `interlocks` stage output. Stdlib-only. Honors `$NO_COLOR`
 and isatty; emits no ANSI under pipes or with colors disabled.
 """
 

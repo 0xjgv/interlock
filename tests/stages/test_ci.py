@@ -1,4 +1,4 @@
-"""Integration tests for `interlock ci` (format_check, lint, complexity, typecheck, coverage)."""
+"""Integration tests for `interlocks ci` (format_check, lint, complexity, typecheck, coverage)."""
 
 from __future__ import annotations
 
@@ -31,7 +31,7 @@ _PYPROJECT = textwrap.dedent(
     reportMissingTypeStubs = false
 
     [tool.coverage.run]
-    source = ["interlock"]
+    source = ["interlocks"]
     branch = true
 
     [tool.coverage.report]
@@ -40,7 +40,7 @@ _PYPROJECT = textwrap.dedent(
     """
 )
 
-_INIT_SRC = '"""Tmp project package."""\n\nfrom interlock.core import add\n\n__all__ = ["add"]\n'
+_INIT_SRC = '"""Tmp project package."""\n\nfrom interlocks.core import add\n\n__all__ = ["add"]\n'
 
 _SRC = textwrap.dedent(
     '''\
@@ -58,7 +58,7 @@ _TEST_SRC = textwrap.dedent(
 
     import unittest
 
-    from interlock.core import add
+    from interlocks.core import add
 
 
     class TestAdd(unittest.TestCase):
@@ -87,8 +87,8 @@ def tmp_project(make_tmp_project: TmpProjectFactory) -> Path:
     return make_tmp_project(
         pyproject=_PYPROJECT,
         src_files={
-            "interlock/__init__.py": _INIT_SRC,
-            "interlock/core.py": _SRC,
+            "interlocks/__init__.py": _INIT_SRC,
+            "interlocks/core.py": _SRC,
         },
         test_files={
             "__init__.py": "",
@@ -129,7 +129,7 @@ def test_ci_passes_on_clean_project(tmp_project: Path) -> None:
     ids=["format", "lint"],
 )
 def test_ci_fails_on_violation(tmp_project: Path, dirty_src: str, expected_fragment: str) -> None:
-    (tmp_project / "interlock" / "core.py").write_text(dirty_src, encoding="utf-8")
+    (tmp_project / "interlocks" / "core.py").write_text(dirty_src, encoding="utf-8")
 
     result = _run_ci(tmp_project)
 
@@ -184,7 +184,7 @@ def test_ci_in_process_includes_mutation_when_enabled(
             name = "ci-mut"
             version = "0.0.0"
 
-            [tool.interlock]
+            [tool.interlocks]
             run_mutation_in_ci = true
             """
         ),

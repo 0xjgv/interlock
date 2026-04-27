@@ -88,8 +88,8 @@ def parse_coverage(cov_file: Path) -> dict[str, dict[int, int]]:
     """Return {filename: {lineno: hits}} keyed by cwd-relative paths.
 
     coverage.xml stores filenames relative to ``<source>`` (e.g. ``cli.py`` when
-    source is ``interlock/``). Prefix with the source dir so keys match the
-    ``interlock/cli.py`` paths lizard emits.
+    source is ``interlocks/``). Prefix with the source dir so keys match the
+    ``interlocks/cli.py`` paths lizard emits.
     """
     root = ET.parse(cov_file).getroot()
     prefix = _source_prefix(root)
@@ -166,8 +166,8 @@ def compute_crap_rows(
     """Join lizard functions with coverage to produce CRAP rows.
 
     When ``max_crap`` is ``None``, returns every row (reader mode — used by
-    ``interlock trust``). When set, returns only rows whose CRAP exceeds the
-    threshold (gate mode — used by ``interlock crap``). ``changed``, when given,
+    ``interlocks trust``). When set, returns only rows whose CRAP exceeds the
+    threshold (gate mode — used by ``interlocks crap``). ``changed``, when given,
     filters to functions in those paths.
     """
     rows: list[CrapRow] = []

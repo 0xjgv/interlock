@@ -13,7 +13,7 @@ import interlocks
 from interlocks.config import InterlockConfig, InterlockConfigError, clear_cache, require_pyproject
 from interlocks.runner import preflight
 
-# Package root of the interlock under test — forced onto ``PYTHONPATH`` for subprocess
+# Package root of the interlocks under test — forced onto ``PYTHONPATH`` for subprocess
 # probes so they always exercise the current source, not a stale editable install.
 _INTERLOCK_PKG_ROOT = str(Path(interlocks.__file__).resolve().parent.parent)
 
@@ -53,7 +53,7 @@ def test_require_pyproject_raises_when_missing(tmp_path: Path) -> None:
 def test_require_pyproject_points_at_init(tmp_path: Path) -> None:
     with pytest.raises(InterlockConfigError) as exc:
         require_pyproject(_cfg(tmp_path))
-    assert "interlock init" in str(exc.value)
+    assert "interlocks init" in str(exc.value)
 
 
 # ─────────────── preflight() exit behaviour ─────────────────────────
@@ -85,7 +85,7 @@ def test_preflight_exits_two_when_gated_command_has_no_pyproject(
 
 
 def test_cli_check_exits_two_without_pyproject(tmp_path: Path) -> None:
-    """Running ``interlock check`` outside any project surfaces a clear error, exit 2."""
+    """Running ``interlocks check`` outside any project surfaces a clear error, exit 2."""
     result = subprocess.run(
         [sys.executable, "-m", "interlocks.cli", "check"],
         cwd=tmp_path,
@@ -109,4 +109,4 @@ def test_cli_help_works_without_pyproject(tmp_path: Path) -> None:
         env=_subprocess_env(),
     )
     assert result.returncode == 0, f"stdout={result.stdout}\nstderr={result.stderr}"
-    assert "Usage: interlock <command>" in result.stdout
+    assert "Usage: interlocks <command>" in result.stdout

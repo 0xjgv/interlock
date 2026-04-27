@@ -1,6 +1,6 @@
 """Integration tests for interlocks.tasks.format_check.
 
-``format-check`` is not registered in the CLI TASKS dict (see interlock/cli.py),
+``format-check`` is not registered in the CLI TASKS dict (see interlocks/cli.py),
 so we invoke ``cmd_format_check`` directly and assert the SystemExit code.
 """
 

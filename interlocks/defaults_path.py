@@ -26,7 +26,7 @@ atexit.register(_extractor.close)
 
 @cache
 def path(name: str) -> Path:
-    """Return a real filesystem path to ``interlock/defaults/<name>``.
+    """Return a real filesystem path to ``interlocks/defaults/<name>``.
 
     When the package is imported from a zipfile, the file is extracted to a
     temp location; the extraction lives for the remainder of the process.

@@ -34,7 +34,7 @@ def cmd_acceptance() -> None:
     task = task_acceptance()
     if task is None:
         warn_skip(
-            "acceptance: no features/ directory — run `interlock init-acceptance` to scaffold one"
+            "acceptance: no features/ directory — run `interlocks init-acceptance` to scaffold one"
         )
         return
     run(task)
@@ -61,7 +61,7 @@ def _pytest_bdd_targets(cfg: InterlockConfig, features_dir: Path, features_arg: 
     """Directories pytest must collect for pytest-bdd to bind features → steps.
 
     Canonical scaffold drops step-defs as a sibling of ``features/``; pick that
-    up automatically when present so ``interlock acceptance`` stays self-contained.
+    up automatically when present so ``interlocks acceptance`` stays self-contained.
     """
     dirs = [features_arg]
     step_defs = features_dir.parent / "step_defs"

@@ -1,19 +1,19 @@
-name: interlock CI
-description: Install interlock and run the repository quality pipeline through interlock ci.
+name: interlocks CI
+description: Install interlocks and run the repository quality pipeline through interlocks ci.
 
 inputs:
   python-version:
-    description: Python version used to install interlock and run interlocks.
+    description: Python version used to install interlocks and run interlocks.
     required: false
     default: "3.13"
   install-command:
-    description: Command that installs interlock before running CI.
+    description: Command that installs interlocks before running CI.
     required: false
     default: python -m pip install interlocks
   command:
-    description: interlock command to run.
+    description: interlocks command to run.
     required: false
-    default: interlock ci
+    default: interlocks ci
 
 runs:
   using: composite
@@ -23,12 +23,12 @@ runs:
       with:
         python-version: ${{ inputs.python-version }}
 
-    - name: Install interlock
+    - name: Install interlocks
       shell: bash
       run: |
         python -m pip install --upgrade pip
         ${{ inputs.install-command }}
 
-    - name: Run interlock
+    - name: Run interlocks
       shell: bash
       run: python -m interlocks.github_action --command "${{ inputs.command }}"

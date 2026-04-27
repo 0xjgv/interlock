@@ -322,7 +322,7 @@ _PYPROJECT = textwrap.dedent(
 def tmp_project(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     """Small project with source + covering test; primes ``.coverage`` + ``coverage.xml``."""
     (tmp_path / "pyproject.toml").write_text(
-        _PYPROJECT + '\n[tool.interlock]\nsrc_dir = "mypkg"\ntest_dir = "tests"\n',
+        _PYPROJECT + '\n[tool.interlocks]\nsrc_dir = "mypkg"\ntest_dir = "tests"\n',
         encoding="utf-8",
     )
     pkg = tmp_path / "mypkg"
@@ -363,7 +363,7 @@ def test_cmd_trust_skips_without_coverage(
     from interlocks.config import clear_cache
 
     clear_cache()
-    monkeypatch.setattr(sys, "argv", ["interlock", "trust"])
+    monkeypatch.setattr(sys, "argv", ["interlocks", "trust"])
     cmd_trust()
     captured = capsys.readouterr()
     assert "no coverage" in captured.out.lower()
@@ -374,7 +374,7 @@ def test_cmd_trust_prints_report(
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    monkeypatch.setattr(sys, "argv", ["interlock", "trust", "--no-trend"])
+    monkeypatch.setattr(sys, "argv", ["interlocks", "trust", "--no-trend"])
     cmd_trust()
     captured = capsys.readouterr()
     assert "command=trust" in captured.out
@@ -388,9 +388,9 @@ def test_cmd_trust_writes_trend_file(
     tmp_project: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr(sys, "argv", ["interlock", "trust"])
+    monkeypatch.setattr(sys, "argv", ["interlocks", "trust"])
     cmd_trust()
-    cache = tmp_project / ".interlock" / "trust.json"
+    cache = tmp_project / ".interlocks" / "trust.json"
     assert cache.is_file()
     data = json.loads(cache.read_text(encoding="utf-8"))
     assert "history" in data
@@ -401,9 +401,9 @@ def test_cmd_trust_no_trend_skips_cache(
     tmp_project: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr(sys, "argv", ["interlock", "trust", "--no-trend"])
+    monkeypatch.setattr(sys, "argv", ["interlocks", "trust", "--no-trend"])
     cmd_trust()
-    assert not (tmp_project / ".interlock" / "trust.json").exists()
+    assert not (tmp_project / ".interlocks" / "trust.json").exists()
 
 
 def test_cmd_trust_second_run_shows_delta(
@@ -411,7 +411,7 @@ def test_cmd_trust_second_run_shows_delta(
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    monkeypatch.setattr(sys, "argv", ["interlock", "trust"])
+    monkeypatch.setattr(sys, "argv", ["interlocks", "trust"])
     cmd_trust()
     capsys.readouterr()  # drain first run
     cmd_trust()
@@ -430,7 +430,7 @@ def test_cmd_trust_refresh_runs_coverage_first(
         calls.append(("coverage", min_pct))
 
     monkeypatch.setattr(stats_mod, "cmd_coverage", fake_coverage)
-    monkeypatch.setattr(sys, "argv", ["interlock", "trust", "--refresh", "--no-trend"])
+    monkeypatch.setattr(sys, "argv", ["interlocks", "trust", "--refresh", "--no-trend"])
 
     cmd_trust()
 
@@ -438,7 +438,7 @@ def test_cmd_trust_refresh_runs_coverage_first(
     assert calls == [("coverage", 0)]
     assert "command=trust" in captured.out
     assert "── Trust" in captured.out
-    assert "run `interlock trust --verbose`" in captured.out
+    assert "run `interlocks trust --verbose`" in captured.out
 
 
 def test_cmd_trust_refresh_failure_stops_before_report(
@@ -450,7 +450,7 @@ def test_cmd_trust_refresh_failure_stops_before_report(
         raise SystemExit(7)
 
     monkeypatch.setattr(stats_mod, "cmd_coverage", fail_coverage)
-    monkeypatch.setattr(sys, "argv", ["interlock", "trust", "--refresh", "--no-trend"])
+    monkeypatch.setattr(sys, "argv", ["interlocks", "trust", "--refresh", "--no-trend"])
 
     with pytest.raises(SystemExit) as exc:
         cmd_trust()

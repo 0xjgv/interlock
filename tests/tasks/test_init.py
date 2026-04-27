@@ -1,4 +1,4 @@
-"""Tests for `interlock init` (greenfield scaffold)."""
+"""Tests for `interlocks init` (greenfield scaffold)."""
 
 from __future__ import annotations
 
@@ -29,7 +29,7 @@ def test_init_scaffolds_greenfield_project(tmp_path: Path) -> None:
     assert 'requires-python = ">=3.13"' in body
     assert "dependencies = []" in body
     assert 'dev = ["pytest>=8"]' in body
-    assert "[tool.interlock]" in body
+    assert "[tool.interlocks]" in body
     assert (tmp_path / "tests" / "__init__.py").is_file()
     smoke = tmp_path / "tests" / "test_smoke.py"
     assert smoke.is_file()

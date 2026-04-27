@@ -17,20 +17,20 @@ if TYPE_CHECKING:
 
 
 def is_post_edit_command(command: object) -> bool:
-    """True when ``command`` is a recognizable ``interlock post-edit`` invocation."""
+    """True when ``command`` is a recognizable ``interlocks post-edit`` invocation."""
     return isinstance(command, str) and (
-        command.endswith("interlocks.cli post-edit") or command == "uv run interlock post-edit"
+        command.endswith("interlocks.cli post-edit") or command == "uv run interlocks post-edit"
     )
 
 
 def pre_commit_hook_installed(project_root: Path) -> bool:
-    """True when ``.git/hooks/pre-commit`` exists and invokes ``interlock pre-commit``."""
+    """True when ``.git/hooks/pre-commit`` exists and invokes ``interlocks pre-commit``."""
     hook = project_root / ".git" / "hooks" / "pre-commit"
     try:
         body = hook.read_text(encoding="utf-8")
     except OSError:
         return False
-    return "interlocks.cli pre-commit" in body or "interlock pre-commit" in body
+    return "interlocks.cli pre-commit" in body or "interlocks pre-commit" in body
 
 
 def claude_stop_hook_installed(project_root: Path) -> bool:
@@ -67,7 +67,7 @@ def _stop_entries(settings_path: Path) -> list[object]:
 
 
 def ci_workflow_present(project_root: Path) -> bool:
-    """True when any ``.github/workflows/*.y*ml`` references ``interlock ci`` or the action."""
+    """True when any ``.github/workflows/*.y*ml`` references ``interlocks ci`` or the action."""
     workflows_dir = project_root / ".github" / "workflows"
     if not workflows_dir.is_dir():
         return False
@@ -78,7 +78,7 @@ def ci_workflow_present(project_root: Path) -> bool:
             body = path.read_text(encoding="utf-8")
         except OSError:
             continue
-        if "interlock ci" in body or "interlock/interlock@" in body:
+        if "interlocks ci" in body or "interlocks/interlocks@" in body:
             return True
     return False
 
@@ -94,6 +94,6 @@ def acceptance_scaffold_present(cfg: InterlockConfig) -> bool:
 
 
 def interlock_config_block_present(cfg: InterlockConfig) -> bool:
-    """True when the project ``pyproject.toml`` has a ``[tool.interlock]`` table."""
+    """True when the project ``pyproject.toml`` has a ``[tool.interlocks]`` table."""
     tool = cfg.pyproject.get("tool", {})
-    return isinstance(tool, dict) and isinstance(tool.get("interlock"), dict)
+    return isinstance(tool, dict) and isinstance(tool.get("interlocks"), dict)

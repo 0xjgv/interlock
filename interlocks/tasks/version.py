@@ -1,4 +1,4 @@
-"""Print the installed interlock version.
+"""Print the installed interlocks version.
 
 Utility command — not a gate. ``task_version`` returns ``None`` to keep the
 Task-vs-command distinction honest; ``cmd_version`` prints ``__version__``

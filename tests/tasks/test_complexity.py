@@ -41,9 +41,9 @@ _COMPLEX_SRC = textwrap.dedent(
 
 @pytest.fixture
 def tmp_project(tmp_path: Path) -> Path:
-    """Project layout lizard scans: `interlock/` and `tests/`."""
-    (tmp_path / "interlock").mkdir()
-    (tmp_path / "interlock" / "__init__.py").write_text("", encoding="utf-8")
+    """Project layout lizard scans: `interlocks/` and `tests/`."""
+    (tmp_path / "interlocks").mkdir()
+    (tmp_path / "interlocks" / "__init__.py").write_text("", encoding="utf-8")
     (tmp_path / "tests").mkdir()
     (tmp_path / "tests" / "__init__.py").write_text("", encoding="utf-8")
     return tmp_path
@@ -52,7 +52,7 @@ def tmp_project(tmp_path: Path) -> Path:
 def test_complexity_passes_on_simple_code(
     tmp_project: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    (tmp_project / "interlock" / "mod.py").write_text(_SIMPLE_SRC, encoding="utf-8")
+    (tmp_project / "interlocks" / "mod.py").write_text(_SIMPLE_SRC, encoding="utf-8")
     monkeypatch.chdir(tmp_project)
 
     from interlocks.tasks.complexity import cmd_complexity
@@ -63,7 +63,7 @@ def test_complexity_passes_on_simple_code(
 def test_complexity_fails_on_tangled_function(
     tmp_project: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    (tmp_project / "interlock" / "mod.py").write_text(_COMPLEX_SRC, encoding="utf-8")
+    (tmp_project / "interlocks" / "mod.py").write_text(_COMPLEX_SRC, encoding="utf-8")
     monkeypatch.chdir(tmp_project)
 
     from interlocks.tasks.complexity import cmd_complexity
@@ -96,10 +96,10 @@ def test_complexity_uses_default_thresholds_from_config(
 def test_complexity_honors_tool_interlock_overrides(
     tmp_project: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """`[tool.interlock]` threshold keys flow into lizard argv."""
+    """`[tool.interlocks]` threshold keys flow into lizard argv."""
     (tmp_project / "pyproject.toml").write_text(
         textwrap.dedent("""\
-            [tool.interlock]
+            [tool.interlocks]
             complexity_max_ccn = 20
             complexity_max_args = 5
             complexity_max_loc = 150

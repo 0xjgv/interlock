@@ -33,7 +33,7 @@ def cmd_crap() -> None:
     """CRAP = ccn^2 * (1-cov)^3 + ccn per function — lizard + coverage XML.
 
     Threshold precedence: ``--max=N`` on argv > ``cfg.crap_max`` (default 30.0,
-    overridable via ``[tool.interlock] crap_max``). Blocking depends on
+    overridable via ``[tool.interlocks] crap_max``). Blocking depends on
     ``cfg.enforce_crap``.
     """
     cfg = load_config()
@@ -47,7 +47,7 @@ def cmd_crap() -> None:
             "crap",
             command,
             "skipped",
-            detail="coverage.xml missing — run `interlock coverage`",
+            detail="coverage.xml missing — run `interlocks coverage`",
             state="warn",
         )
         sys.exit(1)

@@ -1,4 +1,4 @@
-"""Integration tests for `interlock setup-hooks` stage."""
+"""Integration tests for `interlocks setup-hooks` stage."""
 
 from __future__ import annotations
 

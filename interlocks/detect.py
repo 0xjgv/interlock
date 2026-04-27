@@ -1,7 +1,7 @@
 """Auto-detect the target project's test runner, source/test dirs, and invoker. Stdlib-only.
 
 All helpers are pure — they take the pre-loaded ``pyproject`` dict and the discovered
-``project_root`` — so ``interlock/config.py`` owns discovery and caching.
+``project_root`` — so ``interlocks/config.py`` owns discovery and caching.
 
 Test-runner detection order (first match wins):
   1. Pytest config: ``[tool.pytest.*]``, ``pytest.ini``, ``pytest.cfg``, ``<test_dir>/conftest.py``
@@ -100,7 +100,7 @@ def detect_src_dir(project_root: Path, pyproject: dict[str, Any]) -> Path:
     """Best-effort guess at the project's source directory.
 
     Preference order:
-      1. Explicit ``[tool.uv.build-backend] module-name`` (interlock itself uses this).
+      1. Explicit ``[tool.uv.build-backend] module-name`` (interlocks itself uses this).
       2. Hatch wheel packages: ``[tool.hatch.build.targets.wheel] packages``.
       3. Setuptools flat packages: ``[tool.setuptools] packages`` (list form).
       4. ``src/<pkg>`` layout — first sub-dir of ``src/`` with ``__init__.py``.
@@ -242,7 +242,7 @@ def detect_acceptance_runner(cfg: InterlockConfig) -> AcceptanceRunner | None:
     """Pick ``pytest-bdd`` | ``behave`` based on explicit override → layout → deps.
 
     Returns ``None`` when nothing should run: ``acceptance_runner = "off"`` or
-    no ``features_dir``. Explicit ``[tool.interlock] acceptance_runner`` wins.
+    no ``features_dir``. Explicit ``[tool.interlocks] acceptance_runner`` wins.
     """
     if cfg.acceptance_runner is not None:
         return None if cfg.acceptance_runner == "off" else cfg.acceptance_runner

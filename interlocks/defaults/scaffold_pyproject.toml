@@ -7,4 +7,4 @@ dependencies = []
 [dependency-groups]
 dev = ["pytest>=8"]
 
-[tool.interlock]
+[tool.interlocks]

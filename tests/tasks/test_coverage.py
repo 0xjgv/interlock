@@ -105,7 +105,7 @@ def test_coverage_injects_bundled_rcfile_in_bare_project(
 
     (tmp_path / "pyproject.toml").write_text(_BARE_PYPROJECT, encoding="utf-8")
     monkeypatch.chdir(tmp_path)
-    monkeypatch.setattr(sys, "argv", ["interlock", "coverage"])
+    monkeypatch.setattr(sys, "argv", ["interlocks", "coverage"])
     task = task_coverage()
     for cmd in (task.cmd, task.pre_cmds[0]):
         flag = _rcfile_flag(cmd)
@@ -120,7 +120,7 @@ def test_coverage_omits_rcfile_when_project_has_tool_coverage(
     from interlocks.tasks.coverage import task_coverage
 
     monkeypatch.chdir(tmp_project)
-    monkeypatch.setattr(sys, "argv", ["interlock", "coverage"])
+    monkeypatch.setattr(sys, "argv", ["interlocks", "coverage"])
     task = task_coverage()
     assert _rcfile_flag(task.cmd) is None
     assert _rcfile_flag(task.pre_cmds[0]) is None
@@ -135,7 +135,7 @@ def test_coverage_omits_rcfile_with_coveragerc_sidecar(
     (tmp_path / "pyproject.toml").write_text(_BARE_PYPROJECT, encoding="utf-8")
     (tmp_path / ".coveragerc").write_text("[run]\nbranch = True\n", encoding="utf-8")
     monkeypatch.chdir(tmp_path)
-    monkeypatch.setattr(sys, "argv", ["interlock", "coverage"])
+    monkeypatch.setattr(sys, "argv", ["interlocks", "coverage"])
     task = task_coverage()
     assert _rcfile_flag(task.cmd) is None
     assert _rcfile_flag(task.pre_cmds[0]) is None
@@ -149,19 +149,19 @@ def test_coverage_default_min_pct_uses_cfg(
 
     (tmp_path / "pyproject.toml").write_text(_BARE_PYPROJECT, encoding="utf-8")
     monkeypatch.chdir(tmp_path)
-    monkeypatch.setattr(sys, "argv", ["interlock", "coverage"])
+    monkeypatch.setattr(sys, "argv", ["interlocks", "coverage"])
     assert "--fail-under=80" in task_coverage().cmd
 
 
 def test_coverage_config_override_wires_through(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """``[tool.interlock] coverage_min = 95`` flows into --fail-under=95."""
+    """``[tool.interlocks] coverage_min = 95`` flows into --fail-under=95."""
     from interlocks.tasks.coverage import task_coverage
 
     (tmp_path / "pyproject.toml").write_text(
-        _BARE_PYPROJECT + "\n[tool.interlock]\ncoverage_min = 95\n", encoding="utf-8"
+        _BARE_PYPROJECT + "\n[tool.interlocks]\ncoverage_min = 95\n", encoding="utf-8"
     )
     monkeypatch.chdir(tmp_path)
-    monkeypatch.setattr(sys, "argv", ["interlock", "coverage"])
+    monkeypatch.setattr(sys, "argv", ["interlocks", "coverage"])
     assert "--fail-under=95" in task_coverage().cmd

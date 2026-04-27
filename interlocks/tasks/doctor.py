@@ -97,7 +97,7 @@ def cmd_doctor() -> None:
     ui.section("Next Steps")
     ui.message_list(
         _next_steps(rows, is_blocked),
-        empty="Run `interlock check` locally.",
+        empty="Run `interlocks check` locally.",
     )
     ui.command_footer(start)
 
@@ -108,7 +108,7 @@ def cmd_doctor() -> None:
 def _print_readiness(is_blocked: bool, gap_count: int) -> None:
     if is_blocked:
         print("  status                 blocked")
-        print("  summary                fix blockers before running `interlock check`")
+        print("  summary                fix blockers before running `interlocks check`")
         return
     if gap_count:
         suffix = "s" if gap_count != 1 else ""
@@ -116,7 +116,7 @@ def _print_readiness(is_blocked: bool, gap_count: int) -> None:
         print("  summary                see Setup Checklist for optional wiring")
         return
     print("  status                 ready")
-    print("  summary                ready to try `interlock check`")
+    print("  summary                ready to try `interlocks check`")
 
 
 def _safe_load_config(pyproject_path: Path, failures: list[str]) -> InterlockConfig | None:
@@ -132,7 +132,7 @@ def _collect_blockers(
     cfg: InterlockConfig | None, pyproject_path: Path, blockers: list[str]
 ) -> None:
     if not pyproject_path.is_file():
-        blockers.append("missing pyproject.toml; run `interlock init` to scaffold")
+        blockers.append("missing pyproject.toml; run `interlocks init` to scaffold")
     if cfg is None:
         return
     if not cfg.src_dir.exists():
@@ -195,8 +195,8 @@ def _preset_row(cfg: InterlockConfig) -> CheckRow:
 
 def _interlock_cfg_row(cfg: InterlockConfig) -> CheckRow:
     if interlock_config_block_present(cfg):
-        return CheckRow("interlock cfg", "[tool.interlock] block", "present", "ok")
-    return CheckRow("interlock cfg", "[tool.interlock] block", "defaults apply", "warn")
+        return CheckRow("interlocks cfg", "[tool.interlocks] block", "present", "ok")
+    return CheckRow("interlocks cfg", "[tool.interlocks] block", "defaults apply", "warn")
 
 
 def _src_dir_row(cfg: InterlockConfig) -> CheckRow:
@@ -227,7 +227,7 @@ def _git_hook_row(project_root: Path) -> CheckRow:
         return CheckRow("git hook", target, _INERT_DETAIL, "warn")
     if pre_commit_hook_installed(project_root):
         return CheckRow("git hook", target, "installed", "ok")
-    return CheckRow("git hook", target, "run `interlock setup-hooks`", "warn")
+    return CheckRow("git hook", target, "run `interlocks setup-hooks`", "warn")
 
 
 def _claude_hook_row(project_root: Path) -> CheckRow:
@@ -238,7 +238,7 @@ def _claude_hook_row(project_root: Path) -> CheckRow:
         return CheckRow("claude hook", target, _INERT_DETAIL, "warn")
     if claude_stop_hook_installed(project_root):
         return CheckRow("claude hook", target, "installed", "ok")
-    return CheckRow("claude hook", target, "run `interlock setup-hooks`", "warn")
+    return CheckRow("claude hook", target, "run `interlocks setup-hooks`", "warn")
 
 
 def _ci_workflow_row(project_root: Path) -> CheckRow:
@@ -255,7 +255,7 @@ def _acceptance_row(cfg: InterlockConfig) -> CheckRow:
     if acceptance_scaffold_present(cfg):
         return CheckRow("acceptance", features_target, "scaffolded", "ok")
     if cfg.acceptance_runner is not None:
-        return CheckRow("acceptance", features_target, "run `interlock init-acceptance`", "warn")
+        return CheckRow("acceptance", features_target, "run `interlocks init-acceptance`", "warn")
     return CheckRow("acceptance", features_target, "not wired", "warn")
 
 
@@ -266,26 +266,26 @@ def _render_setup_checklist(rows: list[CheckRow]) -> None:
 
 def _next_steps(rows: list[CheckRow], is_blocked: bool) -> list[str]:
     if is_blocked:
-        return ["Fix blockers in Setup Checklist above, then rerun `interlock doctor`."]
+        return ["Fix blockers in Setup Checklist above, then rerun `interlocks doctor`."]
     by_label = {r.label: r for r in rows}
     steps = [
         step
         for labels, step in (
-            (("git hook", "claude hook"), "Run `interlock setup-hooks` to wire feedback loops."),
+            (("git hook", "claude hook"), "Run `interlocks setup-hooks` to wire feedback loops."),
             (
-                ("interlock cfg", "preset"),
-                "Run `interlock presets` to pick a preset (baseline, strict, legacy).",
+                ("interlocks cfg", "preset"),
+                "Run `interlocks presets` to pick a preset (baseline, strict, legacy).",
             ),
-            (("acceptance",), "Run `interlock init-acceptance` to scaffold Gherkin tests."),
+            (("acceptance",), "Run `interlocks init-acceptance` to scaffold Gherkin tests."),
             (
                 ("ci workflow",),
-                "Wire CI via `interlock ci` or the reusable interlock GitHub Action.",
+                "Wire CI via `interlocks ci` or the reusable interlocks GitHub Action.",
             ),
             (("venv",), "Create a venv (`uv sync` or `python -m venv .venv`)."),
         )
         if any(_is_warn(by_label, label) for label in labels)
     ]
-    return steps or ["Run `interlock check` locally."]
+    return steps or ["Run `interlocks check` locally."]
 
 
 def _is_warn(by_label: dict[str, CheckRow], label: str) -> bool:

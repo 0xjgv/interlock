@@ -55,6 +55,6 @@ def _write_default_config(cfg: InterlockConfig) -> Path | None:
     body = template.format(src_pkg=src_pkg, test_pkg=test_pkg)
     # Stable path — content depends only on (src_pkg, test_pkg), so projects sharing
     # those names share the file safely, and import-linter's graph cache survives runs.
-    out = Path(tempfile.gettempdir()) / f"interlock-arch-{src_pkg}-{test_pkg}.ini"
+    out = Path(tempfile.gettempdir()) / f"interlocks-arch-{src_pkg}-{test_pkg}.ini"
     out.write_text(body, encoding="utf-8")
     return out

@@ -1,4 +1,4 @@
-"""Integration test for `interlock audit` (pip-audit on deps)."""
+"""Integration test for `interlocks audit` (pip-audit on deps)."""
 
 from __future__ import annotations
 

@@ -104,7 +104,7 @@ class TestSetupHooks(unittest.TestCase):
                         "hooks": [
                             {
                                 "type": "command",
-                                "command": "uv run interlock post-edit",
+                                "command": "uv run interlocks post-edit",
                             },
                             {
                                 "type": "command",

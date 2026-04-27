@@ -6,10 +6,10 @@ Internal release notes for publishing both packages from this repo.
 
 | Package | Source | Version source | Workflow | Production tag |
 | --- | --- | --- | --- | --- |
-| `interlock-mutmut` | vendored mutmut fork template | `vendor/mutmut-fork/pyproject.toml` | `release-mutmut.yml` | `mutmut-vX.Y.Z` |
+| `interlocks-mutmut` | vendored mutmut fork template | `vendor/mutmut-fork/pyproject.toml` | `release-mutmut.yml` | `mutmut-vX.Y.Z` |
 | `interlocks` | root CLI package | `pyproject.toml` | `release.yml` | `vX.Y.Z` |
 
-`interlocks` depends on `interlock-mutmut`, so publish `interlock-mutmut` first when bumping the mutmut fork.
+`interlocks` depends on `interlocks-mutmut`, so publish `interlocks-mutmut` first when bumping the mutmut fork.
 
 ## One-time setup
 
@@ -24,16 +24,16 @@ Trusted Publishers:
 
 | Package | Index | Owner/repo | Workflow | Environment |
 | --- | --- | --- | --- | --- |
-| `interlock-mutmut` | TestPyPI | `0xjgv/interlock` | `release-mutmut.yml` | `testpypi-mutmut` |
-| `interlock-mutmut` | PyPI | `0xjgv/interlock` | `release-mutmut.yml` | `pypi-mutmut` |
-| `interlocks` | TestPyPI | `0xjgv/interlock` | `release.yml` | `testpypi` |
-| `interlocks` | PyPI | `0xjgv/interlock` | `release.yml` | `pypi` |
+| `interlocks-mutmut` | TestPyPI | `0xjgv/interlocks` | `release-mutmut.yml` | `testpypi-mutmut` |
+| `interlocks-mutmut` | PyPI | `0xjgv/interlocks` | `release-mutmut.yml` | `pypi-mutmut` |
+| `interlocks` | TestPyPI | `0xjgv/interlocks` | `release.yml` | `testpypi` |
+| `interlocks` | PyPI | `0xjgv/interlocks` | `release.yml` | `pypi` |
 
 ## Preflight
 
 ```bash
 git status --short --branch
-interlock check
+interlocks check
 rm -rf dist
 uv build
 uvx twine check dist/*
@@ -48,7 +48,7 @@ grep -n "git+" pyproject.toml uv.lock
 
 No output expected.
 
-## Publish `interlock-mutmut`
+## Publish `interlocks-mutmut`
 
 ### TestPyPI
 
@@ -81,10 +81,10 @@ gh run watch "$(gh run list --workflow release-mutmut.yml --limit 1 --json datab
 ### Smoke-test PyPI package
 
 ```bash
-uv venv /tmp/interlock-mutmut-smoke
-uv pip install --python /tmp/interlock-mutmut-smoke/bin/python interlock-mutmut
-/tmp/interlock-mutmut-smoke/bin/python -c 'import mutmut; print(mutmut.__version__)'
-/tmp/interlock-mutmut-smoke/bin/mutmut --help
+uv venv /tmp/interlocks-mutmut-smoke
+uv pip install --python /tmp/interlocks-mutmut-smoke/bin/python interlocks-mutmut
+/tmp/interlocks-mutmut-smoke/bin/python -c 'import mutmut; print(mutmut.__version__)'
+/tmp/interlocks-mutmut-smoke/bin/mutmut --help
 ```
 
 ## Publish `interlocks`
@@ -122,14 +122,14 @@ gh run watch "$(gh run list --workflow release.yml --limit 1 --json databaseId -
 ```bash
 uv venv /tmp/interlocks-smoke
 uv pip install --python /tmp/interlocks-smoke/bin/python interlocks
-/tmp/interlocks-smoke/bin/interlock --help
+/tmp/interlocks-smoke/bin/interlocks --help
 /tmp/interlocks-smoke/bin/il --help
 ```
 
 ## Verify published versions
 
 ```bash
-python -m pip index versions interlock-mutmut
+python -m pip index versions interlocks-mutmut
 python -m pip index versions interlocks
 gh release view "mutmut-v${version}"
 gh release view "v${version}"
@@ -150,4 +150,4 @@ gh run watch <run-id> --exit-status
 - `workflow_dispatch` publishes to TestPyPI.
 - Production tag pushes publish to PyPI and create GitHub release assets.
 - PyPI versions are immutable; bump package version before retrying a completed publish.
-- `interlock-mutmut` keeps import path and CLI as `mutmut`, while distribution name is `interlock-mutmut`.
+- `interlocks-mutmut` keeps import path and CLI as `mutmut`, while distribution name is `interlocks-mutmut`.

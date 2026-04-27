@@ -22,7 +22,7 @@ _MODULE_SRC = textwrap.dedent(
 _TEST_SRC = textwrap.dedent(
     """\
     import unittest
-    from interlock.mod import inc
+    from interlocks.mod import inc
 
     class TestInc(unittest.TestCase):
         def test_inc(self):
@@ -38,7 +38,7 @@ _PYPROJECT_COV = textwrap.dedent(
     requires-python = ">=3.13"
 
     [tool.coverage.run]
-    source = ["interlock"]
+    source = ["interlocks"]
     branch = true
     """
 )
@@ -52,7 +52,7 @@ def _run_coverage(cwd: Path) -> None:
 @pytest.fixture
 def tmp_project(tmp_path: Path) -> Path:
     (tmp_path / "pyproject.toml").write_text(_PYPROJECT_COV, encoding="utf-8")
-    pkg = tmp_path / "interlock"
+    pkg = tmp_path / "interlocks"
     pkg.mkdir()
     (pkg / "__init__.py").write_text("", encoding="utf-8")
     (pkg / "mod.py").write_text(_MODULE_SRC, encoding="utf-8")
@@ -66,7 +66,7 @@ def tmp_project(tmp_path: Path) -> Path:
 def _write_pyproject(project: Path, *, enforce: bool) -> None:
     (project / "pyproject.toml").write_text(
         _PYPROJECT_COV
-        + f"\n[tool.interlock]\ncrap_max = 0.5\nenforce_crap = {str(enforce).lower()}\n",
+        + f"\n[tool.interlocks]\ncrap_max = 0.5\nenforce_crap = {str(enforce).lower()}\n",
         encoding="utf-8",
     )
 
@@ -78,7 +78,7 @@ def test_crap_exits_when_enforced(
     _write_pyproject(tmp_project, enforce=True)
     monkeypatch.chdir(tmp_project)
     monkeypatch.syspath_prepend(str(tmp_project))
-    monkeypatch.setattr(sys, "argv", ["interlock", "crap"])
+    monkeypatch.setattr(sys, "argv", ["interlocks", "crap"])
     _run_coverage(tmp_project)
 
     from interlocks.tasks.crap import cmd_crap
@@ -98,7 +98,7 @@ def test_crap_stays_advisory_when_disabled(
     _write_pyproject(tmp_project, enforce=False)
     monkeypatch.chdir(tmp_project)
     monkeypatch.syspath_prepend(str(tmp_project))
-    monkeypatch.setattr(sys, "argv", ["interlock", "crap"])
+    monkeypatch.setattr(sys, "argv", ["interlocks", "crap"])
     _run_coverage(tmp_project)
 
     from interlocks.tasks.crap import cmd_crap
@@ -164,7 +164,7 @@ def test_cached_crap_advisory_reports_fresh_offenders(
         "compute_crap_rows",
         lambda *args, **kwargs: [
             CrapRow(
-                path="interlock/mod.py",
+                path="interlocks/mod.py",
                 name="inc",
                 start=1,
                 end=2,
@@ -182,5 +182,5 @@ def test_cached_crap_advisory_reports_fresh_offenders(
         clear_cache()
 
     out = capsys.readouterr().out
-    assert "inc@1-2@interlock/mod.py" in out
+    assert "inc@1-2@interlocks/mod.py" in out
     assert "cached advisory" in out

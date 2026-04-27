@@ -15,7 +15,7 @@ from pytest_bdd import given, parsers, scenarios, then
 scenarios(str(Path(__file__).parent.parent / "features" / "interlock_cli.feature"))
 
 
-@given(parsers.parse('I run "interlock {subcmd}"'), target_fixture="cli_output")
+@given(parsers.parse('I run "interlocks {subcmd}"'), target_fixture="cli_output")
 def _run_interlock(subcmd: str) -> str:
     result = subprocess.run(
         [sys.executable, "-m", "interlocks.cli", *subcmd.split()],

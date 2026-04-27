@@ -1,8 +1,8 @@
 """Wheel-install smoke test.
 
-Builds the interlock wheel, installs it into a clean venv, and runs
-`interlock help`. Guards the `pipx install interlocks` promise from the README
-against packaging regressions (e.g. missing `interlock/defaults/*` data files).
+Builds the interlocks wheel, installs it into a clean venv, and runs
+`interlocks help`. Guards the `pipx install interlocks` promise from the README
+against packaging regressions (e.g. missing `interlocks/defaults/*` data files).
 
 Marked `slow` because building a wheel and creating a fresh venv takes several
 seconds; the `slow` marker is registered in pyproject.toml. Opt in with
@@ -44,9 +44,9 @@ def test_wheel_installs_and_interlock_help_runs(tmp_path: Path) -> None:
     install_cmd = ["uv", "pip", "install", str(wheel), "--python", str(venv_python)]
     subprocess.run(install_cmd, check=True, cwd=tmp_path)
 
-    interlock_bin = tmp_path / "venv" / "bin" / "interlock"
-    assert interlock_bin.exists(), f"interlock entry point missing at {interlock_bin}"
-    assert interlock_bin.stat().st_mode & 0o111, "interlock entry point not executable"
+    interlock_bin = tmp_path / "venv" / "bin" / "interlocks"
+    assert interlock_bin.exists(), f"interlocks entry point missing at {interlock_bin}"
+    assert interlock_bin.stat().st_mode & 0o111, "interlocks entry point not executable"
 
     result = subprocess.run(
         [str(interlock_bin), "help"],
@@ -57,5 +57,5 @@ def test_wheel_installs_and_interlock_help_runs(tmp_path: Path) -> None:
     )
     for expected in ("check", "pre-commit", "ci", "nightly"):
         assert expected in result.stdout, (
-            f"`interlock help` output missing {expected!r}:\n{result.stdout}"
+            f"`interlocks help` output missing {expected!r}:\n{result.stdout}"
         )

@@ -21,7 +21,7 @@ jobs:
           git clone https://github.com/boxed/mutmut.git /tmp/mutmut-fork
           git -C /tmp/mutmut-fork checkout e31d923c734383ddb7df4aa439ab3c60fd7d629a
 
-      - name: Copy interlock-mutmut package template
+      - name: Copy interlocks-mutmut package template
         run: cp vendor/mutmut-fork/pyproject.toml /tmp/mutmut-fork/pyproject.toml
 
       - name: Verify tag matches template version
@@ -53,7 +53,7 @@ jobs:
               'try:\n'
               '    __version__ = importlib.metadata.version("mutmut")\n'
               'except importlib.metadata.PackageNotFoundError:\n'
-              '    __version__ = importlib.metadata.version("interlock-mutmut")\n'
+              '    __version__ = importlib.metadata.version("interlocks-mutmut")\n'
           )
           if old not in text:
               raise SystemExit(f"Patch target missing in {path}")
@@ -73,15 +73,15 @@ jobs:
       - name: Smoke-test wheel
         working-directory: /tmp/mutmut-fork
         run: |
-          uv venv /tmp/interlock-mutmut-smoke
-          uv pip install --python /tmp/interlock-mutmut-smoke/bin/python dist/interlock_mutmut-*.whl
-          /tmp/interlock-mutmut-smoke/bin/python -c 'import mutmut; print(mutmut.__version__)'
-          /tmp/interlock-mutmut-smoke/bin/mutmut --help
+          uv venv /tmp/interlocks-mutmut-smoke
+          uv pip install --python /tmp/interlocks-mutmut-smoke/bin/python dist/interlock_mutmut-*.whl
+          /tmp/interlocks-mutmut-smoke/bin/python -c 'import mutmut; print(mutmut.__version__)'
+          /tmp/interlocks-mutmut-smoke/bin/mutmut --help
 
       - name: Upload dist artifact
         uses: actions/upload-artifact@v4
         with:
-          name: interlock-mutmut-dist
+          name: interlocks-mutmut-dist
           path: /tmp/mutmut-fork/dist/
           retention-days: 1
 
@@ -91,14 +91,14 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: testpypi-mutmut
-      url: https://test.pypi.org/p/interlock-mutmut
+      url: https://test.pypi.org/p/interlocks-mutmut
     permissions:
       id-token: write
     steps:
       - name: Download dist artifact
         uses: actions/download-artifact@v4
         with:
-          name: interlock-mutmut-dist
+          name: interlocks-mutmut-dist
           path: dist/
 
       - name: Publish to TestPyPI
@@ -113,7 +113,7 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: pypi-mutmut
-      url: https://pypi.org/p/interlock-mutmut
+      url: https://pypi.org/p/interlocks-mutmut
     permissions:
       id-token: write
       contents: write
@@ -121,7 +121,7 @@ jobs:
       - name: Download dist artifact
         uses: actions/download-artifact@v4
         with:
-          name: interlock-mutmut-dist
+          name: interlocks-mutmut-dist
           path: dist/
 
       - name: Publish to PyPI

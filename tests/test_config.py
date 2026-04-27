@@ -103,7 +103,7 @@ def test_threshold_overrides_apply(tmp_path: Path, monkeypatch: pytest.MonkeyPat
         name = "thresh"
         version = "0.0.0"
 
-        [tool.interlock]
+        [tool.interlocks]
         coverage_min = 90
         crap_max = 25.5
         complexity_max_ccn = 12
@@ -143,7 +143,7 @@ def test_invalid_threshold_types_fall_back_to_defaults(
         name = "badthresh"
         version = "0.0.0"
 
-        [tool.interlock]
+        [tool.interlocks]
         coverage_min = "eighty"
         crap_max = true
         """,
@@ -160,7 +160,7 @@ def test_invalid_threshold_types_fall_back_to_defaults(
 def test_user_global_config_overrides_bundled_defaults(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """``~/.config/interlock/config.toml`` (root keys) applies when project has none."""
+    """``~/.config/interlocks/config.toml`` (root keys) applies when project has none."""
     (tmp_path / "tests").mkdir()
     _write(
         tmp_path / "pyproject.toml",
@@ -171,8 +171,8 @@ def test_user_global_config_overrides_bundled_defaults(
         """,
     )
     home = tmp_path / "fake_home"
-    (home / ".config" / "interlock").mkdir(parents=True)
-    (home / ".config" / "interlock" / "config.toml").write_text(
+    (home / ".config" / "interlocks").mkdir(parents=True)
+    (home / ".config" / "interlocks" / "config.toml").write_text(
         "coverage_min = 88\ncrap_max = 20.0\n", encoding="utf-8"
     )
     monkeypatch.setenv("XDG_CONFIG_HOME", str(home / ".config"))
@@ -185,7 +185,7 @@ def test_user_global_config_overrides_bundled_defaults(
 def test_project_tool_interlock_overrides_user_global(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """Project `[tool.interlock]` wins over ``~/.config/interlock/config.toml``."""
+    """Project `[tool.interlocks]` wins over ``~/.config/interlocks/config.toml``."""
     (tmp_path / "tests").mkdir()
     _write(
         tmp_path / "pyproject.toml",
@@ -194,13 +194,13 @@ def test_project_tool_interlock_overrides_user_global(
         name = "pwins"
         version = "0.0.0"
 
-        [tool.interlock]
+        [tool.interlocks]
         coverage_min = 95
         """,
     )
     home = tmp_path / "fake_home"
-    (home / ".config" / "interlock").mkdir(parents=True)
-    (home / ".config" / "interlock" / "config.toml").write_text(
+    (home / ".config" / "interlocks").mkdir(parents=True)
+    (home / ".config" / "interlocks" / "config.toml").write_text(
         "coverage_min = 88\ncrap_max = 20.0\n", encoding="utf-8"
     )
     monkeypatch.setenv("XDG_CONFIG_HOME", str(home / ".config"))
@@ -221,7 +221,7 @@ def test_baseline_preset_resolves_low_friction_defaults(
         name = "baseline"
         version = "0.0.0"
 
-        [tool.interlock]
+        [tool.interlocks]
         preset = "baseline"
         """,
     )
@@ -251,7 +251,7 @@ def test_strict_preset_resolves_blocking_gate_defaults(
         name = "strict"
         version = "0.0.0"
 
-        [tool.interlock]
+        [tool.interlocks]
         preset = "strict"
         """,
     )
@@ -280,7 +280,7 @@ def test_legacy_preset_resolves_ratcheting_defaults(
         name = "legacy"
         version = "0.0.0"
 
-        [tool.interlock]
+        [tool.interlocks]
         preset = "legacy"
         """,
     )
@@ -307,7 +307,7 @@ def test_project_explicit_value_overrides_project_preset(
         name = "strict-override"
         version = "0.0.0"
 
-        [tool.interlock]
+        [tool.interlocks]
         preset = "strict"
         coverage_min = 91
         enforce_mutation = false
@@ -334,13 +334,13 @@ def test_project_preset_overrides_user_global_explicit_values(
         name = "project-preset"
         version = "0.0.0"
 
-        [tool.interlock]
+        [tool.interlocks]
         preset = "baseline"
         """,
     )
     home = tmp_path / "fake_home"
-    (home / ".config" / "interlock").mkdir(parents=True)
-    (home / ".config" / "interlock" / "config.toml").write_text(
+    (home / ".config" / "interlocks").mkdir(parents=True)
+    (home / ".config" / "interlocks" / "config.toml").write_text(
         "coverage_min = 88\nrun_mutation_in_ci = true\n", encoding="utf-8"
     )
     monkeypatch.setenv("XDG_CONFIG_HOME", str(home / ".config"))
@@ -365,14 +365,14 @@ def test_project_explicit_values_override_user_global_preset(
         name = "project-explicit"
         version = "0.0.0"
 
-        [tool.interlock]
+        [tool.interlocks]
         coverage_min = 95
         enforce_crap = true
         """,
     )
     home = tmp_path / "fake_home"
-    (home / ".config" / "interlock").mkdir(parents=True)
-    (home / ".config" / "interlock" / "config.toml").write_text(
+    (home / ".config" / "interlocks").mkdir(parents=True)
+    (home / ".config" / "interlocks" / "config.toml").write_text(
         'preset = "legacy"\n', encoding="utf-8"
     )
     monkeypatch.setenv("XDG_CONFIG_HOME", str(home / ".config"))
@@ -397,7 +397,7 @@ def test_unsupported_preset_is_reported_without_resolving(
         name = "unsupported"
         version = "0.0.0"
 
-        [tool.interlock]
+        [tool.interlocks]
         preset = "agent-safe"
         """,
     )
@@ -422,8 +422,8 @@ def test_malformed_user_global_is_ignored(tmp_path: Path, monkeypatch: pytest.Mo
         """,
     )
     home = tmp_path / "fake_home"
-    (home / ".config" / "interlock").mkdir(parents=True)
-    (home / ".config" / "interlock" / "config.toml").write_text(
+    (home / ".config" / "interlocks").mkdir(parents=True)
+    (home / ".config" / "interlocks" / "config.toml").write_text(
         "not = [valid toml\n", encoding="utf-8"
     )
     monkeypatch.setenv("XDG_CONFIG_HOME", str(home / ".config"))
@@ -446,7 +446,7 @@ def test_overrides_win_over_autodetect(tmp_path: Path, monkeypatch: pytest.Monke
         name = "sample"
         version = "0.0.0"
 
-        [tool.interlock]
+        [tool.interlocks]
         src_dir = "source"
         test_dir = "spec"
         test_runner = "unittest"
@@ -470,7 +470,7 @@ def test_invalid_runner_override_falls_back_to_detect(
     _write(
         tmp_path / "pyproject.toml",
         """
-        [tool.interlock]
+        [tool.interlocks]
         test_runner = "nose"
         """,
     )

@@ -1,7 +1,7 @@
 """Project-local configuration: discover root, source/test dirs, runner, and invoker.
 
 `load_config()` walks upward from CWD to find the nearest ``pyproject.toml`` — mirroring
-pytest's rootdir algorithm — then layers ``[tool.interlock]`` overrides on top of
+pytest's rootdir algorithm — then layers ``[tool.interlocks]`` overrides on top of
 autodetected defaults. Stdlib-only.
 """
 
@@ -143,22 +143,22 @@ def _load_pyproject(project_root: Path) -> dict[str, Any]:
 
 
 def _interlock_table(pyproject: dict[str, Any]) -> dict[str, Any]:
-    table = pyproject.get("tool", {}).get("interlock", {})
+    table = pyproject.get("tool", {}).get("interlocks", {})
     return table if isinstance(table, dict) else {}
 
 
 def _user_global_config_path() -> Path:
-    """``~/.config/interlock/config.toml`` — respects ``$XDG_CONFIG_HOME``."""
+    """``~/.config/interlocks/config.toml`` — respects ``$XDG_CONFIG_HOME``."""
     root = os.environ.get("XDG_CONFIG_HOME") or str(Path.home() / ".config")
-    return Path(root) / "interlock" / "config.toml"
+    return Path(root) / "interlocks" / "config.toml"
 
 
 def _user_global_table() -> dict[str, Any]:
-    """Root-level keys from ``~/.config/interlock/config.toml``, or ``{}`` on any failure.
+    """Root-level keys from ``~/.config/interlocks/config.toml``, or ``{}`` on any failure.
 
-    The file is dedicated to interlock, so keys live at the root (no ``[tool.interlock]``
+    The file is dedicated to interlocks, so keys live at the root (no ``[tool.interlocks]``
     wrapper). Intended mainly for threshold overrides — same keys as pyproject's
-    ``[tool.interlock]``. Path fields (``src_dir``/``test_dir``) are project-specific
+    ``[tool.interlocks]``. Path fields (``src_dir``/``test_dir``) are project-specific
     and should not be set here.
     """
     path = _user_global_config_path()
@@ -213,7 +213,7 @@ class InterlockConfig:
     test_invoker: TestInvoker
     preset: Preset | None = None
     pytest_args: tuple[str, ...] = ()
-    # Thresholds — overridable via `[tool.interlock]`. Single source of truth for
+    # Thresholds — overridable via `[tool.interlocks]`. Single source of truth for
     # every gate; individual tasks never hardcode these.
     coverage_min: int = 80
     crap_max: float = 30.0
@@ -226,7 +226,7 @@ class InterlockConfig:
     enforce_crap: bool = True
     run_mutation_in_ci: bool = False
     enforce_mutation: bool = False
-    # Dormant — consumed by a future `interlock mutation --since=<ref>` feature.
+    # Dormant — consumed by a future `interlocks mutation --since=<ref>` feature.
     mutation_ci_mode: MutationCIMode = "off"
     mutation_since_ref: str = "origin/main"
     # Acceptance (Gherkin) — all optional; resolved lazily by the task.
@@ -289,7 +289,7 @@ def _runner_argv(cfg: InterlockConfig) -> list[str]:
 
 
 def build_test_command(cfg: InterlockConfig) -> list[str]:
-    """Build the full `interlock test` command from ``cfg``."""
+    """Build the full `interlocks test` command from ``cfg``."""
     return [*invoker_prefix(cfg), *_runner_argv(cfg)]
 
 
@@ -313,7 +313,7 @@ def require_pyproject(cfg: InterlockConfig) -> None:
     this at the CLI boundary to fail fast with an actionable message.
     """
     if not (cfg.project_root / "pyproject.toml").is_file():
-        raise InterlockConfigError("no pyproject.toml — run `interlock init` to scaffold")
+        raise InterlockConfigError("no pyproject.toml — run `interlocks init` to scaffold")
 
 
 @cache
@@ -498,7 +498,7 @@ _BOOL_THRESHOLDS = ("enforce_crap", "run_mutation_in_ci", "enforce_mutation")
 
 
 def _threshold_overrides(table: dict[str, Any]) -> dict[str, Any]:
-    """Parse known threshold keys from ``[tool.interlock]`` with type coercion.
+    """Parse known threshold keys from ``[tool.interlocks]`` with type coercion.
 
     Invalid values (non-numeric, wrong type) fall through silently — the
     dataclass default applies. Keeps config parsing permissive.

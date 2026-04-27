@@ -35,7 +35,7 @@ def cmd_check() -> None:
         parallel = [task_typecheck()]
         test_task = task_test()
         if test_task is None:
-            warn_skip("test: no test dir detected — run `interlock init` to scaffold tests/")
+            warn_skip("test: no test dir detected — run `interlocks init` to scaffold tests/")
         else:
             parallel.append(test_task)
         if cfg.run_acceptance_in_check:

@@ -1,4 +1,4 @@
-"""Integration + unit tests for `interlock deps` (deptry dependency hygiene)."""
+"""Integration + unit tests for `interlocks deps` (deptry dependency hygiene)."""
 
 from __future__ import annotations
 

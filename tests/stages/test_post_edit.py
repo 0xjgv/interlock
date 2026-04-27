@@ -1,4 +1,4 @@
-"""Integration tests for `interlock post-edit` stage."""
+"""Integration tests for `interlocks post-edit` stage."""
 
 from __future__ import annotations
 
@@ -18,7 +18,7 @@ requires-python = ">=3.13"
 target-version = "py313"
 line-length = 99
 
-[tool.interlock]
+[tool.interlocks]
 src_dir = "app"
 """
 

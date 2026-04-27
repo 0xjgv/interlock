@@ -1,4 +1,4 @@
-"""Tests for `interlock doctor` preflight diagnostic."""
+"""Tests for `interlocks doctor` preflight diagnostic."""
 
 from __future__ import annotations
 
@@ -14,7 +14,7 @@ import interlocks
 
 # When running under an outer interpreter whose site-packages .pth shadows
 # this checkout (e.g. a parent-repo pre-commit hook), point the subprocess's
-# PYTHONPATH at the in-tree interlock so `python -m interlocks.cli` sees the
+# PYTHONPATH at the in-tree interlocks so `python -m interlocks.cli` sees the
 # code under test — not the shadowed install.
 _INTERLOCK_PARENT = str(Path(interlocks.__file__).resolve().parent.parent)
 
@@ -84,8 +84,8 @@ def test_doctor_in_process_reports_sections(
     assert "status                 ready" in captured.out
     assert "ready (" in captured.out  # "ready (N gaps)"
     # Derived Next Steps flags the missing preset + CI + venv, not the generic line.
-    assert "Run `interlock presets`" in captured.out
-    assert "Wire CI via `interlock ci`" in captured.out
+    assert "Run `interlocks presets`" in captured.out
+    assert "Wire CI via `interlocks ci`" in captured.out
     assert "Create a venv" in captured.out
     # task_doctor is CLI-only — it never composes into a stage pipeline.
     assert task_doctor() is None
@@ -103,7 +103,7 @@ def test_doctor_reports_configured_preset(
             'name = "probe"',
             'version = "0.0.0"',
             "",
-            "[tool.interlock]",
+            "[tool.interlocks]",
             'preset = "baseline"',
         ]),
         encoding="utf-8",
@@ -142,7 +142,7 @@ def test_doctor_reports_unsupported_preset_as_blocker(
             'name = "probe"',
             'version = "0.0.0"',
             "",
-            "[tool.interlock]",
+            "[tool.interlocks]",
             'preset = "agent-safe"',
         ]),
         encoding="utf-8",
@@ -172,7 +172,7 @@ def test_doctor_reports_missing_paths_as_blockers(
             'name = "probe"',
             'version = "0.0.0"',
             "",
-            "[tool.interlock]",
+            "[tool.interlocks]",
             'src_dir = "src"',
             'test_dir = "tests"',
         ]),
@@ -201,7 +201,7 @@ def _write_probe_project(tmp_path: Path, *, tool_interlock: str = "") -> None:
     (tmp_path / "tests").mkdir()
     body = '[project]\nname = "probe"\nversion = "0.0.0"\nrequires-python = ">=3.13"\n'
     if tool_interlock:
-        body += "\n[tool.interlock]\n" + tool_interlock.strip() + "\n"
+        body += "\n[tool.interlocks]\n" + tool_interlock.strip() + "\n"
     (tmp_path / "pyproject.toml").write_text(body, encoding="utf-8")
 
 
@@ -244,7 +244,7 @@ def test_doctor_flags_missing_hooks_under_existing_git_or_claude(
     (tmp_path / ".claude").mkdir()
 
     out = _run_cmd_doctor(tmp_path, monkeypatch, capsys)
-    assert "Run `interlock setup-hooks`" in out
+    assert "Run `interlocks setup-hooks`" in out
 
 
 def test_doctor_detects_ci_workflow(
@@ -254,13 +254,13 @@ def test_doctor_detects_ci_workflow(
     workflows = tmp_path / ".github" / "workflows"
     workflows.mkdir(parents=True)
     (workflows / "ci.yml").write_text(
-        "name: ci\njobs:\n  test:\n    steps:\n      - run: interlock ci\n",
+        "name: ci\njobs:\n  test:\n    steps:\n      - run: interlocks ci\n",
         encoding="utf-8",
     )
 
     out = _run_cmd_doctor(tmp_path, monkeypatch, capsys)
     # CI row flips to `ok`; no Next-Steps bullet about wiring CI.
-    assert "Wire CI via `interlock ci`" not in out
+    assert "Wire CI via `interlocks ci`" not in out
 
 
 def test_doctor_warns_on_acceptance_configured_without_scaffold(
@@ -269,7 +269,7 @@ def test_doctor_warns_on_acceptance_configured_without_scaffold(
     _write_probe_project(tmp_path, tool_interlock='acceptance_runner = "pytest-bdd"')
 
     out = _run_cmd_doctor(tmp_path, monkeypatch, capsys)
-    assert "Run `interlock init-acceptance`" in out
+    assert "Run `interlocks init-acceptance`" in out
 
 
 def test_doctor_ready_state_when_all_artifacts_wired(
@@ -298,7 +298,7 @@ def test_doctor_ready_state_when_all_artifacts_wired(
     )
     (tmp_path / ".github" / "workflows").mkdir(parents=True)
     (tmp_path / ".github" / "workflows" / "ci.yml").write_text(
-        "jobs:\n  x:\n    steps:\n      - run: interlock ci\n", encoding="utf-8"
+        "jobs:\n  x:\n    steps:\n      - run: interlocks ci\n", encoding="utf-8"
     )
     venv_bin = tmp_path / (".venv/Scripts" if os.name == "nt" else ".venv/bin")
     venv_bin.mkdir(parents=True)
@@ -311,4 +311,4 @@ def test_doctor_ready_state_when_all_artifacts_wired(
 
     out = _run_cmd_doctor(tmp_path, monkeypatch, capsys)
     assert "status                 ready" in out
-    assert "Run `interlock check` locally" in out
+    assert "Run `interlocks check` locally" in out

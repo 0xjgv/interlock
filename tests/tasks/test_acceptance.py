@@ -1,4 +1,4 @@
-"""Integration + unit tests for `interlock acceptance`."""
+"""Integration + unit tests for `interlocks acceptance`."""
 
 from __future__ import annotations
 
@@ -143,7 +143,7 @@ def test_task_acceptance_off_override_skips(
 
     (tmp_project / "tests" / "features").mkdir(parents=True)
     (tmp_project / "pyproject.toml").write_text(
-        _PYPROJECT + '\n[tool.interlock]\nacceptance_runner = "off"\n',
+        _PYPROJECT + '\n[tool.interlocks]\nacceptance_runner = "off"\n',
         encoding="utf-8",
     )
     monkeypatch.chdir(tmp_project)

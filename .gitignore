@@ -8,8 +8,8 @@ wheels/
 # Virtual environments
 .venv
 
-# >>> interlock managed >>>
-.interlock/
+# >>> interlocks managed >>>
+.interlocks/
 .import_linter_cache/
 .pytest_cache/
 .ruff_cache/
@@ -21,7 +21,7 @@ dist/
 mutants/
 .mutmut-cache/
 mutmut-junit.xml
-# <<< interlock managed <<<
+# <<< interlocks managed <<<
 
 # AI
 .claude/commands/

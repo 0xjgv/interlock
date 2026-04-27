@@ -61,7 +61,7 @@ _ARCH_PYPROJECT = textwrap.dedent(
     requires = ["setuptools>=61"]
     build-backend = "setuptools.build_meta"
 
-    [tool.interlock]
+    [tool.interlocks]
     src_dir = "arch_probe"
     test_dir = "tests"
     """
@@ -106,7 +106,7 @@ _MUTATION_PYPROJECT = textwrap.dedent(
     version = "0.0.1"
     requires-python = ">=3.13"
 
-    [tool.interlock]
+    [tool.interlocks]
     mutation_max_runtime = 5
 
     [tool.coverage.run]
@@ -214,7 +214,7 @@ def _tmp_project(layout: str, tmp_path: Path) -> Path:
 
 @when(parsers.parse('I run "{cmd}" in that project'), target_fixture="cli_result")
 def _run_in_project(cmd: str, project_root: Path) -> CliResult:
-    # cmd starts with "interlock <subcmd> …"; drop the "interlock" sentinel.
+    # cmd starts with "interlocks <subcmd> …"; drop the "interlocks" sentinel.
     _, *argv = cmd.split()
     result = subprocess.run(
         [sys.executable, "-m", "interlocks.cli", *argv],

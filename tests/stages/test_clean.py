@@ -1,4 +1,4 @@
-"""Integration tests for `interlock clean`."""
+"""Integration tests for `interlocks clean`."""
 
 from __future__ import annotations
 

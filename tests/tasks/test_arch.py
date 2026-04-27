@@ -1,4 +1,4 @@
-"""Integration + unit tests for `interlock arch` (import-linter contracts)."""
+"""Integration + unit tests for `interlocks arch` (import-linter contracts)."""
 
 from __future__ import annotations
 
@@ -43,7 +43,7 @@ _CLEAN_TEST = textwrap.dedent(
 
 _PIN_DIRS = textwrap.dedent(
     """
-    [tool.interlock]
+    [tool.interlocks]
     src_dir = "arch_probe"
     test_dir = "tests"
     """
