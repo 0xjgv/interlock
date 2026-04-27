@@ -5,8 +5,8 @@ from __future__ import annotations
 from dataclasses import replace
 from pathlib import Path
 
-from interlock.config import InterlockConfig, clear_cache, load_config
-from interlock.detect import detect_acceptance_runner, detect_features_dir
+from interlocks.config import InterlockConfig, clear_cache, load_config
+from interlocks.detect import detect_acceptance_runner, detect_features_dir
 
 _MINIMAL_PYPROJECT = '[project]\nname="probe"\nversion="0.0.0"\n'
 

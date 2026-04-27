@@ -1,4 +1,4 @@
-"""Unit tests for interlock.tasks.stats — trust report + suspicious-test heuristic."""
+"""Unit tests for interlocks.tasks.stats — trust report + suspicious-test heuristic."""
 
 from __future__ import annotations
 
@@ -11,11 +11,11 @@ from pathlib import Path
 
 import pytest
 
-import interlock
-from interlock.config import InterlockConfig
-from interlock.metrics import CrapRow, MutationSummary
-from interlock.tasks import stats as stats_mod
-from interlock.tasks.stats import (
+import interlocks
+from interlocks.config import InterlockConfig
+from interlocks.metrics import CrapRow, MutationSummary
+from interlocks.tasks import stats as stats_mod
+from interlocks.tasks.stats import (
     TestInspection,
     _collect_test_inspections,
     _compute_trust,
@@ -26,7 +26,7 @@ from interlock.tasks.stats import (
     cmd_trust,
 )
 
-_INTERLOCK_PKG_ROOT = str(Path(interlock.__file__).resolve().parent.parent)
+_INTERLOCK_PKG_ROOT = str(Path(interlocks.__file__).resolve().parent.parent)
 
 
 def _cfg(root: Path, **over: object) -> InterlockConfig:
@@ -360,7 +360,7 @@ def test_cmd_trust_skips_without_coverage(
 ) -> None:
     (tmp_path / "pyproject.toml").write_text("", encoding="utf-8")
     monkeypatch.chdir(tmp_path)
-    from interlock.config import clear_cache
+    from interlocks.config import clear_cache
 
     clear_cache()
     monkeypatch.setattr(sys, "argv", ["interlock", "trust"])
@@ -473,7 +473,7 @@ def _subprocess_env() -> dict[str, str]:
 
 def test_cli_help_lists_trust() -> None:
     result = subprocess.run(
-        [sys.executable, "-m", "interlock.cli", "help"],
+        [sys.executable, "-m", "interlocks.cli", "help"],
         capture_output=True,
         text=True,
         check=False,
@@ -502,7 +502,7 @@ def test_verdict_sentence_concat() -> None:
 
 
 def test_render_does_not_crash_on_empty_report(capsys: pytest.CaptureFixture[str]) -> None:
-    from interlock.tasks.stats import TrustReport, _render
+    from interlocks.tasks.stats import TrustReport, _render
 
     report = TrustReport(
         score=100.0,
@@ -522,7 +522,7 @@ def test_render_does_not_crash_on_empty_report(capsys: pytest.CaptureFixture[str
 
 def test_render_verbose_and_truncation(capsys: pytest.CaptureFixture[str]) -> None:
     """Verbose path shows every row; non-verbose truncates with overflow hints."""
-    from interlock.tasks.stats import TrustReport, _render
+    from interlocks.tasks.stats import TrustReport, _render
 
     suspicious = [
         TestInspection(

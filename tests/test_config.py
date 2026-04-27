@@ -1,4 +1,4 @@
-"""Tests for interlock.config — project-root discovery, overrides, command builders."""
+"""Tests for interlocks.config — project-root discovery, overrides, command builders."""
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ from pathlib import Path
 
 import pytest
 
-from interlock.config import (
+from interlocks.config import (
     InterlockConfig,
     build_coverage_test_command,
     build_test_command,

@@ -3,7 +3,7 @@ description: Install interlock and run the repository quality pipeline through i
 
 inputs:
   python-version:
-    description: Python version used to install interlock and run interlock.
+    description: Python version used to install interlock and run interlocks.
     required: false
     default: "3.13"
   install-command:
@@ -31,4 +31,4 @@ runs:
 
     - name: Run interlock
       shell: bash
-      run: python -m interlock.github_action --command "${{ inputs.command }}"
+      run: python -m interlocks.github_action --command "${{ inputs.command }}"

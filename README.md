@@ -1,4 +1,4 @@
-# interlock
+# interlocks
 
 Adopt one Python quality loop across a repository or an organization:
 

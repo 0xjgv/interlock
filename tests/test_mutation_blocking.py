@@ -86,7 +86,7 @@ def test_mutation_exits_when_enforced_and_below_threshold(
     _run_coverage(tmp_project)
     monkeypatch.setattr(sys, "argv", ["interlock", "mutation", "--max-runtime=30"])
 
-    from interlock.tasks.mutation import cmd_mutation
+    from interlocks.tasks.mutation import cmd_mutation
 
     with pytest.raises(SystemExit) as excinfo:
         cmd_mutation()
@@ -108,7 +108,7 @@ def test_mutation_stays_advisory_when_not_enforced(
     _run_coverage(tmp_project)
     monkeypatch.setattr(sys, "argv", ["interlock", "mutation", "--max-runtime=30"])
 
-    from interlock.tasks.mutation import cmd_mutation
+    from interlocks.tasks.mutation import cmd_mutation
 
     cmd_mutation()  # must not raise
 

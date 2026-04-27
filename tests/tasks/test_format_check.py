@@ -1,4 +1,4 @@
-"""Integration tests for interlock.tasks.format_check.
+"""Integration tests for interlocks.tasks.format_check.
 
 ``format-check`` is not registered in the CLI TASKS dict (see interlock/cli.py),
 so we invoke ``cmd_format_check`` directly and assert the SystemExit code.
@@ -33,7 +33,7 @@ def tmp_project(tmp_path: Path) -> Path:
 
 
 def test_format_check_clean_exits_zero(tmp_project: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    from interlock.tasks.format_check import cmd_format_check
+    from interlocks.tasks.format_check import cmd_format_check
 
     (tmp_project / "sample.py").write_text(CLEAN, encoding="utf-8")
     monkeypatch.chdir(tmp_project)
@@ -43,7 +43,7 @@ def test_format_check_clean_exits_zero(tmp_project: Path, monkeypatch: pytest.Mo
 def test_format_check_unformatted_exits_nonzero(
     tmp_project: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    from interlock.tasks.format_check import cmd_format_check
+    from interlocks.tasks.format_check import cmd_format_check
 
     (tmp_project / "sample.py").write_text(UNFORMATTED, encoding="utf-8")
     monkeypatch.chdir(tmp_project)
@@ -55,7 +55,7 @@ def test_format_check_unformatted_exits_nonzero(
 def test_format_check_injects_bundled_config_in_bare_project(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    from interlock.tasks.format_check import task_format_check
+    from interlocks.tasks.format_check import task_format_check
 
     (tmp_path / "pyproject.toml").write_text(
         "[project]\nname='bare'\nversion='0.0.0'\n", encoding="utf-8"

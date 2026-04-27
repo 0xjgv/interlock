@@ -1,6 +1,6 @@
 """Step defs for tests/features/interlock_cli.feature.
 
-Shells out to `python -m interlock.cli` — same entry point the installed CLI
+Shells out to `python -m interlocks.cli` — same entry point the installed CLI
 uses — so this acts as an end-to-end guardrail on the public command surface.
 """
 
@@ -18,7 +18,7 @@ scenarios(str(Path(__file__).parent.parent / "features" / "interlock_cli.feature
 @given(parsers.parse('I run "interlock {subcmd}"'), target_fixture="cli_output")
 def _run_interlock(subcmd: str) -> str:
     result = subprocess.run(
-        [sys.executable, "-m", "interlock.cli", *subcmd.split()],
+        [sys.executable, "-m", "interlocks.cli", *subcmd.split()],
         capture_output=True,
         text=True,
         check=False,

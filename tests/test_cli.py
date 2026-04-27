@@ -1,4 +1,4 @@
-"""Unit tests for interlock.cli dispatcher."""
+"""Unit tests for interlocks.cli dispatcher."""
 
 from __future__ import annotations
 
@@ -10,8 +10,8 @@ from pathlib import Path
 
 import pytest
 
-from interlock.cli import TASK_GROUPS, TASKS, cmd_help, cmd_presets, main
-from interlock.config import clear_cache
+from interlocks.cli import TASK_GROUPS, TASKS, cmd_help, cmd_presets, main
+from interlocks.config import clear_cache
 
 
 @pytest.fixture
@@ -35,7 +35,7 @@ def test_tasks_dict_built_from_groups() -> None:
 def test_cmd_help_prints_usage_and_groups(capsys: pytest.CaptureFixture[str]) -> None:
     cmd_help()
     out = capsys.readouterr().out
-    assert "interlock v" in out
+    assert "interlocks v" in out
     assert "command=help" in out
     assert "Usage: interlock <command>" in out
     assert "── Usage" in out
@@ -89,7 +89,7 @@ def test_cmd_presets_prints_options_and_copyable_config(
 ) -> None:
     cmd_presets()
     out = capsys.readouterr().out
-    assert "interlock v" in out
+    assert "interlocks v" in out
     assert "command=presets" in out
     assert "── Current" in out
     assert "── Current Values" in out

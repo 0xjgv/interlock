@@ -1,4 +1,4 @@
-"""Tests for interlock.stages.setup_hooks."""
+"""Tests for interlocks.stages.setup_hooks."""
 
 import json
 import tempfile
@@ -6,13 +6,13 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from interlock.stages.setup_hooks import _ensure_stop_hook
+from interlocks.stages.setup_hooks import _ensure_stop_hook
 
 
 class TestSetupHooks(unittest.TestCase):
     def test_ensure_stop_hook_creates_stop_hook_settings(self) -> None:
         initial: dict[str, object] = {}
-        settings = _ensure_stop_hook(initial, "python -m interlock.cli post-edit")
+        settings = _ensure_stop_hook(initial, "python -m interlocks.cli post-edit")
 
         self.assertEqual(
             settings["hooks"]["Stop"],  # pyright: ignore[reportIndexIssue]
@@ -21,7 +21,7 @@ class TestSetupHooks(unittest.TestCase):
                     "hooks": [
                         {
                             "type": "command",
-                            "command": "python -m interlock.cli post-edit",
+                            "command": "python -m interlocks.cli post-edit",
                         }
                     ]
                 }
@@ -45,8 +45,8 @@ class TestSetupHooks(unittest.TestCase):
             },
         }
 
-        _ensure_stop_hook(settings, "python -m interlock.cli post-edit")
-        _ensure_stop_hook(settings, "python -m interlock.cli post-edit")
+        _ensure_stop_hook(settings, "python -m interlocks.cli post-edit")
+        _ensure_stop_hook(settings, "python -m interlocks.cli post-edit")
 
         self.assertEqual(settings["theme"], "dark")
         stop_entries = settings["hooks"]["Stop"]
@@ -57,7 +57,7 @@ class TestSetupHooks(unittest.TestCase):
             if isinstance(hook, dict) and hook.get("type") == "command"
         ]
         self.assertEqual(commands.count("existing command"), 1)
-        self.assertEqual(commands.count("python -m interlock.cli post-edit"), 1)
+        self.assertEqual(commands.count("python -m interlocks.cli post-edit"), 1)
         self.assertEqual(len(stop_entries), 1)
 
     def test_ensure_stop_hook_appends_into_existing_nested_hooks_array(self) -> None:
@@ -76,7 +76,7 @@ class TestSetupHooks(unittest.TestCase):
             }
         }
 
-        _ensure_stop_hook(settings, "python -m interlock.cli post-edit")
+        _ensure_stop_hook(settings, "python -m interlocks.cli post-edit")
 
         self.assertEqual(
             settings["hooks"]["Stop"],  # pyright: ignore[reportIndexIssue]
@@ -89,7 +89,7 @@ class TestSetupHooks(unittest.TestCase):
                         },
                         {
                             "type": "command",
-                            "command": "python -m interlock.cli post-edit",
+                            "command": "python -m interlocks.cli post-edit",
                         },
                     ]
                 }
@@ -108,7 +108,7 @@ class TestSetupHooks(unittest.TestCase):
                             },
                             {
                                 "type": "command",
-                                "command": "/example/venv/bin/python -m interlock.cli post-edit",
+                                "command": "/example/venv/bin/python -m interlocks.cli post-edit",
                             },
                         ]
                     },
@@ -116,7 +116,7 @@ class TestSetupHooks(unittest.TestCase):
                         "hooks": [
                             {
                                 "type": "command",
-                                "command": "/example/venv/bin/python3 -m interlock.cli post-edit",
+                                "command": "/example/venv/bin/python3 -m interlocks.cli post-edit",
                             },
                             {
                                 "type": "command",
@@ -128,7 +128,7 @@ class TestSetupHooks(unittest.TestCase):
             }
         }
 
-        _ensure_stop_hook(settings, "python -m interlock.cli post-edit")
+        _ensure_stop_hook(settings, "python -m interlocks.cli post-edit")
 
         self.assertEqual(
             settings["hooks"]["Stop"],  # pyright: ignore[reportIndexIssue]
@@ -141,7 +141,7 @@ class TestSetupHooks(unittest.TestCase):
                         },
                         {
                             "type": "command",
-                            "command": "python -m interlock.cli post-edit",
+                            "command": "python -m interlocks.cli post-edit",
                         },
                     ]
                 }
@@ -149,18 +149,18 @@ class TestSetupHooks(unittest.TestCase):
         )
 
     def test_cmd_hooks_writes_hook_file_and_settings(self) -> None:
-        from interlock.stages.setup_hooks import cmd_hooks
+        from interlocks.stages.setup_hooks import cmd_hooks
 
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
-            with patch("interlock.stages.setup_hooks.Path", lambda value: root / value):
+            with patch("interlocks.stages.setup_hooks.Path", lambda value: root / value):
                 cmd_hooks()
 
             pre_commit = (root / ".git/hooks/pre-commit").read_text(encoding="utf-8")
             settings = json.loads((root / ".claude/settings.json").read_text(encoding="utf-8"))
 
-        self.assertIn("-m interlock.cli pre-commit", pre_commit)
+        self.assertIn("-m interlocks.cli pre-commit", pre_commit)
         self.assertEqual(len(settings["hooks"]["Stop"]), 1)
         self.assertEqual(settings["hooks"]["Stop"][0]["hooks"][0]["type"], "command")
         command = settings["hooks"]["Stop"][0]["hooks"][0]["command"]
-        self.assertTrue(command.endswith("-m interlock.cli post-edit"))
+        self.assertTrue(command.endswith("-m interlocks.cli post-edit"))

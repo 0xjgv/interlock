@@ -1,4 +1,4 @@
-"""Unit tests for interlock.reports.suppressions."""
+"""Unit tests for interlocks.reports.suppressions."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from interlock.reports.suppressions import (
+from interlocks.reports.suppressions import (
     _parse_line_for_suppressions,
     _scan_suppressions,
     print_suppressions_report,

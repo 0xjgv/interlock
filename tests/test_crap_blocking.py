@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pytest
 
-from interlock.metrics import CrapRow
+from interlocks.metrics import CrapRow
 
 _MODULE_SRC = textwrap.dedent(
     """\
@@ -81,7 +81,7 @@ def test_crap_exits_when_enforced(
     monkeypatch.setattr(sys, "argv", ["interlock", "crap"])
     _run_coverage(tmp_project)
 
-    from interlock.tasks.crap import cmd_crap
+    from interlocks.tasks.crap import cmd_crap
 
     with pytest.raises(SystemExit) as excinfo:
         cmd_crap()
@@ -101,7 +101,7 @@ def test_crap_stays_advisory_when_disabled(
     monkeypatch.setattr(sys, "argv", ["interlock", "crap"])
     _run_coverage(tmp_project)
 
-    from interlock.tasks.crap import cmd_crap
+    from interlocks.tasks.crap import cmd_crap
 
     cmd_crap()  # must not raise
 
@@ -112,8 +112,8 @@ def test_crap_stays_advisory_when_disabled(
 def test_cached_crap_advisory_skips_without_coverage(
     tmp_project: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    from interlock.config import clear_cache
-    from interlock.tasks.crap import cmd_crap_cached_advisory
+    from interlocks.config import clear_cache
+    from interlocks.tasks.crap import cmd_crap_cached_advisory
 
     monkeypatch.chdir(tmp_project)
     clear_cache()
@@ -128,8 +128,8 @@ def test_cached_crap_advisory_skips_without_coverage(
 def test_cached_crap_advisory_skips_stale_coverage(
     tmp_project: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    from interlock.config import clear_cache
-    from interlock.tasks.crap import cmd_crap_cached_advisory
+    from interlocks.config import clear_cache
+    from interlocks.tasks.crap import cmd_crap_cached_advisory
 
     cov_cache = tmp_project / ".coverage"
     cov_cache.write_text("old", encoding="utf-8")
@@ -147,8 +147,8 @@ def test_cached_crap_advisory_skips_stale_coverage(
 def test_cached_crap_advisory_reports_fresh_offenders(
     tmp_project: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    from interlock.config import clear_cache
-    from interlock.tasks import crap as crap_mod
+    from interlocks.config import clear_cache
+    from interlocks.tasks import crap as crap_mod
 
     cov_cache = tmp_project / ".coverage"
     cov_cache.write_text("fresh", encoding="utf-8")

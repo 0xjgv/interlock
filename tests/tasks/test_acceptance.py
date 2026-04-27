@@ -71,7 +71,7 @@ def tmp_project(tmp_path: Path) -> Path:
 
 def _run_cli(project: Path, *args: str) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
-        [sys.executable, "-m", "interlock.cli", *args],
+        [sys.executable, "-m", "interlocks.cli", *args],
         cwd=project,
         capture_output=True,
         text=True,
@@ -111,8 +111,8 @@ def test_acceptance_fails_on_broken_scenario(tmp_project: Path) -> None:
 def test_task_acceptance_returns_none_without_features(
     tmp_project: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    from interlock.config import clear_cache
-    from interlock.tasks import acceptance as mod
+    from interlocks.config import clear_cache
+    from interlocks.tasks import acceptance as mod
 
     monkeypatch.chdir(tmp_project)
     clear_cache()
@@ -123,8 +123,8 @@ def test_task_acceptance_pytest_bdd_allows_rc_5(
     tmp_project: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """pytest exits 5 when it collects nothing — must be treated as pass."""
-    from interlock.config import clear_cache
-    from interlock.tasks import acceptance as mod
+    from interlocks.config import clear_cache
+    from interlocks.tasks import acceptance as mod
 
     (tmp_project / "tests" / "features").mkdir(parents=True)  # empty features dir
     monkeypatch.chdir(tmp_project)
@@ -138,8 +138,8 @@ def test_task_acceptance_pytest_bdd_allows_rc_5(
 def test_task_acceptance_off_override_skips(
     tmp_project: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    from interlock.config import clear_cache
-    from interlock.tasks import acceptance as mod
+    from interlocks.config import clear_cache
+    from interlocks.tasks import acceptance as mod
 
     (tmp_project / "tests" / "features").mkdir(parents=True)
     (tmp_project / "pyproject.toml").write_text(
@@ -152,8 +152,8 @@ def test_task_acceptance_off_override_skips(
 
 
 def test_task_acceptance_behave_branch(tmp_project: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    from interlock.config import clear_cache
-    from interlock.tasks import acceptance as mod
+    from interlocks.config import clear_cache
+    from interlocks.tasks import acceptance as mod
 
     features = tmp_project / "features"
     (features / "steps").mkdir(parents=True)

@@ -1,6 +1,6 @@
 """Step defs for tests/features/interlock_init.feature.
 
-Shells out to `python -m interlock.cli init` inside a tmp dir so the scaffold
+Shells out to `python -m interlocks.cli init` inside a tmp dir so the scaffold
 path exercises the same entry point users hit on the CLI.
 """
 
@@ -38,7 +38,7 @@ def _dir_with_pyproject(tmp_path: Path) -> InitContext:
 @when(parsers.parse('I run "interlock {subcmd}" there'))
 def _run_interlock(ctx: InitContext, subcmd: str) -> None:
     ctx.result = subprocess.run(
-        [sys.executable, "-m", "interlock.cli", *subcmd.split()],
+        [sys.executable, "-m", "interlocks.cli", *subcmd.split()],
         cwd=ctx.project,
         capture_output=True,
         text=True,

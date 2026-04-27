@@ -32,7 +32,7 @@ _PYPROJECT = textwrap.dedent(
 
 def _run_interlock(project: Path, subcmd: str) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
-        [sys.executable, "-m", "interlock.cli", *subcmd.split()],
+        [sys.executable, "-m", "interlocks.cli", *subcmd.split()],
         cwd=project,
         capture_output=True,
         text=True,

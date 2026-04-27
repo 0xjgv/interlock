@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from interlock.config import load_config
+from interlocks.config import load_config
 
 
 def _write(path: Path, text: str) -> None:

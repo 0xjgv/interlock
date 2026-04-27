@@ -6,8 +6,8 @@ import sys
 
 import pytest
 
-from interlock.config import load_config
-from interlock.stages import nightly as nightly_mod
+from interlocks.config import load_config
+from interlocks.stages import nightly as nightly_mod
 
 
 @pytest.fixture

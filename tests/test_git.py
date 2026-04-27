@@ -1,4 +1,4 @@
-"""Tests for interlock.git — ref-scoped diff helpers."""
+"""Tests for interlocks.git — ref-scoped diff helpers."""
 
 from __future__ import annotations
 
@@ -8,8 +8,8 @@ from types import SimpleNamespace
 
 import pytest
 
-from interlock import git as git_mod
-from interlock.git import changed_py_files_vs
+from interlocks import git as git_mod
+from interlocks.git import changed_py_files_vs
 
 
 def _git(*args: str, cwd: Path) -> None:

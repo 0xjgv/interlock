@@ -99,7 +99,7 @@ def tmp_project(make_tmp_project: TmpProjectFactory) -> Path:
 
 def _run_ci(cwd: Path) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
-        [sys.executable, "-P", "-m", "interlock.cli", "ci"],
+        [sys.executable, "-P", "-m", "interlocks.cli", "ci"],
         cwd=cwd,
         capture_output=True,
         text=True,
@@ -112,7 +112,7 @@ def test_ci_passes_on_clean_project(tmp_project: Path) -> None:
 
     assert result.returncode == 0, f"stdout={result.stdout}\nstderr={result.stderr}"
     out = result.stdout
-    markers = ("interlock v", "CI Checks", "[format]", "[lint]", "[complexity]", "[typecheck]")
+    markers = ("interlocks v", "CI Checks", "[format]", "[lint]", "[complexity]", "[typecheck]")
     for marker in markers:
         assert marker in out, f"missing marker {marker!r}\n{out}"
     assert "[coverage]" in out
@@ -142,8 +142,8 @@ def test_ci_in_process_queues_all_tasks(
 ) -> None:
     """Stub run_tasks + inline gates — verify cmd_ci composes the expected task list
     plus the sequential post-coverage gates."""
-    from interlock.config import load_config
-    from interlock.stages import ci as ci_mod
+    from interlocks.config import load_config
+    from interlocks.stages import ci as ci_mod
 
     parallel: list[str] = []
     sequential: list[str] = []
@@ -192,7 +192,7 @@ def test_ci_in_process_includes_mutation_when_enabled(
     )
     monkeypatch.chdir(tmp_path)
 
-    from interlock.stages import ci as ci_mod
+    from interlocks.stages import ci as ci_mod
 
     sequential: list[str] = []
     monkeypatch.setattr(ci_mod, "run_tasks", lambda tasks: None)

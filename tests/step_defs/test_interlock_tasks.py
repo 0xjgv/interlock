@@ -1,7 +1,7 @@
 """Step defs for tests/features/interlock_tasks.feature.
 
 Each scenario builds a minimal self-contained project on tmp_path and shells
-out to `python -m interlock.cli <task>` — same entry point the installed CLI
+out to `python -m interlocks.cli <task>` — same entry point the installed CLI
 uses — so the feature file acts as a behavioral guardrail on each task's
 exit-code + output shape.
 """
@@ -217,7 +217,7 @@ def _run_in_project(cmd: str, project_root: Path) -> CliResult:
     # cmd starts with "interlock <subcmd> …"; drop the "interlock" sentinel.
     _, *argv = cmd.split()
     result = subprocess.run(
-        [sys.executable, "-m", "interlock.cli", *argv],
+        [sys.executable, "-m", "interlocks.cli", *argv],
         cwd=project_root,
         capture_output=True,
         text=True,

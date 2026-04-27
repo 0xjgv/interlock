@@ -78,14 +78,14 @@ def make_tmp_project(tmp_path: Path) -> Path:
 
 
 def run_interlock_in_cwd(cwd: Path, *args: str) -> subprocess.CompletedProcess[str]:
-    """Run ``python -m interlock.cli <args>`` with ``cwd`` as project root.
+    """Run ``python -m interlocks.cli <args>`` with ``cwd`` as project root.
 
     Mirrors the ``_run_interlock`` fixture in ``test_interlock_cli.py`` but lets the
     caller pin ``cwd`` — required for stage scenarios that operate on an inline
     tmp project instead of the interlock repo itself.
     """
     return subprocess.run(
-        [sys.executable, "-m", "interlock.cli", *args],
+        [sys.executable, "-m", "interlocks.cli", *args],
         cwd=cwd,
         capture_output=True,
         text=True,

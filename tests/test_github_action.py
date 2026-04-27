@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from interlock import github_action
+from interlocks import github_action
 
 
 def test_command_from_args_defaults_to_interlock_ci() -> None:
@@ -81,6 +81,6 @@ def test_action_metadata_delegates_to_interlock_ci() -> None:
     assert "actions/setup-python@v5" in action
     assert "default: python -m pip install interlocks" in action
     assert "default: interlock ci" in action
-    assert 'python -m interlock.github_action --command "${{ inputs.command }}"' in action
+    assert 'python -m interlocks.github_action --command "${{ inputs.command }}"' in action
     assert "ruff" not in action
     assert "coverage run" not in action

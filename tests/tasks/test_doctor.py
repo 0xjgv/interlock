@@ -10,13 +10,13 @@ from pathlib import Path
 
 import pytest
 
-import interlock
+import interlocks
 
 # When running under an outer interpreter whose site-packages .pth shadows
 # this checkout (e.g. a parent-repo pre-commit hook), point the subprocess's
-# PYTHONPATH at the in-tree interlock so `python -m interlock.cli` sees the
+# PYTHONPATH at the in-tree interlock so `python -m interlocks.cli` sees the
 # code under test — not the shadowed install.
-_INTERLOCK_PARENT = str(Path(interlock.__file__).resolve().parent.parent)
+_INTERLOCK_PARENT = str(Path(interlocks.__file__).resolve().parent.parent)
 
 
 def _run_doctor(cwd: Path) -> subprocess.CompletedProcess[str]:
@@ -26,7 +26,7 @@ def _run_doctor(cwd: Path) -> subprocess.CompletedProcess[str]:
         f"{_INTERLOCK_PARENT}{os.pathsep}{existing}" if existing else _INTERLOCK_PARENT
     )
     return subprocess.run(
-        [sys.executable, "-P", "-m", "interlock.cli", "doctor"],
+        [sys.executable, "-P", "-m", "interlocks.cli", "doctor"],
         cwd=cwd,
         capture_output=True,
         text=True,
@@ -64,8 +64,8 @@ def test_doctor_in_process_reports_sections(
     )
     monkeypatch.chdir(tmp_path)
 
-    from interlock.config import clear_cache
-    from interlock.tasks.doctor import cmd_doctor, task_doctor
+    from interlocks.config import clear_cache
+    from interlocks.tasks.doctor import cmd_doctor, task_doctor
 
     clear_cache()
     try:
@@ -110,8 +110,8 @@ def test_doctor_reports_configured_preset(
     )
     monkeypatch.chdir(tmp_path)
 
-    from interlock.config import clear_cache
-    from interlock.tasks.doctor import cmd_doctor
+    from interlocks.config import clear_cache
+    from interlocks.tasks.doctor import cmd_doctor
 
     clear_cache()
     try:
@@ -149,8 +149,8 @@ def test_doctor_reports_unsupported_preset_as_blocker(
     )
     monkeypatch.chdir(tmp_path)
 
-    from interlock.config import clear_cache
-    from interlock.tasks.doctor import cmd_doctor
+    from interlocks.config import clear_cache
+    from interlocks.tasks.doctor import cmd_doctor
 
     clear_cache()
     try:
@@ -180,8 +180,8 @@ def test_doctor_reports_missing_paths_as_blockers(
     )
     monkeypatch.chdir(tmp_path)
 
-    from interlock.config import clear_cache
-    from interlock.tasks.doctor import cmd_doctor
+    from interlocks.config import clear_cache
+    from interlocks.tasks.doctor import cmd_doctor
 
     clear_cache()
     try:
@@ -209,8 +209,8 @@ def _run_cmd_doctor(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> str:
     monkeypatch.chdir(tmp_path)
-    from interlock.config import clear_cache
-    from interlock.tasks.doctor import cmd_doctor
+    from interlocks.config import clear_cache
+    from interlocks.tasks.doctor import cmd_doctor
 
     clear_cache()
     try:
@@ -227,7 +227,7 @@ def test_doctor_detects_git_pre_commit_hook(
     hooks = tmp_path / ".git" / "hooks"
     hooks.mkdir(parents=True)
     (hooks / "pre-commit").write_text(
-        "#!/bin/sh\nexec python -m interlock.cli pre-commit\n", encoding="utf-8"
+        "#!/bin/sh\nexec python -m interlocks.cli pre-commit\n", encoding="utf-8"
     )
 
     out = _run_cmd_doctor(tmp_path, monkeypatch, capsys)
@@ -279,7 +279,7 @@ def test_doctor_ready_state_when_all_artifacts_wired(
     hooks = tmp_path / ".git" / "hooks"
     hooks.mkdir(parents=True)
     (hooks / "pre-commit").write_text(
-        "#!/bin/sh\nexec python -m interlock.cli pre-commit\n", encoding="utf-8"
+        "#!/bin/sh\nexec python -m interlocks.cli pre-commit\n", encoding="utf-8"
     )
     (tmp_path / ".claude").mkdir()
     (tmp_path / ".claude" / "settings.json").write_text(
@@ -288,7 +288,7 @@ def test_doctor_ready_state_when_all_artifacts_wired(
                 "Stop": [
                     {
                         "hooks": [
-                            {"type": "command", "command": "python -m interlock.cli post-edit"}
+                            {"type": "command", "command": "python -m interlocks.cli post-edit"}
                         ]
                     }
                 ]

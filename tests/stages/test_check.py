@@ -77,7 +77,7 @@ def tmp_project(make_tmp_project: TmpProjectFactory) -> Path:
 
 def _run_check(cwd: Path) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
-        [sys.executable, "-P", "-m", "interlock.cli", "check"],
+        [sys.executable, "-P", "-m", "interlocks.cli", "check"],
         cwd=cwd,
         capture_output=True,
         text=True,
@@ -90,7 +90,7 @@ def test_check_passes_on_clean_project(tmp_project: Path) -> None:
 
     assert result.returncode == 0, f"stdout={result.stdout}\nstderr={result.stderr}"
     out = result.stdout
-    assert "interlock v" in out
+    assert "interlocks v" in out
     assert "Quality Checks" in out
     assert "Parallel" in out
     assert "Advisory" in out
@@ -127,7 +127,7 @@ def test_check_in_process_dispatches_stages(
     tmp_project: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
     """Stub fix/format/run_tasks + suppressions; confirm cmd_check orchestrates them."""
-    from interlock.stages import check as check_mod
+    from interlocks.stages import check as check_mod
 
     calls: list[object] = []
     monkeypatch.setattr(check_mod, "cmd_fix", lambda: calls.append("fix"))
@@ -169,7 +169,7 @@ def test_check_in_process_runs_suppressions_on_failure(
     tmp_project: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """Suppressions report is in a `finally` — runs even when an inner stage raises."""
-    from interlock.stages import check as check_mod
+    from interlocks.stages import check as check_mod
 
     calls: list[str] = []
     monkeypatch.setattr(check_mod, "cmd_fix", lambda: calls.append("fix"))
@@ -191,7 +191,7 @@ def test_check_in_process_runs_suppressions_on_failure(
 
 def _run_check_quiet(cwd: Path) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
-        [sys.executable, "-P", "-m", "interlock.cli", "check", "--quiet"],
+        [sys.executable, "-P", "-m", "interlocks.cli", "check", "--quiet"],
         cwd=cwd,
         capture_output=True,
         text=True,
@@ -204,7 +204,7 @@ def test_check_quiet_success_is_one_verdict_line(tmp_project: Path) -> None:
 
     assert result.returncode == 0, f"stdout={result.stdout}\nstderr={result.stderr}"
     out = result.stdout
-    assert "interlock v" not in out
+    assert "interlocks v" not in out
     assert "Quality Checks" not in out
     assert "Parallel" not in out
     assert "Advisory" not in out

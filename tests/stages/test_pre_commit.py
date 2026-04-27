@@ -47,7 +47,7 @@ def tmp_project(tmp_path: Path) -> Path:
 
 def _run_pre_commit(cwd: Path) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
-        [sys.executable, "-m", "interlock.cli", "pre-commit"],
+        [sys.executable, "-m", "interlocks.cli", "pre-commit"],
         cwd=cwd,
         capture_output=True,
         text=True,
@@ -81,7 +81,7 @@ def test_pre_commit_noop_when_nothing_staged(tmp_project: Path) -> None:
 def test_pre_commit_noop_in_process(
     monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    from interlock.stages import pre_commit as pre_commit_mod
+    from interlocks.stages import pre_commit as pre_commit_mod
 
     monkeypatch.setattr(pre_commit_mod, "staged_py_files", list)
     pre_commit_mod.cmd_pre_commit()
@@ -91,7 +91,7 @@ def test_pre_commit_noop_in_process(
 @pytest.mark.parametrize(
     ("staged", "expected_task_descs"),
     [
-        (["interlock/mod.py"], ["Type check", "Run tests"]),
+        (["interlocks/mod.py"], ["Type check", "Run tests"]),
         (["tests/test_x.py"], ["Type check"]),
     ],
     ids=["src-runs-tests", "non-src-skips-tests"],
@@ -101,7 +101,7 @@ def test_pre_commit_in_process_dispatches(
     staged: list[str],
     expected_task_descs: list[str],
 ) -> None:
-    from interlock.stages import pre_commit as pre_commit_mod
+    from interlocks.stages import pre_commit as pre_commit_mod
 
     calls: list[object] = []
     monkeypatch.setattr(pre_commit_mod, "staged_py_files", lambda: staged)

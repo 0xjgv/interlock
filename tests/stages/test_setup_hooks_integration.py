@@ -38,7 +38,7 @@ def tmp_project(make_tmp_project: TmpProjectFactory) -> Path:
 
 def _run_setup_hooks(cwd: Path) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
-        [sys.executable, "-m", "interlock.cli", "setup-hooks"],
+        [sys.executable, "-m", "interlocks.cli", "setup-hooks"],
         cwd=cwd,
         capture_output=True,
         text=True,
@@ -54,7 +54,7 @@ def test_setup_hooks_installs_pre_commit_and_stop_hook(tmp_project: Path) -> Non
     pre_commit = tmp_project / ".git" / "hooks" / "pre-commit"
     assert pre_commit.exists()
     assert os.access(pre_commit, os.X_OK)
-    assert "-m interlock.cli pre-commit" in pre_commit.read_text(encoding="utf-8")
+    assert "-m interlocks.cli pre-commit" in pre_commit.read_text(encoding="utf-8")
 
     settings_path = tmp_project / ".claude" / "settings.json"
     assert settings_path.exists()
@@ -62,7 +62,7 @@ def test_setup_hooks_installs_pre_commit_and_stop_hook(tmp_project: Path) -> Non
     stop = settings["hooks"]["Stop"]
     assert len(stop) == 1
     hooks = stop[0]["hooks"]
-    suffix = "-m interlock.cli post-edit"
+    suffix = "-m interlocks.cli post-edit"
     assert any(h["type"] == "command" and h["command"].endswith(suffix) for h in hooks)
 
 
@@ -72,5 +72,5 @@ def test_setup_hooks_is_idempotent(tmp_project: Path) -> None:
 
     settings = json.loads((tmp_project / ".claude" / "settings.json").read_text(encoding="utf-8"))
     hooks = settings["hooks"]["Stop"][0]["hooks"]
-    post_edit_hooks = [h for h in hooks if h["command"].endswith("-m interlock.cli post-edit")]
+    post_edit_hooks = [h for h in hooks if h["command"].endswith("-m interlocks.cli post-edit")]
     assert len(post_edit_hooks) == 1

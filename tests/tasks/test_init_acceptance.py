@@ -28,7 +28,7 @@ def tmp_project(tmp_path: Path) -> Path:
 
 def _run_cli(project: Path, *args: str) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
-        [sys.executable, "-m", "interlock.cli", *args],
+        [sys.executable, "-m", "interlocks.cli", *args],
         cwd=project,
         capture_output=True,
         text=True,
@@ -61,7 +61,7 @@ def test_init_acceptance_in_process_scaffolds(
 ) -> None:
     """In-process call — lets coverage.py see the happy path."""
     monkeypatch.chdir(tmp_project)
-    from interlock.tasks.init_acceptance import cmd_init_acceptance
+    from interlocks.tasks.init_acceptance import cmd_init_acceptance
 
     cmd_init_acceptance()
     assert (tmp_project / "tests" / "features" / "example.feature").is_file()
@@ -77,7 +77,7 @@ def test_init_acceptance_in_process_refuses_overwrite(
     existing = tmp_project / "tests" / "features" / "example.feature"
     existing.write_text("# pre-existing\n", encoding="utf-8")
     monkeypatch.chdir(tmp_project)
-    from interlock.tasks.init_acceptance import cmd_init_acceptance
+    from interlocks.tasks.init_acceptance import cmd_init_acceptance
 
     with pytest.raises(SystemExit):
         cmd_init_acceptance()

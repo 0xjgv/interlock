@@ -74,7 +74,7 @@ def test_crap_passes_on_healthy_project(
     # Prime .coverage so generate_coverage_xml has something to convert.
     _run_coverage(tmp_project)
 
-    from interlock.tasks.crap import cmd_crap
+    from interlocks.tasks.crap import cmd_crap
 
     cmd_crap()  # trivial inc() is under the ceiling → stays silent on exit
 
@@ -95,7 +95,7 @@ def test_crap_default_threshold_from_config(
     monkeypatch.setattr(sys, "argv", ["interlock", "crap"])  # no --max= override
     _run_coverage(tmp_project)
 
-    from interlock.tasks.crap import cmd_crap
+    from interlocks.tasks.crap import cmd_crap
 
     cmd_crap()
     captured = capsys.readouterr()
@@ -114,7 +114,7 @@ def test_crap_cli_max_overrides_config(
     monkeypatch.setattr(sys, "argv", ["interlock", "crap", "--max=42.5"])
     _run_coverage(tmp_project)
 
-    from interlock.tasks.crap import cmd_crap
+    from interlocks.tasks.crap import cmd_crap
 
     cmd_crap()
     captured = capsys.readouterr()

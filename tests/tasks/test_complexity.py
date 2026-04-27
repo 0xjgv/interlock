@@ -55,7 +55,7 @@ def test_complexity_passes_on_simple_code(
     (tmp_project / "interlock" / "mod.py").write_text(_SIMPLE_SRC, encoding="utf-8")
     monkeypatch.chdir(tmp_project)
 
-    from interlock.tasks.complexity import cmd_complexity
+    from interlocks.tasks.complexity import cmd_complexity
 
     cmd_complexity()  # no SystemExit → lizard happy
 
@@ -66,7 +66,7 @@ def test_complexity_fails_on_tangled_function(
     (tmp_project / "interlock" / "mod.py").write_text(_COMPLEX_SRC, encoding="utf-8")
     monkeypatch.chdir(tmp_project)
 
-    from interlock.tasks.complexity import cmd_complexity
+    from interlocks.tasks.complexity import cmd_complexity
 
     with pytest.raises(SystemExit) as exc:
         cmd_complexity()
@@ -85,7 +85,7 @@ def test_complexity_uses_default_thresholds_from_config(
 ) -> None:
     """Default InterlockConfig thresholds (15/7/100) appear in the lizard argv."""
     monkeypatch.chdir(tmp_project)
-    from interlock.tasks.complexity import task_complexity
+    from interlocks.tasks.complexity import task_complexity
 
     cmd = task_complexity().cmd
     assert _flag_value(cmd, "-C") == "15"
@@ -107,7 +107,7 @@ def test_complexity_honors_tool_interlock_overrides(
         encoding="utf-8",
     )
     monkeypatch.chdir(tmp_project)
-    from interlock.tasks.complexity import task_complexity
+    from interlocks.tasks.complexity import task_complexity
 
     cmd = task_complexity().cmd
     assert _flag_value(cmd, "-C") == "20"

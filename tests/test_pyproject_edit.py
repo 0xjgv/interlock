@@ -1,4 +1,4 @@
-"""Tests for `interlock.pyproject_edit.patched_mutmut_paths`."""
+"""Tests for `interlocks.pyproject_edit.patched_mutmut_paths`."""
 
 from __future__ import annotations
 
@@ -12,7 +12,7 @@ from pathlib import Path
 
 import pytest
 
-from interlock.pyproject_edit import _rewrite, patched_mutmut_paths
+from interlocks.pyproject_edit import _rewrite, patched_mutmut_paths
 
 _BASELINE = textwrap.dedent(
     """\
@@ -182,7 +182,7 @@ _CHILD_SCRIPT = textwrap.dedent(
     from pathlib import Path
 
     sys.path.insert(0, {repo_root!r})
-    from interlock.pyproject_edit import patched_mutmut_paths
+    from interlocks.pyproject_edit import patched_mutmut_paths
 
     target = Path({target!r})
     ready = Path({ready!r})

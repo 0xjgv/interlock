@@ -1,7 +1,7 @@
 """Step defs for tests/features/interlock_stages.feature.
 
 End-to-end stage smoke tests: materialize a minimal inline project, shell out
-to ``python -m interlock.cli <stage>``, and assert exit-code + output-shape
+to ``python -m interlocks.cli <stage>``, and assert exit-code + output-shape
 contracts. Mirrors the ``_run_interlock`` pattern in ``test_interlock_cli.py`` but
 with a per-scenario tmp cwd so each stage operates on an isolated project.
 """

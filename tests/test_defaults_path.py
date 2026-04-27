@@ -1,4 +1,4 @@
-"""Tests for `interlock.defaults_path` — bundled config resolution + project detection."""
+"""Tests for `interlocks.defaults_path` — bundled config resolution + project detection."""
 
 from __future__ import annotations
 
@@ -7,8 +7,8 @@ from pathlib import Path
 
 import pytest
 
-from interlock.config import load_config
-from interlock.defaults_path import has_project_config, path
+from interlocks.config import load_config
+from interlocks.defaults_path import has_project_config, path
 
 
 def _write(file_path: Path, text: str) -> None:

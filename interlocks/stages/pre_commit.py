@@ -1,0 +1,39 @@
+"""Pre-commit stage — staged checks + tests if source files staged."""
+
+from __future__ import annotations
+
+import time
+
+from interlocks import ui
+from interlocks.config import load_config
+from interlocks.git import stage, staged_py_files
+from interlocks.runner import run_tasks
+from interlocks.tasks.fix import cmd_fix
+from interlocks.tasks.format import cmd_format
+from interlocks.tasks.test import task_test
+from interlocks.tasks.typecheck import task_typecheck
+
+
+def cmd_pre_commit() -> None:
+    """Staged checks + tests if source files staged."""
+    files = staged_py_files()
+    if not files:
+        print("No staged Python files — skipping checks")
+        return
+
+    start = time.monotonic()
+    cfg = load_config()
+    ui.banner(cfg)
+    ui.section("Pre-commit Checks")
+    cmd_fix(files)
+    cmd_format(files)
+    stage(files)
+
+    src_prefix = f"{cfg.src_dir_arg}/"
+    tasks = [task_typecheck()]
+    if any(f.startswith(src_prefix) for f in files):
+        test_task = task_test()
+        if test_task is not None:
+            tasks.append(test_task)
+    run_tasks(tasks)
+    ui.stage_footer(time.monotonic() - start)

@@ -39,7 +39,7 @@ def tmp_project(tmp_path: Path) -> Path:
 
 def _run_post_edit(cwd: Path) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
-        [sys.executable, "-m", "interlock.cli", "post-edit"],
+        [sys.executable, "-m", "interlocks.cli", "post-edit"],
         cwd=cwd,
         capture_output=True,
         text=True,
@@ -78,7 +78,7 @@ def test_post_edit_noop_when_no_changes(tmp_project: Path) -> None:
 
 def test_post_edit_noop_in_process(tmp_project: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """No changed files -> cmd_post_edit returns immediately without running ruff."""
-    from interlock.stages import post_edit as post_edit_mod
+    from interlocks.stages import post_edit as post_edit_mod
 
     monkeypatch.setattr(post_edit_mod, "changed_py_files", list)
     calls: list[object] = []
@@ -93,7 +93,7 @@ def test_post_edit_in_process_runs_ruff_on_changed_files(
     tmp_project: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """Changed files -> cmd_post_edit dispatches two run() calls (fix + format)."""
-    from interlock.stages import post_edit as post_edit_mod
+    from interlocks.stages import post_edit as post_edit_mod
 
     monkeypatch.setattr(post_edit_mod, "changed_py_files", lambda: ["app/mod.py"])
     tasks_ran: list[str] = []

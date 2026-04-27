@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pytest
 
-from interlock import config as interlock_config
+from interlocks import config as interlock_config
 
 _GIT_ENV_LEAKS = (
     "GIT_DIR",

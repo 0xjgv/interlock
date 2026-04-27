@@ -11,7 +11,7 @@ import pytest
 
 def _run_cli(cwd: Path, *args: str) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
-        [sys.executable, "-m", "interlock.cli", *args],
+        [sys.executable, "-m", "interlocks.cli", *args],
         cwd=cwd,
         capture_output=True,
         text=True,
@@ -49,7 +49,7 @@ def test_init_refuses_to_overwrite_existing_pyproject(tmp_path: Path) -> None:
 def test_init_in_process_scaffolds(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """In-process call — lets coverage.py see the happy path."""
     monkeypatch.chdir(tmp_path)
-    from interlock.tasks.init import cmd_init
+    from interlocks.tasks.init import cmd_init
 
     cmd_init()
     assert (tmp_path / "pyproject.toml").is_file()
@@ -64,7 +64,7 @@ def test_init_in_process_refuses_overwrite(
     existing = tmp_path / "pyproject.toml"
     existing.write_text("# pre-existing\n", encoding="utf-8")
     monkeypatch.chdir(tmp_path)
-    from interlock.tasks.init import cmd_init
+    from interlocks.tasks.init import cmd_init
 
     with pytest.raises(SystemExit):
         cmd_init()
@@ -73,6 +73,6 @@ def test_init_in_process_refuses_overwrite(
 
 
 def test_task_init_returns_none() -> None:
-    from interlock.tasks.init import task_init
+    from interlocks.tasks.init import task_init
 
     assert task_init() is None
