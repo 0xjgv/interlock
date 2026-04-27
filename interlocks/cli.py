@@ -34,6 +34,7 @@ from interlocks.tasks.coverage import cmd_coverage
 from interlocks.tasks.crap import cmd_crap
 from interlocks.tasks.deps import cmd_deps
 from interlocks.tasks.doctor import cmd_doctor
+from interlocks.tasks.evaluate import cmd_evaluate
 from interlocks.tasks.fix import cmd_fix
 from interlocks.tasks.format import cmd_format
 from interlocks.tasks.init import cmd_init
@@ -270,7 +271,7 @@ TASK_GROUPS: list[tuple[str, dict[str, tuple[Callable[..., None], str]]]] = [
         {
             "check": (cmd_check, "Fix + format + typecheck + test (full repo)"),
             "pre-commit": (cmd_pre_commit, "Staged checks + tests"),
-            "ci": (cmd_ci, "Full verification: lint, typecheck, tests, coverage, CRAP"),
+            "ci": (cmd_ci, "Full verification: lint, audit, typecheck, tests, coverage, CRAP"),
             "nightly": (cmd_nightly, "Long-running gates: coverage + mutation (blocking)"),
             "post-edit": (cmd_post_edit, "Format if source files changed (Claude Code hook)"),
             "setup-hooks": (cmd_hooks, "Install git pre-commit and Claude Stop hooks"),
@@ -283,6 +284,10 @@ TASK_GROUPS: list[tuple[str, dict[str, tuple[Callable[..., None], str]]]] = [
             "trust": (
                 cmd_trust,
                 "Actionable trust report: coverage, CRAP, suspicious tests, next actions",
+            ),
+            "evaluate": (
+                cmd_evaluate,
+                "Score automatable quality checklist items",
             ),
         },
     ),

@@ -1,0 +1,466 @@
+"""Static quality checklist evaluator."""
+
+from __future__ import annotations
+
+import configparser
+import math
+import re
+import time
+from dataclasses import dataclass
+from functools import lru_cache
+from pathlib import Path
+from typing import Any, Literal
+
+from interlocks import ui
+from interlocks.config import InterlockConfig, load_optional_config
+from interlocks.defaults_path import has_project_config
+from interlocks.setup_state import (
+    CI_ACTION_NEEDLES,
+    acceptance_scaffold_present,
+    iter_workflow_bodies,
+)
+
+Status = Literal["ok", "warn", "fail"]
+
+_REQ_MARKER = re.compile(r"(?:^|\s)@req-[A-Za-z0-9_.:-]+|#\s*req\s*:", re.IGNORECASE)
+_SCENARIO = re.compile(r"^Scenario(?: Outline)?:")
+_CONTRACT_TYPES = frozenset({"forbidden", "layers", "acyclic", "independence"})
+_ITEM_COUNT = 8
+_MAX_TOTAL = _ITEM_COUNT * 3
+
+
+@dataclass(frozen=True)
+class EvaluationItem:
+    category: str
+    score: int
+    max_score: int = 3
+    status: Status = "ok"
+    detail: str = ""
+    next_action: str | None = None
+
+
+@dataclass(frozen=True)
+class EvaluationReport:
+    items: list[EvaluationItem]
+    total: int
+    max_total: int
+    verdict: str
+
+
+def cmd_evaluate() -> None:
+    start = time.monotonic()
+    cfg = load_optional_config()
+    if cfg is None:
+        _print_unreadable_config_report(start)
+        return
+    report = evaluate(cfg)
+
+    ui.command_banner("evaluate", cfg)
+    ui.section("Checklist")
+    _print_checklist(report.items)
+
+    ui.section("Score")
+    ui.kv_block([
+        ("total", f"{report.total} / {report.max_total}"),
+        ("verdict", report.verdict),
+    ])
+
+    ui.section("Next Actions")
+    actions = [item.next_action for item in report.items if item.next_action is not None]
+    ui.message_list(actions, empty="No local evaluation gaps detected.")
+    ui.command_footer(start)
+
+
+def _print_unreadable_config_report(start: float) -> None:
+    ui.command_banner("evaluate", None)
+    ui.section("Checklist")
+    print("  pyproject.toml unreadable — cannot evaluate local checklist.")
+    ui.section("Score")
+    ui.kv_block([("total", f"0 / {_MAX_TOTAL}"), ("verdict", "NEEDS WORK")])
+    ui.section("Next Actions")
+    ui.message_list(["Fix pyproject.toml syntax, then rerun `interlocks evaluate`."])
+    ui.command_footer(start)
+
+
+def evaluate(cfg: InterlockConfig) -> EvaluationReport:
+    items = [
+        _acceptance_item(cfg),
+        _unit_tests_item(cfg),
+        _coverage_item(cfg),
+        _mutation_item(cfg),
+        _complexity_item(cfg),
+        _dependency_rules_item(cfg),
+        _security_item(),
+        _ci_item(cfg),
+    ]
+    total = sum(item.score for item in items)
+    max_total = sum(item.max_score for item in items)
+    return EvaluationReport(
+        items=items,
+        total=total,
+        max_total=max_total,
+        verdict=_verdict(total, max_total),
+    )
+
+
+def _feature_files(cfg: InterlockConfig) -> list[Path]:
+    features_dir = cfg.features_dir
+    if features_dir is None or not features_dir.is_dir():
+        return []
+    return sorted(features_dir.rglob("*.feature"))
+
+
+def _feature_scenarios_with_traceability(feature_file: Path) -> tuple[int, int]:
+    total = 0
+    traced = 0
+    pending_req = False
+    seen_scenario = False
+    current_traced = False
+
+    for line in feature_file.read_text(encoding="utf-8").splitlines():
+        stripped = line.strip()
+        has_req = _REQ_MARKER.search(stripped) is not None
+        if _SCENARIO.match(stripped):
+            traced += int(seen_scenario and current_traced)
+            total += 1
+            seen_scenario = True
+            current_traced = pending_req or has_req
+            pending_req = False
+            continue
+        if not has_req:
+            continue
+        if seen_scenario:
+            current_traced = True
+        else:
+            pending_req = True
+    traced += int(seen_scenario and current_traced)
+    return total, traced
+
+
+def _test_files(cfg: InterlockConfig) -> list[Path]:
+    if not cfg.test_dir.is_dir():
+        return []
+    files = [*cfg.test_dir.rglob("test_*.py"), *cfg.test_dir.rglob("*_test.py")]
+    return sorted(set(files))
+
+
+def _coverage_branch_enabled(cfg: InterlockConfig) -> bool:
+    coverage = _tool_section(cfg.pyproject, "coverage")
+    if isinstance(coverage, dict):
+        run = coverage.get("run")
+        return isinstance(run, dict) and run.get("branch") is True
+
+    coveragerc = cfg.project_root / ".coveragerc"
+    if coveragerc.is_file():
+        parser = configparser.ConfigParser()
+        parser.read(coveragerc, encoding="utf-8")
+        return parser.getboolean("run", "branch", fallback=False)
+
+    return True
+
+
+def _has_mutmut_config(cfg: InterlockConfig) -> bool:
+    if isinstance(_tool_section(cfg.pyproject, "mutmut"), dict):
+        return True
+    return cfg.src_dir.exists() and bool(_test_files(cfg))
+
+
+def _importlinter_contracts(cfg: InterlockConfig) -> list[dict[str, object]]:
+    importlinter = _tool_section(cfg.pyproject, "importlinter")
+    if isinstance(importlinter, dict):
+        contracts = importlinter.get("contracts")
+        if isinstance(contracts, list):
+            return [contract for contract in contracts if isinstance(contract, dict)]
+    return _sidecar_importlinter_contracts(cfg.project_root)
+
+
+def _acceptance_item(cfg: InterlockConfig) -> EvaluationItem:
+    feature_files = _feature_files(cfg)
+    scenario_total, traced = _traceability_totals(feature_files)
+    ci_wired = acceptance_scaffold_present(cfg)
+    detail = "feature files + traceability tags"
+
+    if not feature_files:
+        return _item(
+            "acceptance", 0, detail, "Run `interlocks init-acceptance` to scaffold feature files."
+        )
+    if scenario_total == 0:
+        return _item(
+            "acceptance",
+            1,
+            detail,
+            f"Add at least one Scenario under {cfg.features_dir_arg or 'features/'}.",
+        )
+    if traced == scenario_total and ci_wired:
+        return _item("acceptance", 3, detail)
+    if not ci_wired:
+        return _item(
+            "acceptance",
+            1,
+            detail,
+            "Enable acceptance runner so `interlocks ci` can run feature scenarios.",
+        )
+    missing = scenario_total - traced
+    return _item(
+        "acceptance",
+        2 if traced else 1,
+        detail,
+        f"Add @req-* tags or # req: comments to {missing} acceptance scenario(s).",
+    )
+
+
+def _unit_tests_item(cfg: InterlockConfig) -> EvaluationItem:
+    detail = "tests present and run through CI"
+    if not _test_files(cfg):
+        return _item(
+            "unit-tests",
+            0,
+            detail,
+            f"Add test_*.py or *_test.py files under {cfg.test_dir_arg}/.",
+        )
+    if _ci_source_contains("task_coverage(") or _ci_source_contains("task_test("):
+        return _item("unit-tests", 3, detail)
+    return _item("unit-tests", 1, detail, "Wire test execution into `interlocks ci`.")
+
+
+def _coverage_item(cfg: InterlockConfig) -> EvaluationItem:
+    threshold_positive = cfg.coverage_min > 0
+    threshold_strong = cfg.coverage_min >= 80
+    branch = _coverage_branch_enabled(cfg)
+    ci_wired = _ci_source_contains("task_coverage(")
+    detail = "branch coverage + threshold in CI"
+
+    if threshold_strong and branch and ci_wired:
+        return _item("coverage", 3, detail)
+    if not threshold_positive:
+        return _item("coverage", 0, detail, "Set coverage_min to at least 80.")
+    if not threshold_strong:
+        return _item(
+            "coverage",
+            2 if branch and ci_wired else 1,
+            detail,
+            "Raise coverage_min to at least 80.",
+        )
+    if not branch:
+        return _item(
+            "coverage",
+            2 if ci_wired else 1,
+            detail,
+            "Enable branch coverage in [tool.coverage.run].",
+        )
+    return _item("coverage", 2, detail, "Wire task_coverage() into `interlocks ci`.")
+
+
+def _mutation_item(cfg: InterlockConfig) -> EvaluationItem:
+    configured = _has_mutmut_config(cfg)
+    ci_enabled = cfg.run_mutation_in_ci or cfg.mutation_ci_mode != "off"
+    enforced = cfg.enforce_mutation and cfg.mutation_min_score > 0
+    detail = "mutmut configured + enforced"
+
+    if configured and ci_enabled and enforced:
+        return _item("mutation", 3, detail)
+    if not configured:
+        return _item(
+            "mutation",
+            0,
+            detail,
+            "Add [tool.mutmut] or make source/tests discoverable by mutmut defaults.",
+        )
+    if not ci_enabled:
+        return _item("mutation", 1, detail, 'Set mutation_ci_mode = "incremental" or "full".')
+    return _item("mutation", 2, detail, "Set enforce_mutation = true and mutation_min_score > 0.")
+
+
+def _complexity_item(cfg: InterlockConfig) -> EvaluationItem:
+    score, action = _complexity_score_action(cfg)
+    return _item("complexity", score, "lizard + CRAP enforced", action)
+
+
+def _dependency_rules_item(cfg: InterlockConfig) -> EvaluationItem:
+    has_config = has_project_config(cfg, "importlinter", sidecars=(".importlinter", "setup.cfg"))
+    default_available = _default_arch_contract_available(cfg)
+    contracts = _importlinter_contracts(cfg)
+    strong_contracts = any(_contract_type(contract) in _CONTRACT_TYPES for contract in contracts)
+    ci_wired = _ci_source_contains("task_arch(") and (has_config or default_available)
+    detail = "import-linter contracts in CI"
+
+    if strong_contracts and ci_wired:
+        return _item("deps", 3, detail)
+    if not has_config and not default_available:
+        return _item(
+            "deps", 0, detail, "Add [tool.importlinter] contracts or Python-package src/test dirs."
+        )
+    if not strong_contracts:
+        return _item(
+            "deps",
+            2 if ci_wired else 1,
+            detail,
+            "Add forbidden, layers, or acyclic import-linter contracts.",
+        )
+    return _item("deps", 2, detail, "Wire task_arch() into `interlocks ci`.")
+
+
+def _security_item() -> EvaluationItem:
+    audit_exposed = _cli_source_contains('"audit"')
+    audit_in_ci = _ci_source_contains("task_audit(")
+    deps_in_ci = _ci_source_contains("task_deps(")
+    detail = "audit + dep hygiene in CI"
+
+    if audit_exposed and audit_in_ci and deps_in_ci:
+        return _item("security", 3, detail)
+    if not audit_exposed:
+        return _item("security", 0, detail, "Expose `interlocks audit` and task_audit().")
+    if not audit_in_ci:
+        return _item(
+            "security",
+            2 if deps_in_ci else 1,
+            detail,
+            "Wire task_audit() into `interlocks ci`.",
+        )
+    return _item("security", 2, detail, "Wire task_deps() into `interlocks ci`.")
+
+
+def _ci_item(cfg: InterlockConfig) -> EvaluationItem:
+    bodies = iter_workflow_bodies(cfg.project_root)
+    local_command = any("interlocks ci" in body for body in bodies)
+    action_reference = any(any(needle in body for needle in CI_ACTION_NEEDLES) for body in bodies)
+    detail = "workflow calls interlocks ci"
+
+    if local_command:
+        return _item("ci", 3, detail)
+    if action_reference:
+        return _item(
+            "ci", 2, detail, "Make workflow command explicitly reproducible as `interlocks ci`."
+        )
+    if bodies:
+        return _item("ci", 1, detail, "Add `interlocks ci` to a GitHub Actions workflow.")
+    return _item("ci", 0, detail, "Add .github/workflows CI that runs `interlocks ci`.")
+
+
+def _print_checklist(items: list[EvaluationItem]) -> None:
+    detail_width = max(len(item.detail) for item in items)
+    for item in items:
+        print(
+            f"  [{item.category}]".ljust(17)
+            + f"{item.detail:<{detail_width}}  {item.score}/{item.max_score}"
+        )
+
+
+def _item(
+    category: str,
+    score: int,
+    detail: str,
+    next_action: str | None = None,
+) -> EvaluationItem:
+    status: Status = "ok" if score == 3 else "fail" if score == 0 else "warn"
+    return EvaluationItem(
+        category=category,
+        score=score,
+        status=status,
+        detail=detail,
+        next_action=next_action,
+    )
+
+
+def _traceability_totals(feature_files: list[Path]) -> tuple[int, int]:
+    total = 0
+    traced = 0
+    for feature_file in feature_files:
+        file_total, file_traced = _feature_scenarios_with_traceability(feature_file)
+        total += file_total
+        traced += file_traced
+    return total, traced
+
+
+def _tool_section(pyproject: dict[str, Any], name: str) -> object:
+    tool = pyproject.get("tool")
+    if not isinstance(tool, dict):
+        return None
+    return tool.get(name)
+
+
+def _complexity_score_action(cfg: InterlockConfig) -> tuple[int, str | None]:
+    has_thresholds = _has_complexity_thresholds(cfg)
+    has_crap = _positive_finite(cfg.crap_max)
+    ci_wired = _complexity_ci_wired()
+
+    if has_thresholds and has_crap and cfg.enforce_crap and ci_wired:
+        return 3, None
+    if not has_thresholds or not has_crap:
+        score = 1 if has_thresholds or has_crap else 0
+        return score, "Set positive complexity_max_* and crap_max thresholds."
+    if not cfg.enforce_crap:
+        return 2 if ci_wired else 1, "Set enforce_crap = true."
+    return 2, "Wire task_complexity() and cmd_crap() into `interlocks ci`."
+
+
+def _complexity_ci_wired() -> bool:
+    return _ci_source_contains("task_complexity(") and _ci_source_contains("cmd_crap(")
+
+
+def _has_complexity_thresholds(cfg: InterlockConfig) -> bool:
+    return all(
+        _positive_finite(value)
+        for value in (cfg.complexity_max_ccn, cfg.complexity_max_args, cfg.complexity_max_loc)
+    )
+
+
+def _positive_finite(value: int | float) -> bool:
+    return math.isfinite(float(value)) and value > 0
+
+
+def _contract_type(contract: dict[str, object]) -> str:
+    value = contract.get("type")
+    return value.lower() if isinstance(value, str) else ""
+
+
+def _default_arch_contract_available(cfg: InterlockConfig) -> bool:
+    return (
+        (cfg.src_dir / "__init__.py").is_file()
+        and (cfg.test_dir / "__init__.py").is_file()
+        and cfg.src_dir.name != cfg.test_dir.name
+    )
+
+
+def _sidecar_importlinter_contracts(project_root: Path) -> list[dict[str, object]]:
+    contracts: list[dict[str, object]] = []
+    for filename in (".importlinter", "setup.cfg"):
+        path = project_root / filename
+        if not path.is_file():
+            continue
+        parser = configparser.ConfigParser()
+        parser.read(path, encoding="utf-8")
+        for section in parser.sections():
+            if "contract" not in section:
+                continue
+            contracts.append(dict(parser.items(section)))
+    return contracts
+
+
+def _ci_source_contains(needle: str) -> bool:
+    return _source_contains(Path(__file__).parents[1] / "stages" / "ci.py", needle)
+
+
+def _cli_source_contains(needle: str) -> bool:
+    return _source_contains(Path(__file__).parents[1] / "cli.py", needle)
+
+
+def _source_contains(path: Path, needle: str) -> bool:
+    return needle in _read_source(path)
+
+
+@lru_cache(maxsize=8)
+def _read_source(path: Path) -> str:
+    try:
+        return path.read_text(encoding="utf-8")
+    except OSError:
+        return ""
+
+
+def _verdict(total: int, max_total: int) -> str:
+    ratio = total / max_total if max_total else 0
+    if ratio >= 0.9:
+        return "HEALTHY"
+    if ratio >= 0.67:
+        return "GAPS"
+    return "NEEDS WORK"

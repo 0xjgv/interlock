@@ -7,7 +7,8 @@
   <title>interlocks — Quality gates for AI-authored Python PRs.</title>
   <meta name="description"
     content="interlocks gives AI-era Python repos one deterministic quality loop: lint, typecheck, tests, coverage, mutation, dependency hygiene, architecture checks, and audit locally and in CI." />
-  <meta property="og:title" content="interlocks — Quality gates for AI-authored Python PRs." />
+  <meta property="og:title"
+    content="interlocks — Quality gates for AI-authored Python PRs." />
   <meta property="og:description"
     content="AI made code cheap. interlocks makes Python PRs trustworthy with the same deterministic gate locally, in hooks, and in CI." />
   <link rel="icon"
@@ -35,6 +36,7 @@
       --fail: #c5162e;
       --info: #1d62a6;
       --s: 15px;
+      --panel-space: var(--s);
       --font-logo: "Quantico", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
       --font-mono: "IBM Plex Mono", SFMono-Regular, "SF Mono", ui-monospace, Menlo, Monaco, Consolas, monospace;
       --font-prose: "IBM Plex Sans", "Quantico", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
@@ -295,9 +297,16 @@
     }
 
     .quote-panel {
-      margin: 0 var(--s);
-      padding: calc(var(--s) * 1.2) var(--s);
+      padding: 0;
       text-align: center;
+    }
+
+    .section-inner {
+      display: flow-root;
+    }
+
+    .quote-panel>.section-inner {
+      padding: var(--panel-space);
     }
 
     .quote-panel blockquote {
@@ -326,7 +335,7 @@
       align-items: center;
       justify-content: space-between;
       gap: var(--s);
-      padding: calc(var(--s) * 0.8) var(--s);
+      padding: var(--panel-space);
       border-bottom: var(--bw) solid var(--border);
       background: var(--bg);
     }
@@ -350,7 +359,7 @@
 
     .diagnosis {
       margin: 0;
-      padding: var(--s);
+      padding: var(--panel-space);
     }
 
     .diagnosis-row {
@@ -365,6 +374,10 @@
     .diagnosis-row:first-child {
       border-top: 0;
       padding-top: 0;
+    }
+
+    .diagnosis-row:last-child {
+      padding-bottom: 0;
     }
 
     .diagnosis dt {
@@ -425,7 +438,7 @@
 
     .shell-body {
       margin: 0;
-      padding: calc(var(--s) * 1.2) var(--s);
+      padding: var(--panel-space);
       overflow-x: auto;
       background: var(--bg-shell);
       color: var(--fg-shell);
@@ -463,7 +476,6 @@
       display: grid;
       grid-template-columns: minmax(0, 1fr);
       gap: var(--s);
-      margin: 0 var(--s);
       counter-reset: pipeline;
       min-width: 0;
     }
@@ -485,7 +497,7 @@
       display: flex;
       flex-direction: column;
       min-height: 100%;
-      padding: var(--s);
+      padding: var(--panel-space);
       border: var(--bw) solid var(--border);
       background: var(--bg-panel);
       counter-increment: pipeline;
@@ -576,7 +588,7 @@
 
     .command-table th,
     .command-table td {
-      padding: calc(var(--s) * 0.72) var(--s);
+      padding: var(--panel-space);
       border-top: var(--bw) solid var(--border);
       text-align: left;
       vertical-align: top;
@@ -624,7 +636,7 @@
     }
 
     .practice-panel {
-      padding: var(--s);
+      padding: var(--panel-space);
     }
 
     .opinion-grid {
@@ -657,6 +669,10 @@
 
     .workflow-list li:first-child {
       border-top: 0;
+    }
+
+    .workflow-list li:last-child {
+      padding-bottom: 0;
     }
 
     .workflow-list .marker {
@@ -775,7 +791,7 @@
     }
 
     @media (max-width: 42rem) {
-      body > * {
+      body>* {
         max-width: 100vw;
       }
 
@@ -927,7 +943,8 @@
       <div class="hero-grid">
         <div class="hero-copy">
           <p class="eyebrow">Quality gates for AI-authored Python PRs</p>
-          <h1 id="hero-title">AI made code cheap. Interlocks makes Python PRs trustworthy.</h1>
+          <h1 id="hero-title">AI made code cheap. Interlocks makes Python PRs trustworthy.
+          </h1>
           <p class="lede">One deterministic quality loop for AI-era Python repos: lint,
             typecheck, test, coverage, mutation, deps, architecture, and audit. Same
             gate locally, in hooks, and in CI.</p>
@@ -1007,14 +1024,19 @@
     <div class="section-divider" aria-hidden="true"></div>
 
     <section class="quote-panel" aria-label="Positioning">
-      <blockquote>&ldquo;AI writes the PR. Interlocks decides if it deserves review.&rdquo;</blockquote>
-      <p>Human review cannot be the quality floor when agents ship code fast. Deterministic gates catch fake confidence before it reaches CI or customers.</p>
+      <div class="section-inner">
+        <blockquote>&ldquo;AI writes the PR. Interlocks decides if it deserves
+          review.&rdquo;</blockquote>
+        <p>Human review cannot be the quality floor when agents ship code fast.
+          Deterministic gates catch fake confidence before it reaches CI or customers.</p>
+      </div>
     </section>
 
     <div class="section-divider" aria-hidden="true"></div>
 
     <h2 class="section-title">Proof in the terminal</h2>
-    <p class="section-intro">No dashboard fiction. The product surface is the pass/fail output every repo sees.</p>
+    <p class="section-intro">No dashboard fiction. The product surface is the pass/fail
+      output every repo sees.</p>
     <div class="terminal-demo">
       <article class="shell-card" aria-labelledby="shell-check-title">
         <div class="shell-header">
@@ -1068,7 +1090,9 @@
     <div class="section-divider" aria-hidden="true"></div>
 
     <h2 class="section-title" id="stages">Quality loop</h2>
-    <p class="section-intro"><code>doctor</code> diagnoses the repo, <code>check</code> guards local edits, hooks catch staged changes, CI blocks merges, and nightly mutation finds weak tests.</p>
+    <p class="section-intro"><code>doctor</code> diagnoses the repo, <code>check</code>
+      guards local edits, hooks catch staged changes, CI blocks merges, and nightly
+      mutation finds weak tests.</p>
     <div class="pipeline">
       <article class="pipeline-card">
         <h3>After edits</h3>
@@ -1145,7 +1169,8 @@
     <div class="section-divider" aria-hidden="true"></div>
 
     <h2 class="section-title">What gets verified</h2>
-    <p class="section-intro">Commands stay small. Stages compose them into local, hook, CI, and scheduled gates.</p>
+    <p class="section-intro">Commands stay small. Stages compose them into local, hook,
+      CI, and scheduled gates.</p>
     <div class="matrix-wrap">
       <table class="command-table">
         <thead>
@@ -1295,7 +1320,8 @@
     <div class="practice-grid">
       <article class="practice-panel">
         <h3>Before</h3>
-        <p>Quality depends on scattered tools, hand-maintained config, and human memory.</p>
+        <p>Quality depends on scattered tools, hand-maintained config, and human memory.
+        </p>
         <ul class="workflow-list">
           <li><span class="marker">×</span><span>ruff, pyright, pytest, coverage, deptry,
               lizard, pip-audit, import-linter, mutmut configured by hand.</span></li>
@@ -1307,7 +1333,8 @@
       </article>
       <article class="practice-panel">
         <h3>After</h3>
-        <p>Repo gets diagnosed once. Same deterministic gate runs before review, before commit, and before merge.</p>
+        <p>Repo gets diagnosed once. Same deterministic gate runs before review, before
+          commit, and before merge.</p>
         <ul class="workflow-list">
           <li><span class="marker">1</span><span><code>il doctor</code> detects source,
               tests, runner, invoker, preset, thresholds.</span></li>
@@ -1324,36 +1351,46 @@
     <div class="section-divider" aria-hidden="true"></div>
 
     <section aria-labelledby="review-title">
-      <h2 class="section-title" id="review-title">Why agents need gates</h2>
-      <p class="section-intro">Models can write plausible code. Interlocks forces evidence.</p>
-      <div class="opinion-grid">
-        <article class="practice-panel" aria-labelledby="opus-review-title">
-          <h3 id="opus-review-title">Claude Code Opus 4.7</h3>
-          <p>I can write PRs fast. I still need gates that do not negotiate: lint, types, tests, coverage, mutation, deps, architecture, and audit in one loop.</p>
-          <p><code>interlocks</code> makes the quality bar explicit before a human reviews.</p>
-        </article>
-        <article class="practice-panel" aria-labelledby="gpt-review-title">
-          <h3 id="gpt-review-title">GPT-5.5</h3>
-          <p>The failure mode is not syntax. It is plausible code with shallow tests and green checks.</p>
-          <p><code>interlocks</code> catches fake confidence: complex untested code, weak coverage, surviving mutants, and CI drift.</p>
-        </article>
+      <div class="section-inner">
+        <h2 class="section-title" id="review-title">Why agents need gates</h2>
+        <p class="section-intro">Models can write plausible code. Interlocks forces
+          evidence.</p>
+        <div class="opinion-grid">
+          <article class="practice-panel" aria-labelledby="opus-review-title">
+            <h3 id="opus-review-title">Claude Code Opus 4.7</h3>
+            <p>I can write PRs fast. I still need gates that do not negotiate: lint,
+              types, tests, coverage, mutation, deps, architecture, and audit in one loop.
+            </p>
+            <p><code>interlocks</code> makes the quality bar explicit before a human
+              reviews.</p>
+          </article>
+          <article class="practice-panel" aria-labelledby="gpt-review-title">
+            <h3 id="gpt-review-title">GPT-5.5</h3>
+            <p>The failure mode is not syntax. It is plausible code with shallow tests and
+              green checks.</p>
+            <p><code>interlocks</code> catches fake confidence: complex untested code,
+              weak coverage, surviving mutants, and CI drift.</p>
+          </article>
+        </div>
       </div>
     </section>
 
     <div class="section-divider" aria-hidden="true"></div>
 
     <section aria-labelledby="actions-title">
-      <h2 class="section-title" id="actions-title">Block bad PRs in CI</h2>
-      <p class="section-intro">Use the same CLI gate on pull requests and protected branches.</p>
-      <article class="shell-card snippet-card" aria-labelledby="actions-card-title">
-        <div class="shell-header">
-          <p class="shell-title" id="actions-card-title">workflow</p>
-          <div class="shell-meta">
-            <span class="status-pill info">CI</span>
-            <span class="status-pill ok">BLOCKING</span>
+      <div class="section-inner">
+        <h2 class="section-title" id="actions-title">Block bad PRs in CI</h2>
+        <p class="section-intro">Use the same CLI gate on pull requests and protected
+          branches.</p>
+        <article class="shell-card snippet-card" aria-labelledby="actions-card-title">
+          <div class="shell-header">
+            <p class="shell-title" id="actions-card-title">workflow</p>
+            <div class="shell-meta">
+              <span class="status-pill info">CI</span>
+              <span class="status-pill ok">BLOCKING</span>
+            </div>
           </div>
-        </div>
-        <pre class="shell-body" id="actions-snippet"><span class="shell-row">name: interlocks</span>
+          <pre class="shell-body" id="actions-snippet"><span class="shell-row">name: interlocks</span>
 <span class="shell-row">on: [push, pull_request]</span>
 <span class="shell-row">jobs:</span>
 <span class="shell-row">  quality:</span>
@@ -1361,7 +1398,8 @@
 <span class="shell-row">    steps:</span>
 <span class="shell-row">      - uses: actions/checkout@v4</span>
 <span class="shell-row">      - uses: 0xjgv/interlocks@v1</span></pre>
-      </article>
+        </article>
+      </div>
     </section>
 
     <p class="result-line">Result: trustworthy Python PRs before human review.</p>

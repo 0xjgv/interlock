@@ -9,6 +9,7 @@ from interlocks.config import MutationCIMode, load_config
 from interlocks.runner import run_tasks
 from interlocks.tasks.acceptance import task_acceptance
 from interlocks.tasks.arch import task_arch
+from interlocks.tasks.audit import task_audit
 from interlocks.tasks.complexity import task_complexity
 from interlocks.tasks.coverage import task_coverage
 from interlocks.tasks.crap import cmd_crap
@@ -20,8 +21,8 @@ from interlocks.tasks.typecheck import task_typecheck
 
 
 def cmd_ci() -> None:
-    """Full verification: format_check, lint, complexity, deps, arch, typecheck, coverage,
-    CRAP, (optionally) mutation."""
+    """Full verification: format_check, lint, complexity, audit, deps, arch, typecheck,
+    coverage, CRAP, (optionally) mutation."""
     start = time.monotonic()
     cfg = load_config()
     ui.banner(cfg)
@@ -30,6 +31,7 @@ def cmd_ci() -> None:
         task_format_check(),
         task_lint(),
         task_complexity(),
+        task_audit(allow_network_skip=True),
         task_deps(),
         task_typecheck(),
         task_coverage(),

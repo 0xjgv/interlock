@@ -27,6 +27,7 @@ Feature: interlocks CLI surface area
     And the output lists the command "post-edit"
     And the output lists the command "setup-hooks"
     And the output lists the command "clean"
+    And the output lists the command "evaluate"
     And the output lists the command "config"
     And the output lists the command "version"
     And the output lists the command "help"

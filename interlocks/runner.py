@@ -34,6 +34,7 @@ _DUMP_TAIL_LINES = 20
 PREFLIGHT_EXEMPT: frozenset[str] = frozenset({
     "config",
     "doctor",
+    "evaluate",
     "init",
     "presets",
     "version",

@@ -60,6 +60,7 @@ def test_cmd_help_prints_usage_and_groups(capsys: pytest.CaptureFixture[str]) ->
     assert "[help]" in out  # known command listed with bracket tag
     assert "[fix]" in out
     assert "[check]" in out
+    assert "[evaluate]" in out
 
 
 def test_cmd_help_prints_active_preset_and_resolved_values(

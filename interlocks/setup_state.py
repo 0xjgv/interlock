@@ -16,6 +16,29 @@ if TYPE_CHECKING:
     from interlocks.config import InterlockConfig
 
 
+CI_ACTION_NEEDLES: tuple[str, ...] = ("0xjgv/interlocks@", "interlocks/interlocks@")
+"""GitHub Actions references that wire ``interlocks`` into a workflow."""
+
+_CI_LOCAL_NEEDLE = "interlocks ci"
+_CI_WORKFLOW_NEEDLES: tuple[str, ...] = (_CI_LOCAL_NEEDLE, *CI_ACTION_NEEDLES)
+
+
+def iter_workflow_bodies(project_root: Path) -> list[str]:
+    """Read every ``.github/workflows/*.y*ml`` file body. Empty list when dir is absent."""
+    workflows_dir = project_root / ".github" / "workflows"
+    if not workflows_dir.is_dir():
+        return []
+    bodies: list[str] = []
+    for path in sorted(workflows_dir.iterdir()):
+        if path.suffix not in (".yml", ".yaml"):
+            continue
+        try:
+            bodies.append(path.read_text(encoding="utf-8"))
+        except OSError:
+            continue
+    return bodies
+
+
 def is_post_edit_command(command: object) -> bool:
     """True when ``command`` is a recognizable ``interlocks post-edit`` invocation."""
     return isinstance(command, str) and (
@@ -68,19 +91,10 @@ def _stop_entries(settings_path: Path) -> list[object]:
 
 def ci_workflow_present(project_root: Path) -> bool:
     """True when any ``.github/workflows/*.y*ml`` references ``interlocks ci`` or the action."""
-    workflows_dir = project_root / ".github" / "workflows"
-    if not workflows_dir.is_dir():
-        return False
-    for path in workflows_dir.iterdir():
-        if path.suffix not in (".yml", ".yaml"):
-            continue
-        try:
-            body = path.read_text(encoding="utf-8")
-        except OSError:
-            continue
-        if "interlocks ci" in body or "interlocks/interlocks@" in body:
-            return True
-    return False
+    return any(
+        any(needle in body for needle in _CI_WORKFLOW_NEEDLES)
+        for body in iter_workflow_bodies(project_root)
+    )
 
 
 def acceptance_scaffold_present(cfg: InterlockConfig) -> bool:
