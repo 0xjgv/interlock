@@ -6,24 +6,22 @@ evaluations. This module owns the on-disk format, deterministic serialization,
 the signature scheme that detects out-of-band edits, and the helpers stages and
 CLI commands compose to compute / mutate budgets.
 
-Stdlib only. Atomic writes mirror the pattern in
-``interlocks/pyproject_edit.py:_atomic_write``: ``tempfile.mkstemp`` sibling +
-``Path.replace`` + ``unlink(missing_ok=True)`` on failure.
+Stdlib only. Atomic writes go through :mod:`interlocks._atomic`.
 """
 
 from __future__ import annotations
 
 import hashlib
 import json
-import os
 import subprocess  # noqa: S404 - intentional: derive_repo_secret reads `git rev-list`.
-import tempfile
 from dataclasses import dataclass, replace
-from pathlib import Path
 from typing import TYPE_CHECKING, Literal
+
+from interlocks._atomic import atomic_write_bytes
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
+    from pathlib import Path
 
 
 @dataclass(frozen=True)
@@ -134,20 +132,6 @@ def prune_stale(budget: Budget, public_symbols: Iterable[tuple[str, str]]) -> Bu
     )
 
 
-def _atomic_write_bytes(path: Path, data: bytes) -> None:
-    """Atomic write: tmp sibling + ``Path.replace``; clean tmp on failure."""
-    directory = path.parent
-    directory.mkdir(parents=True, exist_ok=True)
-    fd, tmp_name = tempfile.mkstemp(prefix=path.name + ".", suffix=".tmp", dir=str(directory))
-    try:
-        with os.fdopen(fd, "wb") as f:
-            f.write(data)
-        Path(tmp_name).replace(path)
-    except BaseException:
-        Path(tmp_name).unlink(missing_ok=True)
-        raise
-
-
 def _serialize_budget(budget: Budget) -> bytes:
     """Render ``budget`` to bytes with a fixed key order and sorted contents."""
     untraced = _normalize_untraced(budget.untraced)
@@ -165,7 +149,7 @@ def _serialize_budget(budget: Budget) -> bytes:
 
 def write_budget(path: Path, budget: Budget) -> None:
     """Atomically write ``budget`` to ``path`` with deterministic ordering."""
-    _atomic_write_bytes(path, _serialize_budget(budget))
+    atomic_write_bytes(path, _serialize_budget(budget))
 
 
 def _canonical_signed_payload(budget: Budget) -> bytes:

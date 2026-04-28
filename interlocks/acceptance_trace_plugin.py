@@ -31,11 +31,11 @@ import inspect
 import json
 import os
 import sys
-import tempfile
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+from interlocks._atomic import atomic_write_bytes
 from interlocks.acceptance_identity import scenario_identity
 
 if TYPE_CHECKING:
@@ -425,20 +425,6 @@ def _xdist_worker_id(config: pytest.Config) -> str | None:
     return str(workerinput.get("workerid", "")) or None
 
 
-def _atomic_write_bytes(path: Path, data: bytes) -> None:
-    """Atomic write: tmp sibling + ``Path.replace``; clean up on failure."""
-    directory = path.parent
-    directory.mkdir(parents=True, exist_ok=True)
-    fd, tmp_name = tempfile.mkstemp(prefix=path.name + ".", suffix=".tmp", dir=str(directory))
-    try:
-        with os.fdopen(fd, "wb") as f:
-            f.write(data)
-        Path(tmp_name).replace(path)
-    except BaseException:
-        Path(tmp_name).unlink(missing_ok=True)
-        raise
-
-
 def _serialize(payload: dict[str, Any]) -> bytes:
     text = json.dumps(payload, indent=2, ensure_ascii=False, sort_keys=False)
     return (text + "\n").encode("utf-8")
@@ -448,7 +434,7 @@ def _write_shard(recorder: _Recorder, worker_id: str) -> None:
     payload = recorder.serialize()
     payload.pop("traced_symbols_index", None)  # master recomputes from union
     shard_path = _shard_path(recorder.trace_path, worker_id)
-    _atomic_write_bytes(shard_path, _serialize(payload))
+    atomic_write_bytes(shard_path, _serialize(payload))
 
 
 def _write_master(recorder: _Recorder) -> None:
@@ -456,11 +442,11 @@ def _write_master(recorder: _Recorder) -> None:
     shards = _discover_shards(recorder.trace_path)
     if shards:
         merged = _merge_payloads([recorder.serialize(), *(_load_shard(p) for p in shards)])
-        _atomic_write_bytes(recorder.trace_path, _serialize(merged))
+        atomic_write_bytes(recorder.trace_path, _serialize(merged))
         for shard in shards:
             shard.unlink(missing_ok=True)
     else:
-        _atomic_write_bytes(recorder.trace_path, _serialize(recorder.serialize()))
+        atomic_write_bytes(recorder.trace_path, _serialize(recorder.serialize()))
 
 
 def _shard_path(trace_path: Path, worker_id: str) -> Path:
