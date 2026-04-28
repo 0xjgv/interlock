@@ -270,6 +270,27 @@ CONFIG_KEYS: tuple[ConfigKeyDoc, ...] = (
         "Acceptance",
     ),
     ConfigKeyDoc(
+        "acceptance_trace_path",
+        "str",
+        ".interlocks/trace.json",
+        "Trace map written by `interlocks acceptance` (scenario -> public symbols)",
+        "Acceptance",
+    ),
+    ConfigKeyDoc(
+        "acceptance_budget_path",
+        "str",
+        ".interlocks/acceptance_budget.json",
+        "Budget file storing the allowed untraced public-symbol set",
+        "Acceptance",
+    ),
+    ConfigKeyDoc(
+        "enforce_acceptance_budget",
+        "bool",
+        "auto",
+        "Block CI when current untraced symbols exceed the budget; auto-detects on file presence",
+        "Acceptance",
+    ),
+    ConfigKeyDoc(
         "evaluate_dependency_freshness",
         "bool",
         "false",
@@ -437,6 +458,9 @@ class InterlockConfig:
     features_dir: Path | None = None
     run_acceptance_in_check: bool = False
     require_acceptance: bool = False
+    acceptance_trace_path: Path = Path(".interlocks/trace.json")
+    acceptance_budget_path: Path = Path(".interlocks/acceptance_budget.json")
+    enforce_acceptance_budget: bool = False
     evaluate_dependency_freshness: bool = False
     dependency_freshness_command: str = "interlocks deps-freshness"
     dependency_freshness_stage: str = "interlocks nightly"
@@ -569,17 +593,15 @@ def _load_config_cached(project_root: Path) -> InterlockConfig:
         _resolve_flags(table)
     )
     audit_severity_threshold = _audit_severity_threshold_override(table)
-    dependency_freshness_command = _string_value(
-        table, "dependency_freshness_command", InterlockConfig.dependency_freshness_command
+    dependency_freshness_command, dependency_freshness_stage, ci_evidence_path = (
+        _resolve_evaluation_evidence(table, project_root)
     )
-    dependency_freshness_stage = _string_value(
-        table, "dependency_freshness_stage", InterlockConfig.dependency_freshness_stage
-    )
-    ci_evidence_path = _resolved_path(
-        table.get("ci_evidence_path"),
-        project_root / InterlockConfig.ci_evidence_path,
-        project_root,
-    )
+    (
+        acceptance_trace_path,
+        acceptance_budget_path,
+        enforce_acceptance_budget,
+        enforce_acceptance_budget_source,
+    ) = _resolve_acceptance_budget_paths(table, project_root)
 
     overrides = {
         "src_dir": src_dir_override,
@@ -607,7 +629,15 @@ def _load_config_cached(project_root: Path) -> InterlockConfig:
         dependency_freshness_stage=dependency_freshness_stage,
         audit_severity_threshold=audit_severity_threshold,
         ci_evidence_path=ci_evidence_path,
-        value_sources=_complete_value_sources(value_sources, table, overrides=overrides),
+        acceptance_trace_path=acceptance_trace_path,
+        acceptance_budget_path=acceptance_budget_path,
+        enforce_acceptance_budget=enforce_acceptance_budget,
+        value_sources=_complete_value_sources(
+            value_sources,
+            table,
+            overrides=overrides,
+            enforce_acceptance_budget_source=enforce_acceptance_budget_source,
+        ),
         unsupported_presets=unsupported_presets,
         **_threshold_overrides(table),
     )
@@ -643,6 +673,64 @@ def _resolve_flags(table: dict[str, Any]) -> tuple[bool, bool, MutationCIMode, s
     return run_acceptance_in_check, require_acceptance, mutation_ci_mode, mutation_since_ref
 
 
+def _resolve_enforce_acceptance_budget(
+    table: dict[str, Any], acceptance_budget_path: Path
+) -> tuple[bool, str]:
+    """Resolve ``enforce_acceptance_budget`` honouring explicit override then file presence.
+
+    Returns ``(value, source_label)`` so callers can record provenance — explicit
+    pyproject values map to ``project-configured`` while filesystem auto-detect
+    maps to ``auto-detected``.
+    """
+    explicit = _coerce_bool(table.get("enforce_acceptance_budget"))
+    if explicit is not None:
+        return explicit, _SOURCE_PROJECT
+    return acceptance_budget_path.exists(), _SOURCE_AUTO
+
+
+def _resolve_evaluation_evidence(
+    table: dict[str, Any], project_root: Path
+) -> tuple[str, str, Path]:
+    """Bundle the deps-freshness command/stage strings and ci-evidence path resolution."""
+    dependency_freshness_command = _string_value(
+        table, "dependency_freshness_command", InterlockConfig.dependency_freshness_command
+    )
+    dependency_freshness_stage = _string_value(
+        table, "dependency_freshness_stage", InterlockConfig.dependency_freshness_stage
+    )
+    ci_evidence_path = _resolved_path(
+        table.get("ci_evidence_path"),
+        project_root / InterlockConfig.ci_evidence_path,
+        project_root,
+    )
+    return dependency_freshness_command, dependency_freshness_stage, ci_evidence_path
+
+
+def _resolve_acceptance_budget_paths(
+    table: dict[str, Any], project_root: Path
+) -> tuple[Path, Path, bool, str]:
+    """Bundle the three acceptance-budget resolutions used by ``_load_config_cached``."""
+    acceptance_trace_path = _resolved_path(
+        table.get("acceptance_trace_path"),
+        project_root / InterlockConfig.acceptance_trace_path,
+        project_root,
+    )
+    acceptance_budget_path = _resolved_path(
+        table.get("acceptance_budget_path"),
+        project_root / InterlockConfig.acceptance_budget_path,
+        project_root,
+    )
+    enforce_acceptance_budget, enforce_acceptance_budget_source = (
+        _resolve_enforce_acceptance_budget(table, acceptance_budget_path)
+    )
+    return (
+        acceptance_trace_path,
+        acceptance_budget_path,
+        enforce_acceptance_budget,
+        enforce_acceptance_budget_source,
+    )
+
+
 _STRING_KEYS = (
     "src_dir",
     "test_dir",
@@ -651,6 +739,8 @@ _STRING_KEYS = (
     "dependency_freshness_command",
     "dependency_freshness_stage",
     "ci_evidence_path",
+    "acceptance_trace_path",
+    "acceptance_budget_path",
 )
 _ENUM_PARSERS = {
     "test_runner": _runner_override,
@@ -714,6 +804,9 @@ def _explicit_config_overrides(table: dict[str, Any]) -> dict[str, Any]:
     value = _coerce_bool(table.get("require_acceptance"))
     if value is not None:
         overrides["require_acceptance"] = value
+    value = _coerce_bool(table.get("enforce_acceptance_budget"))
+    if value is not None:
+        overrides["enforce_acceptance_budget"] = value
     return overrides
 
 
@@ -722,6 +815,7 @@ def _complete_value_sources(
     table: dict[str, Any],
     *,
     overrides: dict[str, object],
+    enforce_acceptance_budget_source: str,
 ) -> dict[str, str]:
     complete = dict(sources)
     default_keys = (
@@ -739,6 +833,8 @@ def _complete_value_sources(
         "pr_ci_runtime_budget_seconds",
         "pr_ci_evidence_max_age_hours",
         "ci_evidence_path",
+        "acceptance_trace_path",
+        "acceptance_budget_path",
     )
     for key in default_keys:
         complete.setdefault(key, _SOURCE_DEFAULT)
@@ -751,6 +847,7 @@ def _complete_value_sources(
     complete.setdefault(
         "preset", _SOURCE_DEFAULT if table.get("preset") is None else _SOURCE_PROJECT
     )
+    complete["enforce_acceptance_budget"] = enforce_acceptance_budget_source
     return complete
 
 

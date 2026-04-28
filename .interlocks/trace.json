@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "computed_at": "2026-04-28T10:51:04Z",
+  "computed_at": "2026-04-28T12:58:37Z",
   "scenarios": {
     "75e0b75b25e305d4": {
       "feature": "/Users/juan/Code/interlocks/.claude/worktrees/acceptance-coverage-ratchet/tests/features/interlock_acceptance_budget.feature",

@@ -5,6 +5,7 @@ from __future__ import annotations
 import time
 
 from interlocks import ui
+from interlocks.acceptance_gate import apply_budget_gate, evaluate_acceptance_budget
 from interlocks.acceptance_status import (
     AcceptanceStatus,
     classify_acceptance,
@@ -43,6 +44,7 @@ def cmd_check() -> None:
             warn_skip("test: no test dir detected — run `interlocks init` to scaffold tests/")
         else:
             parallel.append(test_task)
+        acceptance_status: AcceptanceStatus | None = None
         if cfg.run_acceptance_in_check:
             acceptance_status = classify_acceptance(cfg)
             if acceptance_status in {
@@ -58,6 +60,8 @@ def cmd_check() -> None:
                 if acceptance is not None:
                     parallel.append(acceptance)
         run_tasks(parallel)
+        if cfg.run_acceptance_in_check and acceptance_status is AcceptanceStatus.RUNNABLE:
+            apply_budget_gate(evaluate_acceptance_budget(cfg))
         ui.section("Advisory")
         run(task_deps(), no_exit=True)
         cmd_crap_cached_advisory()

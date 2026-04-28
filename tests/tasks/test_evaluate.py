@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import sys
 import textwrap
 import time
 from pathlib import Path
@@ -13,6 +14,20 @@ from interlocks.config import InterlockConfig, load_config
 from interlocks.tasks import evaluate as evaluate_mod
 from interlocks.tasks.evaluate import EvaluationItem, cmd_evaluate, evaluate
 from tests.conftest import TmpProjectFactory
+
+
+@pytest.fixture(autouse=True)
+def _isolate_pkg_module() -> None:
+    """Drop cached `pkg` modules so per-test source trees re-import cleanly.
+
+    `iter_public_symbols` adds `<project_root>` to `sys.path` and imports each
+    discovered module. Because every `_project()` writes its own `pkg/`
+    package under a different `tmp_path`, leftover cache entries from a prior
+    test would otherwise resolve to the wrong directory.
+    """
+    for name in list(sys.modules):
+        if name == "pkg" or name.startswith("pkg."):
+            del sys.modules[name]
 
 
 def _pyproject(
@@ -99,17 +114,24 @@ jobs:
 """
 
 
+_SENTINEL = object()
+
+
+# lizard forgives the parameter count - test scaffolding helper, each kwarg
+# names an independent toggle and bundling them obscures call sites.
 def _project(
     make_tmp_project: TmpProjectFactory,
     *,
     pyproject: str | None = None,
+    src_files: dict[str, str] | None = None,
     test_files: dict[str, str] | None = None,
     feature: str | None = _FEATURE,
     workflow: str | None = _WORKFLOW,
+    trace_map: object = _SENTINEL,
 ) -> Path:
     project = make_tmp_project(
         pyproject=_pyproject() if pyproject is None else pyproject,
-        src_files=_SRC_FILES,
+        src_files=_SRC_FILES if src_files is None else src_files,
         test_files=_TEST_FILES if test_files is None else test_files,
     )
     if feature is not None:
@@ -121,7 +143,31 @@ def _project(
         workflow_path.parent.mkdir(parents=True, exist_ok=True)
         workflow_path.write_text(textwrap.dedent(workflow), encoding="utf-8")
     _write_ci_evidence(project)
+    if trace_map is _SENTINEL:
+        # Default: trace map matches the public surface so the acceptance item
+        # scores 3 unless the test explicitly opts out by passing trace_map=None.
+        _write_trace_map(project, traced_index=_default_traced_index(project))
+    elif trace_map is not None:
+        assert isinstance(trace_map, list)
+        _write_trace_map(project, traced_index=trace_map)
     return project
+
+
+def _default_traced_index(project: Path) -> list[str]:
+    """Return the trace-map index that matches the empty `pkg` source tree."""
+    return []
+
+
+def _write_trace_map(project: Path, *, traced_index: list[str]) -> None:
+    path = project / ".interlocks" / "trace.json"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    payload = {
+        "version": 1,
+        "computed_at": "2026-04-28T12:00:00Z",
+        "scenarios": {},
+        "traced_symbols_index": traced_index,
+    }
+    path.write_text(json.dumps(payload), encoding="utf-8")
 
 
 def _write_ci_evidence(
@@ -163,46 +209,17 @@ def test_all_pass_project_scores_33_of_33(
     assert all(item.score == 3 for item in report.items)
 
 
-def test_comment_before_scenario_counts_as_traceability(tmp_path: Path) -> None:
-    feature = tmp_path / "checkout.feature"
-    feature.write_text(
-        textwrap.dedent(
-            """\
-            Feature: checkout
-
-              # req: checkout-paid
-              Scenario: paid order succeeds
-                Given buyer has cart
-            """
-        ),
-        encoding="utf-8",
-    )
-
-    assert evaluate_mod._feature_scenarios_with_traceability(feature) == (1, 1)
-
-
-def test_missing_feature_files_scores_acceptance_lower_and_emits_next_action(
+def test_missing_trace_map_scores_acceptance_zero_with_baseline_hint(
     make_tmp_project: TmpProjectFactory, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    project = _project(make_tmp_project, feature=None)
+    project = _project(make_tmp_project, trace_map=None)
     monkeypatch.chdir(project)
 
     item = _item(load_config(), "acceptance")
 
     assert item.score == 0
-    assert item.next_action == "Run `interlocks init-acceptance` to scaffold feature files."
-
-
-def test_feature_file_with_no_scenarios_scores_acceptance_one(
-    make_tmp_project: TmpProjectFactory, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    project = _project(make_tmp_project, feature="Feature: checkout\n")
-    monkeypatch.chdir(project)
-
-    item = _item(load_config(), "acceptance")
-
-    assert item.score == 1
-    assert "Add at least one Scenario" in (item.next_action or "")
+    assert item.next_action == "Run `interlocks acceptance baseline` to seed it."
+    assert item.detail.startswith("No trace map at ")
 
 
 def test_acceptance_disabled_scores_as_not_ci_wired(
@@ -223,17 +240,137 @@ def test_acceptance_disabled_scores_as_not_ci_wired(
     )
 
 
-def test_scenario_without_traceability_tag_lowers_acceptance_score(
+# ─────────────── trace-map completeness scoring (D10 / spec § 9) ──────────
+
+
+_PUBLIC_SRC_FILES = {
+    "pkg/__init__.py": "",
+    "pkg/api.py": "def alpha() -> int:\n    return 1\n\n\ndef beta() -> int:\n    return 2\n",
+}
+
+
+def test_full_trace_map_scores_acceptance_three(
     make_tmp_project: TmpProjectFactory, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    project = _project(make_tmp_project, feature=_UNTRACED_FEATURE)
+    project = _project(
+        make_tmp_project,
+        src_files=_PUBLIC_SRC_FILES,
+        trace_map=["pkg.api:alpha", "pkg.api:beta"],
+    )
+    monkeypatch.chdir(project)
+
+    item = _item(load_config(), "acceptance")
+
+    assert item.score == 3
+    assert item.next_action is None
+    assert "Trace map covers all 2 public symbol(s)" in item.detail
+
+
+def test_partial_trace_map_scores_acceptance_two(
+    make_tmp_project: TmpProjectFactory, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    project = _project(
+        make_tmp_project,
+        src_files=_PUBLIC_SRC_FILES,
+        trace_map=["pkg.api:alpha"],
+    )
+    monkeypatch.chdir(project)
+
+    item = _item(load_config(), "acceptance")
+
+    assert item.score == 2
+    assert item.detail == "1/2 public symbol(s) traced."
+    assert item.next_action is not None
+    assert "interlocks acceptance baseline --force" in item.next_action
+
+
+def test_empty_trace_map_scores_acceptance_one(
+    make_tmp_project: TmpProjectFactory, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    project = _project(
+        make_tmp_project,
+        src_files=_PUBLIC_SRC_FILES,
+        trace_map=[],
+    )
     monkeypatch.chdir(project)
 
     item = _item(load_config(), "acceptance")
 
     assert item.score == 1
-    assert item.next_action is not None
-    assert "@req-*" in item.next_action
+    assert item.detail == "Trace map exists but no symbols recorded."
+    assert item.next_action == "Run `interlocks acceptance` to populate the trace map."
+
+
+def test_missing_trace_map_scores_acceptance_zero(
+    make_tmp_project: TmpProjectFactory, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    project = _project(
+        make_tmp_project,
+        src_files=_PUBLIC_SRC_FILES,
+        trace_map=None,
+    )
+    monkeypatch.chdir(project)
+
+    item = _item(load_config(), "acceptance")
+
+    assert item.score == 0
+    assert item.next_action == "Run `interlocks acceptance baseline` to seed it."
+    assert "trace.json" in item.detail
+
+
+def test_req_markers_no_longer_affect_acceptance_score(
+    make_tmp_project: TmpProjectFactory, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Two scenarios that differ only in `# req:` / `@req-*` markers score identically."""
+    feature_with_markers = """\
+    Feature: api
+
+      @req-alpha
+      Scenario: alpha is reachable
+        Given the api is loaded
+        When I call alpha
+        Then a value is returned
+
+      # req: beta
+      Scenario: beta is reachable
+        Given the api is loaded
+        When I call beta
+        Then a value is returned
+    """
+    feature_without_markers = """\
+    Feature: api
+
+      Scenario: alpha is reachable
+        Given the api is loaded
+        When I call alpha
+        Then a value is returned
+
+      Scenario: beta is reachable
+        Given the api is loaded
+        When I call beta
+        Then a value is returned
+    """
+    traced = ["pkg.api:alpha", "pkg.api:beta"]
+
+    with_markers = _project(
+        make_tmp_project,
+        src_files=_PUBLIC_SRC_FILES,
+        feature=feature_with_markers,
+        trace_map=traced,
+    )
+    monkeypatch.chdir(with_markers)
+    score_with = _item(load_config(), "acceptance").score
+
+    without_markers = _project(
+        make_tmp_project,
+        src_files=_PUBLIC_SRC_FILES,
+        feature=feature_without_markers,
+        trace_map=traced,
+    )
+    monkeypatch.chdir(without_markers)
+    score_without = _item(load_config(), "acceptance").score
+
+    assert score_with == score_without == 3
 
 
 def test_missing_tests_lowers_unit_test_score(
@@ -498,48 +635,6 @@ def test_deps_absent_from_ci_lowers_security_score(
 # ─────────────── added gap-closure policies ─────────────────────
 
 
-def test_partial_acceptance_traceability_reports_missing_count(
-    make_tmp_project: TmpProjectFactory, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    feature = """\
-    Feature: checkout
-
-      @req-paid-order
-      Scenario: paid order succeeds
-        Given buyer has cart
-
-      Scenario: cancelled order releases stock
-        Given buyer has cart
-    """
-    project = _project(make_tmp_project, feature=feature)
-    monkeypatch.chdir(project)
-
-    item = _item(load_config(), "acceptance")
-
-    assert item.score == 2
-    assert item.next_action == "Add @req-* tags or # req: comments to 1 acceptance scenario(s)."
-    assert item.closure is not None
-    assert item.closure.command == "interlocks evaluate"
-
-
-def test_req_marker_inside_scenario_body_does_not_count_as_traceability(tmp_path: Path) -> None:
-    feature = tmp_path / "checkout.feature"
-    feature.write_text(
-        textwrap.dedent(
-            """\
-            Feature: checkout
-
-              Scenario: paid order succeeds
-                # req: too-late
-                Given buyer has cart
-            """
-        ),
-        encoding="utf-8",
-    )
-
-    assert evaluate_mod._feature_scenarios_with_traceability(feature) == (1, 0)
-
-
 def test_dependency_freshness_absent_policy_scores_separately(
     make_tmp_project: TmpProjectFactory, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -690,6 +785,7 @@ def test_closure_guidance_covers_task_stage_and_standalone_paths(
             'preset = "strict"\ncoverage_min = 0\nenforce_mutation = false\n',
         ),
         feature=_UNTRACED_FEATURE,
+        trace_map=None,  # force missing-trace-map branch so acceptance has a closure
     )
     monkeypatch.chdir(project)
     cfg = load_config()
@@ -700,9 +796,9 @@ def test_closure_guidance_covers_task_stage_and_standalone_paths(
     freshness = _item(cfg, "deps-freshness")
 
     assert acceptance.closure is not None
-    assert acceptance.closure.command == "interlocks evaluate"
+    assert acceptance.closure.command == "interlocks acceptance baseline"
     assert acceptance.closure.kind == "task"
-    assert "interlocks acceptance only runs scenarios" in acceptance.closure.rationale
+    assert "trace.json" in acceptance.closure.rationale
     assert coverage.closure is not None
     assert coverage.closure.command == "interlocks ci"
     assert coverage.closure.kind == "stage"
@@ -719,14 +815,14 @@ def test_next_actions_include_closure_command(
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    project = _project(make_tmp_project, feature=_UNTRACED_FEATURE)
+    project = _project(make_tmp_project, feature=_UNTRACED_FEATURE, trace_map=None)
     monkeypatch.chdir(project)
 
     cmd_evaluate()
 
     out = capsys.readouterr().out
-    assert "[acceptance] Add @req-* tags" in out
-    assert "Close with `interlocks evaluate` (task)" in out
+    assert "[acceptance] Run `interlocks acceptance baseline`" in out
+    assert "Close with `interlocks acceptance baseline` (task)" in out
 
 
 def test_action_workflow_without_local_command_scores_ci_two(

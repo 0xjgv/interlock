@@ -6,6 +6,7 @@ import json
 import time
 
 from interlocks import ui
+from interlocks.acceptance_gate import apply_budget_gate, evaluate_acceptance_budget
 from interlocks.acceptance_status import (
     AcceptanceStatus,
     classify_acceptance,
@@ -60,6 +61,11 @@ def cmd_ci() -> None:
     exit_code = 0
     try:
         run_tasks(tasks)
+        # Budget gate reads .interlocks/trace.json written by the acceptance task —
+        # must run AFTER run_tasks so the trace map is finalized; cannot be slotted
+        # into the parallel `tasks` list (D6/D13).
+        if acceptance_status is AcceptanceStatus.RUNNABLE:
+            apply_budget_gate(evaluate_acceptance_budget(cfg))
         # CRAP/mutation read coverage.xml produced by task_coverage — keep sequential.
         ui.section("Gates")
         cmd_crap()

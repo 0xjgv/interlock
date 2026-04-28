@@ -76,15 +76,22 @@ def python_m(module: str, *args: str) -> list[str]:
     return [sys.executable, "-m", module, *args]
 
 
-def capture(cmd: list[str]) -> subprocess.CompletedProcess[str]:
+def capture(
+    cmd: list[str], *, env: dict[str, str] | None = None
+) -> subprocess.CompletedProcess[str]:
     """Run ``cmd`` silently; return the CompletedProcess (never raises on non-zero rc).
 
     Subprocess kwargs here are pragma'd: ``check=False``/``None`` are equivalent,
     and ``capture_output``/``text`` flips are invisible to our tests. Mutation
     survivors on those kwargs would be fake-confidence noise, not real gaps.
+
+    When ``env`` is provided, it is layered over ``os.environ`` so tasks can set
+    process-local signals (e.g. ``INTERLOCKS_TRACE``) without leaking into other
+    parallel tasks.
     """
+    merged = {**os.environ, **env} if env else None
     # pragma: no mutate start
-    return subprocess.run(cmd, capture_output=True, text=True, check=False)
+    return subprocess.run(cmd, capture_output=True, text=True, check=False, env=merged)
     # pragma: no mutate end
 
 
@@ -158,6 +165,12 @@ class Task:
     # Compact command string shown in the row's middle column. Falls back to a
     # basename-stripped rendering of ``cmd``.
     display: str | None = None
+    # Process-local env overrides layered on top of ``os.environ`` for the
+    # subprocess. ``None`` (default) preserves the existing inheritance path,
+    # so existing call-sites are untouched. Used by acceptance to pass
+    # ``INTERLOCKS_TRACE`` signals into the pytest child without polluting
+    # parallel sibling tasks.
+    env: dict[str, str] | None = None
 
 
 @dataclass
@@ -211,7 +224,7 @@ def _execute(task: Task) -> RunResult:
     stderr_parts: list[str] = []
     rc = 0
     for cmd in (*task.pre_cmds, task.cmd):
-        rc, out, err = _run_one(cmd, task.description)
+        rc, out, err = _run_one(cmd, task.description, env=task.env)
         stdout_parts.append(out)
         stderr_parts.append(err)
         if rc != 0:
@@ -221,22 +234,28 @@ def _execute(task: Task) -> RunResult:
     )
 
 
-def _run_one(cmd: list[str], tag: str) -> tuple[int, str, str]:
+def _run_one(
+    cmd: list[str], tag: str, *, env: dict[str, str] | None = None
+) -> tuple[int, str, str]:
     if VERBOSE:
-        return _run_one_streamed(cmd, tag)
-    result = capture(cmd)
+        return _run_one_streamed(cmd, tag, env=env)
+    result = capture(cmd, env=env)
     return result.returncode, result.stdout, result.stderr
 
 
-def _run_one_streamed(cmd: list[str], tag: str) -> tuple[int, str, str]:
+def _run_one_streamed(
+    cmd: list[str], tag: str, *, env: dict[str, str] | None = None
+) -> tuple[int, str, str]:
     with _PRINT_LOCK:
         print(f"  -> [{tag}] {' '.join(cmd)}")
+    merged_env = {**os.environ, **env} if env else None
     with subprocess.Popen(
         cmd,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         text=True,
         bufsize=1,
+        env=merged_env,
     ) as proc:
         out_buf = io.StringIO()
         err_buf = io.StringIO()

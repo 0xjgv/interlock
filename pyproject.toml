@@ -37,6 +37,9 @@ ilock = "interlocks.cli:main"
 ils = "interlocks.cli:main"
 il = "interlocks.cli:main"
 
+[project.entry-points.pytest11]
+interlocks-acceptance-trace = "interlocks.acceptance_trace_plugin"
+
 [build-system]
 requires = ["uv_build>=0.11.7,<0.12.0"]
 build-backend = "uv_build"
@@ -191,6 +194,12 @@ reportAny = false
 [tool.coverage.run]
 source = ["interlocks"]
 branch = true
+# The trace plugin only executes inside the acceptance pytest subprocess
+# (spawned by ``interlocks acceptance``). Its tests use pytester which
+# spawns its own pytest invocation that does NOT feed back into this outer
+# coverage run, so coverage.py never observes the plugin executing here.
+# The plugin is exercised end-to-end by ``tests/test_acceptance_trace_plugin.py``.
+omit = ["interlocks/acceptance_trace_plugin.py"]
 
 [tool.coverage.report]
 fail_under = 80

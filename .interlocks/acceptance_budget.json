@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "baseline_at": "2026-04-28T10:31:12Z",
+  "baseline_at": "2026-04-28T12:58:41Z",
   "untraced": {
     "interlocks.acceptance_budget": [
       "Budget",
@@ -10,6 +10,7 @@
     ],
     "interlocks.acceptance_gate": [
       "GateOutcome",
+      "apply_budget_gate",
       "evaluate_acceptance_budget"
     ],
     "interlocks.acceptance_identity": [
@@ -256,6 +257,6 @@
       "use_color"
     ]
   },
-  "untraced_count": 157,
-  "signature": "sha256:dddaabb49250e1d1b1e983c527284484eb5d6684f89159104aa8c14fedf112b9"
+  "untraced_count": 158,
+  "signature": "sha256:4177d0fdc1660c9ac4d71e6615ed2522402f3fb4e019d8a1e0a79a955e50dd37"
 }
