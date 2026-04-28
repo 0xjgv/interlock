@@ -5,13 +5,11 @@ from __future__ import annotations
 import re
 from collections import Counter, defaultdict
 from dataclasses import dataclass
-from pathlib import Path
 from typing import TYPE_CHECKING, Literal
-
-from interlocks.runner import capture
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Sequence
+    from pathlib import Path
 
     from interlocks.config import InterlockConfig
 
@@ -21,9 +19,6 @@ _ID_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.:-]*")
 _REQ_COMMENT_RE = re.compile(r"#\s*req\s*:\s*(?P<body>.*)$", re.IGNORECASE)
 _REQ_TAG_RE = re.compile(r"(?:^|\s)@req-(?P<id>[A-Za-z0-9_.:-]+)")
 _SCENARIO_RE = re.compile(r"^\s*Scenario(?: Outline)?:\s*(?P<title>.+?)\s*$", re.IGNORECASE)
-_BEHAVIOR_SOURCE_RE = re.compile(
-    r"Behavior\(\s*(?:behavior_id\s*=\s*)?[\"'](?P<id>[A-Za-z0-9_.:-]+)[\"']"
-)
 
 
 @dataclass(frozen=True, order=True)
@@ -74,9 +69,6 @@ class BehaviorCoverageValidationResult:
     uncovered_behavior_ids: tuple[str, ...] = ()
     stale_scenario_behaviors: tuple[ScenarioBehavior, ...] = ()
     duplicate_behavior_ids: tuple[str, ...] = ()
-    newly_uncovered_behavior_ids: tuple[str, ...] = ()
-    base_ref: str | None = None
-    base_ref_unavailable: bool = False
 
     @property
     def is_complete(self) -> bool:
@@ -283,10 +275,6 @@ def parse_feature_behaviors(files: Iterable[Path]) -> FeatureBehaviorParse:
 def validate_behavior_coverage(
     behaviors: Iterable[Behavior],
     scenario_behaviors: Iterable[ScenarioBehavior],
-    *,
-    project_root: Path | None = None,
-    base_ref: str | None = None,
-    registry_path: Path | None = None,
 ) -> BehaviorCoverageValidationResult:
     coverage = BehaviorCoverageResult(tuple(sorted(behaviors)), tuple(sorted(scenario_behaviors)))
     live_ids = set(coverage.live_ids)
@@ -294,57 +282,29 @@ def validate_behavior_coverage(
     duplicate_ids = _duplicate_behavior_ids(coverage.behaviors)
     uncovered = tuple(sorted(live_ids - scenario_ids))
     stale = tuple(s for s in coverage.scenario_behaviors if s.behavior_id not in live_ids)
-    newly_uncovered: tuple[str, ...] = ()
-    base_unavailable = False
-    if base_ref is not None and project_root is not None:
-        base_ids = _behavior_ids_at_ref(
-            project_root,
-            base_ref,
-            registry_path or Path(__file__),
-        )
-        if base_ids is None:
-            base_unavailable = True
-        else:
-            newly_uncovered = tuple(sorted(set(uncovered) - base_ids))
     return BehaviorCoverageValidationResult(
         coverage=coverage,
         uncovered_behavior_ids=uncovered,
         stale_scenario_behaviors=stale,
         duplicate_behavior_ids=duplicate_ids,
-        newly_uncovered_behavior_ids=newly_uncovered,
-        base_ref=base_ref,
-        base_ref_unavailable=base_unavailable,
     )
 
 
 def behavior_coverage_for_config(
     cfg: InterlockConfig,
     files: Iterable[Path],
-    *,
-    base_ref: str | None = None,
 ) -> BehaviorCoverageValidationResult:
-    return behavior_coverage_for_parsed_features(
-        cfg,
-        parse_feature_behaviors(files),
-        base_ref=base_ref,
-    )
+    return behavior_coverage_for_parsed_features(cfg, parse_feature_behaviors(files))
 
 
 def behavior_coverage_for_parsed_features(
     cfg: InterlockConfig,
     parsed: FeatureBehaviorParse,
-    *,
-    base_ref: str | None = None,
 ) -> BehaviorCoverageValidationResult:
     registry = behavior_registry_for_config(cfg)
     if not registry.behaviors:
         return validate_behavior_coverage((), ())
-    return validate_behavior_coverage(
-        registry.behaviors,
-        parsed.scenario_behaviors,
-        project_root=cfg.project_root,
-        base_ref=base_ref,
-    )
+    return validate_behavior_coverage(registry.behaviors, parsed.scenario_behaviors)
 
 
 def format_behavior_coverage_failure(result: BehaviorCoverageValidationResult) -> str:
@@ -363,11 +323,6 @@ def format_behavior_coverage_failure(result: BehaviorCoverageValidationResult) -
             f"stale behavior ID: {scenario.behavior_id} at "
             f"{scenario.feature_path}:{scenario.scenario_line} — update marker or registry"
         )
-    if result.newly_uncovered_behavior_ids:
-        ids = ", ".join(result.newly_uncovered_behavior_ids)
-        lines.append(f"newly uncovered since {result.base_ref}: {ids}")
-    if result.base_ref_unavailable and result.base_ref is not None:
-        lines.append(f"base ref unavailable: {result.base_ref} — reported full current tree")
     return "\n".join(lines)
 
 
@@ -441,16 +396,3 @@ def _dedupe_preserve_order(values: Iterable[str]) -> list[str]:
 def _duplicate_behavior_ids(behaviors: Sequence[Behavior]) -> tuple[str, ...]:
     counts = Counter(behavior.behavior_id for behavior in behaviors)
     return tuple(sorted(behavior_id for behavior_id, count in counts.items() if count > 1))
-
-
-def _behavior_ids_at_ref(
-    project_root: Path, base_ref: str, registry_path: Path
-) -> set[str] | None:
-    try:
-        relpath = registry_path.resolve().relative_to(project_root.resolve())
-    except ValueError:
-        return None
-    result = capture(["git", "-C", str(project_root), "show", f"{base_ref}:{relpath}"])
-    if result.returncode != 0:
-        return None
-    return {match.group("id") for match in _BEHAVIOR_SOURCE_RE.finditer(result.stdout)}
