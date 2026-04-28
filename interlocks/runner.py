@@ -77,7 +77,7 @@ def python_m(module: str, *args: str) -> list[str]:
 
 
 def capture(
-    cmd: list[str], *, env: dict[str, str] | None = None
+    cmd: list[str], *, env: dict[str, str] | None = None, cwd: Path | None = None
 ) -> subprocess.CompletedProcess[str]:
     """Run ``cmd`` silently; return the CompletedProcess (never raises on non-zero rc).
 
@@ -87,11 +87,14 @@ def capture(
 
     When ``env`` is provided, it is layered over ``os.environ`` so tasks can set
     process-local signals (e.g. ``INTERLOCKS_TRACE``) without leaking into other
-    parallel tasks.
+    parallel tasks. ``cwd`` (when given) sets the subprocess working directory.
     """
     merged = {**os.environ, **env} if env else None
+    cwd_str = str(cwd) if cwd is not None else None
     # pragma: no mutate start
-    return subprocess.run(cmd, capture_output=True, text=True, check=False, env=merged)
+    return subprocess.run(
+        cmd, capture_output=True, text=True, check=False, env=merged, cwd=cwd_str
+    )
     # pragma: no mutate end
 
 

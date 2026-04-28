@@ -14,7 +14,7 @@ strips flags before lookup, so subcommands must be parsed locally.
 from __future__ import annotations
 
 import json
-import subprocess  # noqa: S404 - intentional: trace-freshness check shells `git log`.
+import subprocess  # noqa: S404 - intentional: trace-freshness check shells `git log` via runner.capture.
 import sys
 from dataclasses import replace
 from datetime import UTC, datetime
@@ -31,7 +31,7 @@ from interlocks.acceptance_status import AcceptanceStatus, classify_acceptance, 
 from interlocks.acceptance_symbols import iter_public_symbols
 from interlocks.config import InterlockConfig, invoker_prefix, load_config
 from interlocks.detect import detect_acceptance_runner
-from interlocks.runner import Task, fail_skip, ok, run, warn_skip
+from interlocks.runner import Task, capture, fail_skip, ok, run, warn_skip
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -296,12 +296,9 @@ def _git_last_commit_iso(project_root: Path, src_dir: Path) -> str | None:
     except ValueError:
         relative_src = str(src_dir)
     try:
-        result = subprocess.run(  # noqa: S603 - args are literal except `relative_src`, project-local.
-            ["git", "log", "-1", "--format=%cI", "--", relative_src],  # noqa: S607
-            cwd=str(project_root),
-            capture_output=True,
-            text=True,
-            check=False,
+        result = capture(
+            ["git", "log", "-1", "--format=%cI", "--", relative_src],
+            cwd=project_root,
         )
     except (OSError, subprocess.SubprocessError):
         return None

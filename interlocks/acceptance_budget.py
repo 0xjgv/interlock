@@ -13,11 +13,12 @@ from __future__ import annotations
 
 import hashlib
 import json
-import subprocess  # noqa: S404 - intentional: derive_repo_secret reads `git rev-list`.
+import subprocess  # noqa: S404 - intentional: derive_repo_secret reads `git rev-list` via runner.capture.
 from dataclasses import dataclass, replace
 from typing import TYPE_CHECKING, Literal
 
 from interlocks._atomic import atomic_write_bytes
+from interlocks.runner import capture
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
@@ -195,13 +196,7 @@ def derive_repo_secret(project_root: Path) -> str:
     """
     fallback = f"interlocks-acceptance-budget:{project_root.resolve()}"
     try:
-        result = subprocess.run(
-            ["git", "rev-list", "--max-parents=0", "HEAD"],  # noqa: S607
-            cwd=str(project_root),
-            capture_output=True,
-            text=True,
-            check=False,
-        )
+        result = capture(["git", "rev-list", "--max-parents=0", "HEAD"], cwd=project_root)
     except (OSError, subprocess.SubprocessError):
         return fallback
     if result.returncode != 0:
