@@ -16,6 +16,7 @@ from interlocks.acceptance_status import feature_files as _shared_feature_files
 from interlocks.acceptance_trace import format_trace_evidence, load_trace_evidence
 from interlocks.behavior_coverage import (
     BehaviorCoverageValidationResult,
+    FeatureBehaviorParse,
     behavior_coverage_for_parsed_features,
     behavior_registry_for_config,
     parse_feature_behaviors,
@@ -184,7 +185,6 @@ def _acceptance_item(cfg: InterlockConfig) -> EvaluationItem:
     feature_files = _feature_files(cfg)
     parsed_features = parse_feature_behaviors(feature_files)
     scenario_total, traced = traceable_totals_for_parsed_features(parsed_features)
-    ci_wired = cfg.acceptance_runner != "off" and bool(feature_files)
     detail = _acceptance_detail(cfg)
 
     if not feature_files:
@@ -205,8 +205,20 @@ def _acceptance_item(cfg: InterlockConfig) -> EvaluationItem:
             f"Add at least one Scenario under {cfg.features_dir_arg or 'features/'}.",
             closure=_ACCEPTANCE_TRACE,
         )
+    return _score_acceptance(cfg, parsed_features, scenario_total, traced, detail)
+
+
+def _score_acceptance(
+    cfg: InterlockConfig,
+    parsed_features: FeatureBehaviorParse,
+    scenario_total: int,
+    traced: int,
+    detail: str,
+) -> EvaluationItem:
     behavior_result = behavior_coverage_for_parsed_features(cfg, parsed_features)
     has_registry = bool(behavior_registry_for_config(cfg).behaviors)
+    ci_wired = cfg.acceptance_runner != "off"
+
     if has_registry and not behavior_result.is_complete:
         return _item(
             "acceptance",
