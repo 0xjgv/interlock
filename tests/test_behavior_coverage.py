@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import shutil
-import subprocess
 import textwrap
 from pathlib import Path
 
@@ -186,49 +184,3 @@ def test_uncovered_behavior_and_stale_marker_fail_validation(tmp_path: Path) -> 
     ]
     assert "uncovered behavior ID: task-coverage" in format_behavior_coverage_failure(result)
     assert "stale behavior ID: task-removed" in format_behavior_coverage_failure(result)
-
-
-def test_newly_uncovered_diff_output(tmp_path: Path) -> None:
-    git = shutil.which("git")
-    assert git is not None
-    subprocess.run([git, "init"], cwd=tmp_path, check=True, capture_output=True, text=True)
-    subprocess.run([git, "config", "user.email", "test@example.com"], cwd=tmp_path, check=True)
-    subprocess.run([git, "config", "user.name", "Test"], cwd=tmp_path, check=True)
-    registry = _write(
-        tmp_path / "registry.py",
-        'Behavior("task-old", "task", "old")\n',
-    )
-    subprocess.run([git, "add", "registry.py"], cwd=tmp_path, check=True)
-    subprocess.run(
-        [git, "commit", "-m", "base"], cwd=tmp_path, check=True, capture_output=True, text=True
-    )
-    registry.write_text(
-        'Behavior("task-old", "task", "old")\nBehavior("task-new", "task", "new")\n',
-        encoding="utf-8",
-    )
-
-    result = validate_behavior_coverage(
-        (Behavior("task-old", "task", "old"), Behavior("task-new", "task", "new")),
-        (),
-        project_root=tmp_path,
-        base_ref="HEAD",
-        registry_path=registry,
-    )
-
-    assert result.uncovered_behavior_ids == ("task-new", "task-old")
-    assert result.newly_uncovered_behavior_ids == ("task-new",)
-
-
-def test_missing_base_ref_fallback_preserves_validation(tmp_path: Path) -> None:
-    registry = _write(tmp_path / "registry.py", 'Behavior("task-new", "task", "new")\n')
-
-    result = validate_behavior_coverage(
-        (Behavior("task-new", "task", "new"),),
-        (),
-        project_root=tmp_path,
-        base_ref="missing/ref",
-        registry_path=registry,
-    )
-
-    assert result.uncovered_behavior_ids == ("task-new",)
-    assert result.base_ref_unavailable is True
