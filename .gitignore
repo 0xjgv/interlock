@@ -9,21 +9,22 @@ wheels/
 .venv
 
 # >>> interlocks managed >>>
-.interlocks/
 .import_linter_cache/
+mutmut-junit.xml
+.mutmut-cache/
 .pytest_cache/
+.interlocks/
 .ruff_cache/
 coverage.xml
 .coverage
 htmlcov/
+mutants/
 build/
 dist/
-mutants/
-.mutmut-cache/
-mutmut-junit.xml
 # <<< interlocks managed <<<
 
 # AI
+.claude/worktrees/
 .claude/commands/
 .claude/skills/
 .humanlayer/
