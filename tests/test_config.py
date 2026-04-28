@@ -154,6 +154,52 @@ def test_invalid_threshold_types_fall_back_to_defaults(
     assert cfg.crap_max == 30.0
 
 
+# ─────────────── require_acceptance flag ────────────────────────────
+
+
+def test_require_acceptance_default_false(tmp_project: Path) -> None:
+    cfg = load_config()
+    assert cfg.require_acceptance is False
+
+
+def test_require_acceptance_explicit_true(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    (tmp_path / "tests").mkdir()
+    _write(
+        tmp_path / "pyproject.toml",
+        """
+        [project]
+        name = "req-acc"
+        version = "0.0.0"
+
+        [tool.interlocks]
+        require_acceptance = true
+        """,
+    )
+    monkeypatch.chdir(tmp_path)
+    cfg = load_config()
+    assert cfg.require_acceptance is True
+
+
+def test_require_acceptance_invalid_falls_back(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    (tmp_path / "tests").mkdir()
+    _write(
+        tmp_path / "pyproject.toml",
+        """
+        [project]
+        name = "req-acc-bad"
+        version = "0.0.0"
+
+        [tool.interlocks]
+        require_acceptance = "yes"
+        """,
+    )
+    monkeypatch.chdir(tmp_path)
+    cfg = load_config()
+    assert cfg.require_acceptance is False
+
+
 # ─────────────── presets ───────────────────────────────────────────
 
 

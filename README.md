@@ -142,6 +142,7 @@ mutation_since_ref = "origin/main"
 acceptance_runner = "pytest-bdd"  # "pytest-bdd" | "behave" | "off"
 features_dir = "tests/features"
 run_acceptance_in_check = false
+require_acceptance = false        # true → fail stages when no Gherkin scenarios are present
 
 # Evaluation policy / cached evidence
 evaluate_dependency_freshness = false
@@ -236,7 +237,7 @@ Runner detection order:
 3. `behave` declared as a dependency but not `pytest-bdd`.
 4. Default to pytest-bdd.
 
-Acceptance always runs in `interlocks ci` when a features directory exists. It is opt-in for `interlocks check` via `run_acceptance_in_check = true`.
+Acceptance always runs in `interlocks ci` when a features directory exists. It is opt-in for `interlocks check` via `run_acceptance_in_check = true`. Set `require_acceptance = true` under `[tool.interlocks]` to make missing Gherkin coverage a `ci` failure (default: false). `check` enforces only when `run_acceptance_in_check = true`.
 
 ## Bundled Tool Defaults
 

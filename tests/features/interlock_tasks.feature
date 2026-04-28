@@ -44,3 +44,10 @@ Feature: interlocks task commands run against a real tmp project
     When I run "interlocks mutation" in that project
     Then the exit code is 0
     And the output contains "mutation"
+
+  # req: task-acceptance-required
+  Scenario: acceptance fails when require_acceptance is true and features dir is missing
+    Given a tmp project with layout "require-acceptance-no-features"
+    When I run "interlocks acceptance" in that project
+    Then the exit code is not 0
+    And the output contains "interlocks init-acceptance"

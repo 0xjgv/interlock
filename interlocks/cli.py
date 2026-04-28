@@ -90,6 +90,7 @@ _PRESET_REPORTED_KEYS: tuple[str, ...] = (
     "enforce_mutation",
     "mutation_ci_mode",
     "run_acceptance_in_check",
+    "require_acceptance",
 )
 
 

@@ -126,7 +126,7 @@ def test_task_acceptance_pytest_bdd_allows_rc_5(
     from interlocks.config import clear_cache
     from interlocks.tasks import acceptance as mod
 
-    (tmp_project / "tests" / "features").mkdir(parents=True)  # empty features dir
+    _scaffold_feature(tmp_project, _PASSING_FEATURE)
     monkeypatch.chdir(tmp_project)
     clear_cache()
     task = mod.task_acceptance()
@@ -158,9 +158,77 @@ def test_task_acceptance_behave_branch(tmp_project: Path, monkeypatch: pytest.Mo
     features = tmp_project / "features"
     (features / "steps").mkdir(parents=True)
     (features / "environment.py").write_text("", encoding="utf-8")
+    (features / "smoke.feature").write_text(_PASSING_FEATURE, encoding="utf-8")
     monkeypatch.chdir(tmp_project)
     clear_cache()
     task = mod.task_acceptance()
     assert task is not None
     assert task.description == "Acceptance (behave)"
     assert "behave" in task.cmd
+
+
+def test_cmd_acceptance_optional_missing_warns_and_exits_zero(
+    tmp_project: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Default policy: missing features/ → skip nudge, no SystemExit, exit 0."""
+    from interlocks.config import clear_cache
+    from interlocks.tasks import acceptance as mod
+
+    monkeypatch.chdir(tmp_project)
+    clear_cache()
+
+    called: list[object] = []
+    monkeypatch.setattr(mod, "run", called.append)
+
+    mod.cmd_acceptance()
+
+    out = capsys.readouterr().out
+    assert "no features/ directory" in out
+    assert "interlocks init-acceptance" in out
+    assert called == []
+
+
+def test_cmd_acceptance_required_missing_exits_one(
+    tmp_project: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """`require_acceptance = true` + missing features/ → SystemExit(1) with remediation."""
+    from interlocks.config import clear_cache
+    from interlocks.tasks import acceptance as mod
+
+    (tmp_project / "pyproject.toml").write_text(
+        _PYPROJECT + "\n[tool.interlocks]\nrequire_acceptance = true\n",
+        encoding="utf-8",
+    )
+    monkeypatch.chdir(tmp_project)
+    clear_cache()
+
+    with pytest.raises(SystemExit) as exc:
+        mod.cmd_acceptance()
+    assert exc.value.code == 1
+    assert "interlocks init-acceptance" in capsys.readouterr().out
+
+
+def test_cmd_acceptance_runnable_calls_run(
+    tmp_project: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """RUNNABLE classification → run(task_acceptance()) with the pytest-bdd description."""
+    from interlocks.config import clear_cache
+    from interlocks.tasks import acceptance as mod
+
+    _scaffold_feature(tmp_project, _PASSING_FEATURE)
+    monkeypatch.chdir(tmp_project)
+    clear_cache()
+
+    called: list[object] = []
+    monkeypatch.setattr(mod, "run", called.append)
+
+    mod.cmd_acceptance()
+
+    assert len(called) == 1
+    task = called[0]
+    assert hasattr(task, "description")
+    assert task.description == "Acceptance (pytest-bdd)"  # type: ignore[attr-defined]

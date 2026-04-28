@@ -237,6 +237,71 @@ def test_check_quiet_failure_emits_failed_verdict(tmp_project: Path) -> None:
     assert any(line.startswith("check: FAILED — ") for line in out.splitlines()), out
 
 
+# ─────────────── require_acceptance + run_acceptance_in_check ───────────────
+
+
+def _write_require_acceptance_check_project(
+    tmp_path: Path, *, run_acceptance_in_check: bool
+) -> None:
+    (tmp_path / "tests").mkdir()
+    (tmp_path / "pyproject.toml").write_text(
+        textwrap.dedent(
+            f"""\
+            [project]
+            name = "check-req-acc"
+            version = "0.0.0"
+
+            [tool.interlocks]
+            require_acceptance = true
+            run_acceptance_in_check = {"true" if run_acceptance_in_check else "false"}
+            """
+        ),
+        encoding="utf-8",
+    )
+
+
+def _capture_check_parallel_descriptions(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> list[str]:
+    from interlocks.stages import check as check_mod
+
+    captured: list[str] = []
+    monkeypatch.setattr(check_mod, "cmd_fix", lambda: None)
+    monkeypatch.setattr(check_mod, "cmd_format", lambda: None)
+    monkeypatch.setattr(
+        check_mod, "run_tasks", lambda tasks: captured.extend(t.description for t in tasks)
+    )
+    monkeypatch.setattr(check_mod, "run", lambda task, **_kw: None)
+    monkeypatch.setattr(check_mod, "cmd_crap_cached_advisory", lambda: None)
+    monkeypatch.setattr(check_mod, "print_suppressions_report", lambda: None)
+    monkeypatch.chdir(tmp_path)
+    check_mod.cmd_check()
+    return captured
+
+
+def test_check_does_not_fail_required_when_run_acceptance_in_check_false(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """`require_acceptance = true` is gated to ci unless `run_acceptance_in_check = true`."""
+    _write_require_acceptance_check_project(tmp_path, run_acceptance_in_check=False)
+
+    descriptions = _capture_check_parallel_descriptions(tmp_path, monkeypatch)
+
+    assert "Acceptance (required)" not in descriptions
+    assert "Acceptance (pytest-bdd)" not in descriptions
+
+
+def test_check_appends_required_failure_when_both_flags_true(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Both flags on + missing features/ → check enforces the required failure task."""
+    _write_require_acceptance_check_project(tmp_path, run_acceptance_in_check=True)
+
+    descriptions = _capture_check_parallel_descriptions(tmp_path, monkeypatch)
+
+    assert "Acceptance (required)" in descriptions
+
+
 def test_check_fails_when_tests_fail(tmp_project: Path) -> None:
     failing = textwrap.dedent(
         '''\

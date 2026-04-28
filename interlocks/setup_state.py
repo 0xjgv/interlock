@@ -10,6 +10,8 @@ from __future__ import annotations
 import json
 from typing import TYPE_CHECKING
 
+from interlocks.acceptance_status import AcceptanceStatus, classify_acceptance, feature_files
+
 if TYPE_CHECKING:
     from pathlib import Path
 
@@ -99,12 +101,10 @@ def ci_workflow_present(project_root: Path) -> bool:
 
 def acceptance_scaffold_present(cfg: InterlockConfig) -> bool:
     """True when acceptance is enabled and at least one ``*.feature`` file exists."""
-    if cfg.acceptance_runner == "off":
+    status = classify_acceptance(cfg)
+    if status is AcceptanceStatus.DISABLED:
         return False
-    features_dir = cfg.features_dir
-    if features_dir is None or not features_dir.is_dir():
-        return False
-    return any(features_dir.rglob("*.feature"))
+    return bool(feature_files(cfg.features_dir))
 
 
 def interlock_config_block_present(cfg: InterlockConfig) -> bool:

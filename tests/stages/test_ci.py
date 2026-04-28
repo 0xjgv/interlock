@@ -310,3 +310,91 @@ def test_ci_mode_dispatches_mutation(
         assert captured_kwargs == []
     else:
         assert captured_kwargs == [{"changed_only": expected_changed_only}]
+
+
+# ─────────────── require_acceptance integration in CI ─────────────────────
+
+
+def _write_require_acceptance_project(tmp_path: Path, *, body: str = "") -> None:
+    (tmp_path / "tests").mkdir()
+    (tmp_path / "pyproject.toml").write_text(
+        textwrap.dedent(
+            f"""\
+            [project]
+            name = "ci-req-acc"
+            version = "0.0.0"
+
+            [tool.interlocks]
+            require_acceptance = true
+            {body}
+            """
+        ),
+        encoding="utf-8",
+    )
+
+
+def _capture_ci_task_descriptions(monkeypatch: pytest.MonkeyPatch) -> list[str]:
+    from interlocks.stages import ci as ci_mod
+
+    captured: list[str] = []
+    monkeypatch.setattr(
+        ci_mod, "run_tasks", lambda tasks: captured.extend(t.description for t in tasks)
+    )
+    monkeypatch.setattr(ci_mod, "cmd_crap", lambda: None)
+    monkeypatch.setattr(ci_mod, "cmd_mutation", lambda **_kw: None)
+    ci_mod.cmd_ci()
+    return captured
+
+
+def test_ci_appends_required_failure_task_when_missing(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    _write_require_acceptance_project(tmp_path)
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(sys, "argv", ["interlocks", "ci"])
+
+    descriptions = _capture_ci_task_descriptions(monkeypatch)
+
+    assert "Acceptance (required)" in descriptions
+    assert "Acceptance (pytest-bdd)" not in descriptions
+
+
+def test_ci_runs_acceptance_when_runnable(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    _write_require_acceptance_project(tmp_path)
+    features = tmp_path / "tests" / "features"
+    features.mkdir()
+    (features / "smoke.feature").write_text(
+        "Feature: smoke\n  Scenario: it works\n    Given a thing\n",
+        encoding="utf-8",
+    )
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(sys, "argv", ["interlocks", "ci"])
+
+    descriptions = _capture_ci_task_descriptions(monkeypatch)
+
+    assert "Acceptance (pytest-bdd)" in descriptions
+    assert "Acceptance (required)" not in descriptions
+
+
+def test_ci_skips_acceptance_when_optional_missing(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Default policy (`require_acceptance = false`) + missing features/ → silent skip."""
+    (tmp_path / "tests").mkdir()
+    (tmp_path / "pyproject.toml").write_text(
+        textwrap.dedent(
+            """\
+            [project]
+            name = "ci-default-acc"
+            version = "0.0.0"
+            """
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(sys, "argv", ["interlocks", "ci"])
+
+    descriptions = _capture_ci_task_descriptions(monkeypatch)
+
+    assert "Acceptance (required)" not in descriptions
+    assert "Acceptance (pytest-bdd)" not in descriptions

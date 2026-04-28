@@ -56,6 +56,7 @@ _PRESET_DEFAULTS: dict[Preset, dict[str, object]] = {
         "enforce_mutation": False,
         "mutation_ci_mode": "off",
         "run_acceptance_in_check": False,
+        "require_acceptance": False,
     },
     "strict": {
         "coverage_min": 90,
@@ -71,6 +72,7 @@ _PRESET_DEFAULTS: dict[Preset, dict[str, object]] = {
         "enforce_mutation": True,
         "mutation_ci_mode": "full",
         "run_acceptance_in_check": True,
+        "require_acceptance": False,
     },
     "legacy": {
         "coverage_min": 0,
@@ -86,6 +88,7 @@ _PRESET_DEFAULTS: dict[Preset, dict[str, object]] = {
         "enforce_mutation": False,
         "mutation_ci_mode": "off",
         "run_acceptance_in_check": False,
+        "require_acceptance": False,
     },
 }
 
@@ -260,6 +263,13 @@ CONFIG_KEYS: tuple[ConfigKeyDoc, ...] = (
         "Acceptance",
     ),
     ConfigKeyDoc(
+        "require_acceptance",
+        "bool",
+        "false",
+        "Fail stages when no Gherkin acceptance scenarios are present",
+        "Acceptance",
+    ),
+    ConfigKeyDoc(
         "evaluate_dependency_freshness",
         "bool",
         "false",
@@ -426,6 +436,7 @@ class InterlockConfig:
     acceptance_runner: AcceptanceRunner | None = None
     features_dir: Path | None = None
     run_acceptance_in_check: bool = False
+    require_acceptance: bool = False
     evaluate_dependency_freshness: bool = False
     dependency_freshness_command: str = "interlocks deps-freshness"
     dependency_freshness_stage: str = "interlocks nightly"
@@ -554,7 +565,9 @@ def _load_config_cached(project_root: Path) -> InterlockConfig:
         project_root, pyproject, test_dir
     )
     test_invoker: TestInvoker = invoker_override or detect_test_invoker(project_root)
-    run_acceptance_in_check, mutation_ci_mode, mutation_since_ref = _resolve_flags(table)
+    run_acceptance_in_check, require_acceptance, mutation_ci_mode, mutation_since_ref = (
+        _resolve_flags(table)
+    )
     audit_severity_threshold = _audit_severity_threshold_override(table)
     dependency_freshness_command = _string_value(
         table, "dependency_freshness_command", InterlockConfig.dependency_freshness_command
@@ -587,6 +600,7 @@ def _load_config_cached(project_root: Path) -> InterlockConfig:
         acceptance_runner=acceptance_runner,
         features_dir=features_dir,
         run_acceptance_in_check=run_acceptance_in_check,
+        require_acceptance=require_acceptance,
         mutation_ci_mode=mutation_ci_mode,
         mutation_since_ref=mutation_since_ref,
         dependency_freshness_command=dependency_freshness_command,
@@ -611,18 +625,22 @@ def _string_value(table: dict[str, Any], key: str, default: str) -> str:
     return value if isinstance(value, str) else default
 
 
-def _resolve_flags(table: dict[str, Any]) -> tuple[bool, MutationCIMode, str]:
-    """Return ``(run_acceptance_in_check, mutation_ci_mode, mutation_since_ref)``."""
+def _resolve_flags(table: dict[str, Any]) -> tuple[bool, bool, MutationCIMode, str]:
+    """Resolve (run_acceptance_in_check, require_acceptance, mutation_ci_mode, mutation_since)."""
     run_override = _coerce_bool(table.get("run_acceptance_in_check"))
     run_acceptance_in_check = (
         run_override if run_override is not None else InterlockConfig.run_acceptance_in_check
+    )
+    require_override = _coerce_bool(table.get("require_acceptance"))
+    require_acceptance = (
+        require_override if require_override is not None else InterlockConfig.require_acceptance
     )
     mutation_ci_mode = _mutation_ci_mode_override(table) or InterlockConfig.mutation_ci_mode
     since_ref_raw = table.get("mutation_since_ref")
     mutation_since_ref = (
         since_ref_raw if isinstance(since_ref_raw, str) else InterlockConfig.mutation_since_ref
     )
-    return run_acceptance_in_check, mutation_ci_mode, mutation_since_ref
+    return run_acceptance_in_check, require_acceptance, mutation_ci_mode, mutation_since_ref
 
 
 _STRING_KEYS = (
@@ -693,6 +711,9 @@ def _explicit_config_overrides(table: dict[str, Any]) -> dict[str, Any]:
     value = _coerce_bool(table.get("run_acceptance_in_check"))
     if value is not None:
         overrides["run_acceptance_in_check"] = value
+    value = _coerce_bool(table.get("require_acceptance"))
+    if value is not None:
+        overrides["require_acceptance"] = value
     return overrides
 
 
@@ -710,6 +731,7 @@ def _complete_value_sources(
         "mutation_ci_mode",
         "mutation_since_ref",
         "run_acceptance_in_check",
+        "require_acceptance",
         "evaluate_dependency_freshness",
         "dependency_freshness_command",
         "dependency_freshness_stage",

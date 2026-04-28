@@ -6,6 +6,11 @@ import json
 import time
 
 from interlocks import ui
+from interlocks.acceptance_status import (
+    AcceptanceStatus,
+    classify_acceptance,
+    required_acceptance_failure_task,
+)
 from interlocks.config import InterlockConfig, MutationCIMode, load_config
 from interlocks.runner import run_tasks
 from interlocks.tasks.acceptance import task_acceptance
@@ -37,9 +42,21 @@ def cmd_ci() -> None:
         task_typecheck(),
         task_coverage(),
     ]
-    for optional in (task_arch(), task_acceptance()):
-        if optional is not None:
-            tasks.append(optional)
+    arch = task_arch()
+    if arch is not None:
+        tasks.append(arch)
+    acceptance_status = classify_acceptance(cfg)
+    if acceptance_status in {
+        AcceptanceStatus.MISSING_FEATURES_DIR,
+        AcceptanceStatus.MISSING_FEATURE_FILES,
+        AcceptanceStatus.MISSING_SCENARIOS,
+    }:
+        tasks.append(required_acceptance_failure_task(acceptance_status, cfg.features_dir))
+    elif acceptance_status is AcceptanceStatus.RUNNABLE:
+        acceptance = task_acceptance()
+        if acceptance is not None:
+            tasks.append(acceptance)
+    # DISABLED + OPTIONAL_MISSING → skip silently (preserve current CI behavior)
     exit_code = 0
     try:
         run_tasks(tasks)

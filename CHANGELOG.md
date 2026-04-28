@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `require_acceptance` config key — when set to `true`, `interlocks ci` (and
+  `check` with `run_acceptance_in_check = true`) fail when Gherkin acceptance
+  coverage is missing. Default `false` preserves existing behavior.
+
 ## [0.1.2] - 2026-04-27
 
 ### Added

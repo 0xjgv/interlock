@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Any, Literal
 
 from interlocks import ui
+from interlocks.acceptance_status import feature_files as _shared_feature_files
 from interlocks.config import InterlockConfig, coerce_float, load_optional_config
 from interlocks.defaults_path import has_project_config
 from interlocks.setup_state import (
@@ -134,10 +135,7 @@ def evaluate(cfg: InterlockConfig) -> EvaluationReport:
 
 
 def _feature_files(cfg: InterlockConfig) -> list[Path]:
-    features_dir = cfg.features_dir
-    if features_dir is None or not features_dir.is_dir():
-        return []
-    return sorted(features_dir.rglob("*.feature"))
+    return _shared_feature_files(cfg.features_dir)
 
 
 def _feature_scenarios_with_traceability(feature_file: Path) -> tuple[int, int]:

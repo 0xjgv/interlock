@@ -187,6 +187,25 @@ def _make_mutation(root: Path) -> None:
     _make_trivial_package(root, _MUTATION_PYPROJECT)
 
 
+_REQUIRE_ACCEPTANCE_PYPROJECT = textwrap.dedent(
+    """\
+    [project]
+    name = "req-acc-probe"
+    version = "0.0.1"
+    requires-python = ">=3.13"
+
+    [tool.interlocks]
+    require_acceptance = true
+    """
+)
+
+
+def _make_require_acceptance_no_features(root: Path) -> None:
+    """`require_acceptance = true` but no `tests/features/` — `acceptance` must fail."""
+    (root / "pyproject.toml").write_text(_REQUIRE_ACCEPTANCE_PYPROJECT, encoding="utf-8")
+    (root / "tests").mkdir()
+
+
 _LAYOUTS = {
     "audit": _make_audit,
     "deps": _make_deps,
@@ -194,6 +213,7 @@ _LAYOUTS = {
     "coverage": _make_coverage,
     "crap": _make_crap,
     "mutation": _make_mutation,
+    "require-acceptance-no-features": _make_require_acceptance_no_features,
 }
 
 

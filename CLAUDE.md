@@ -61,6 +61,7 @@ enforce_mutation = false       # mutation exits 1 when score < mutation_min_scor
 acceptance_runner = "pytest-bdd" # "pytest-bdd" | "behave" | "off" (auto if unset)
 features_dir = "tests/features"  # auto: tests/features/, features/, <test_dir>/features/
 run_acceptance_in_check = false  # true → run scenarios inside `interlocks check`
+require_acceptance = false       # true → fail stages when no Gherkin scenarios are present
 
 # Evaluation policy / cached evidence
 evaluate_dependency_freshness = false        # true → score explicit freshness policy
