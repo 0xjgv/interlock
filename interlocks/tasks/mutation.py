@@ -13,6 +13,7 @@ from interlocks.config import InterlockConfig, find_project_root, load_config
 from interlocks.git import changed_py_files_vs
 from interlocks.metrics import MutationSummary, coverage_line_rate, read_mutation_summary
 from interlocks.runner import (
+    _PRINT_LOCK,
     VERBOSE,
     arg_value,
     fail,
@@ -26,6 +27,9 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 _BRAILLE_SPINNER = frozenset("⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏⠟⠯⠷⠾⠽⠻")
+
+# Watchdog tick when refreshing in-place progress lines.
+_PULSE_SECONDS = 2.0
 
 
 def _mutant_in_changed(mutant_key: str, changed: set[str]) -> bool:
@@ -129,6 +133,24 @@ def _run_mutmut(mutmut: list[str], timeout: int) -> tuple[bool, Path]:
         if _is_keep_line(stripped):
             sys.stdout.write(line)
 
+    pulse_active = not VERBOSE and not quiet and sys.stdout.isatty()
+    pulse_stop = threading.Event()
+    last_emitted: str | None = None
+    pulse_max_width = 0
+
+    def _pulse() -> None:
+        nonlocal last_emitted, pulse_max_width
+        while not pulse_stop.wait(_PULSE_SECONDS):
+            current = last_progress
+            if current is None or current == last_emitted:
+                continue
+            text = f"  {current}"
+            with _PRINT_LOCK:
+                sys.stdout.write(f"\r{text}")
+                sys.stdout.flush()
+            last_emitted = current
+            pulse_max_width = max(pulse_max_width, len(text))
+
     completed = True
     with log_path.open("w", encoding="utf-8") as log:
         proc = subprocess.Popen(
@@ -143,20 +165,33 @@ def _run_mutmut(mutmut: list[str], timeout: int) -> tuple[bool, Path]:
             raise RuntimeError("subprocess stdout pipe missing")
         reader = threading.Thread(target=_drain, args=(proc.stdout, on_line), daemon=True)
         reader.start()
+        pulse_thread: threading.Thread | None = None
+        if pulse_active:
+            pulse_thread = threading.Thread(target=_pulse, daemon=True)
+            pulse_thread.start()
         try:
-            proc.wait(timeout=timeout)
-        except subprocess.TimeoutExpired:
-            proc.terminate()
             try:
-                proc.wait(timeout=10)
+                proc.wait(timeout=timeout)
             except subprocess.TimeoutExpired:
-                proc.kill()
-                proc.wait()
-            completed = False
-        # Close stdout to unblock the reader, then drain it before the log file
-        # exits scope — otherwise late writes hit a closed file.
-        proc.stdout.close()
-        reader.join(timeout=5)
+                proc.terminate()
+                try:
+                    proc.wait(timeout=10)
+                except subprocess.TimeoutExpired:
+                    proc.kill()
+                    proc.wait()
+                completed = False
+            # Close stdout to unblock the reader, then drain it before the log file
+            # exits scope — otherwise late writes hit a closed file.
+            proc.stdout.close()
+            reader.join(timeout=5)
+        finally:
+            pulse_stop.set()
+            if pulse_thread is not None:
+                pulse_thread.join(timeout=1)
+        if pulse_max_width:
+            with _PRINT_LOCK:
+                sys.stdout.write("\r" + " " * pulse_max_width + "\r")
+                sys.stdout.flush()
         if last_progress and not quiet and not VERBOSE:
             sys.stdout.write(f"  {last_progress}\n")
     return completed, log_path
