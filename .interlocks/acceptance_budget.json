@@ -108,7 +108,6 @@
       "RunResult",
       "Task",
       "arg_value",
-      "capture",
       "fail",
       "fail_skip",
       "generate_coverage_xml",
@@ -257,6 +256,6 @@
       "use_color"
     ]
   },
-  "untraced_count": 158,
-  "signature": "sha256:4177d0fdc1660c9ac4d71e6615ed2522402f3fb4e019d8a1e0a79a955e50dd37"
+  "untraced_count": 157,
+  "signature": "sha256:b338d925846f1ece487e2ab266df4b0338cadd6814e352b17b083f3932b02a4d"
 }

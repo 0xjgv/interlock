@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "computed_at": "2026-04-28T12:58:37Z",
+  "computed_at": "2026-04-28T16:07:03Z",
   "scenarios": {
     "75e0b75b25e305d4": {
       "feature": "/Users/juan/Code/interlocks/.claude/worktrees/acceptance-coverage-ratchet/tests/features/interlock_acceptance_budget.feature",
@@ -14,41 +14,49 @@
       "feature": "/Users/juan/Code/interlocks/.claude/worktrees/acceptance-coverage-ratchet/tests/features/interlock_acceptance_budget.feature",
       "title": "`interlocks acceptance baseline` refuses to overwrite without --force",
       "symbols": [
+        "interlocks._atomic:atomic_write_bytes",
         "interlocks.acceptance_budget:compute_signature",
         "interlocks.acceptance_budget:derive_repo_secret",
         "interlocks.acceptance_budget:write_budget",
-        "interlocks.acceptance_trace_plugin:pytest_bdd_after_scenario"
+        "interlocks.acceptance_trace_plugin:pytest_bdd_after_scenario",
+        "interlocks.runner:capture"
       ]
     },
     "156b322c632d5296": {
       "feature": "/Users/juan/Code/interlocks/.claude/worktrees/acceptance-coverage-ratchet/tests/features/interlock_acceptance_budget.feature",
       "title": "budget gate fails when a new untraced public symbol appears",
       "symbols": [
+        "interlocks._atomic:atomic_write_bytes",
         "interlocks.acceptance_budget:compute_signature",
         "interlocks.acceptance_budget:derive_repo_secret",
         "interlocks.acceptance_budget:write_budget",
-        "interlocks.acceptance_trace_plugin:pytest_bdd_after_scenario"
+        "interlocks.acceptance_trace_plugin:pytest_bdd_after_scenario",
+        "interlocks.runner:capture"
       ]
     },
     "7c9dc335f8ade7c4": {
       "feature": "/Users/juan/Code/interlocks/.claude/worktrees/acceptance-coverage-ratchet/tests/features/interlock_acceptance_budget.feature",
       "title": "budget gate shrinks budget when a previously-untraced symbol gains coverage",
       "symbols": [
+        "interlocks._atomic:atomic_write_bytes",
         "interlocks.acceptance_budget:compute_signature",
         "interlocks.acceptance_budget:derive_repo_secret",
         "interlocks.acceptance_budget:load_budget",
         "interlocks.acceptance_budget:write_budget",
-        "interlocks.acceptance_trace_plugin:pytest_bdd_after_scenario"
+        "interlocks.acceptance_trace_plugin:pytest_bdd_after_scenario",
+        "interlocks.runner:capture"
       ]
     },
     "5b7f074494caebe6": {
       "feature": "/Users/juan/Code/interlocks/.claude/worktrees/acceptance-coverage-ratchet/tests/features/interlock_acceptance_budget.feature",
       "title": "`interlocks acceptance status` prints the expected summary fields",
       "symbols": [
+        "interlocks._atomic:atomic_write_bytes",
         "interlocks.acceptance_budget:compute_signature",
         "interlocks.acceptance_budget:derive_repo_secret",
         "interlocks.acceptance_budget:write_budget",
-        "interlocks.acceptance_trace_plugin:pytest_bdd_after_scenario"
+        "interlocks.acceptance_trace_plugin:pytest_bdd_after_scenario",
+        "interlocks.runner:capture"
       ]
     },
     "98e2eac1fe727920": {
@@ -62,10 +70,12 @@
       "feature": "/Users/juan/Code/interlocks/.claude/worktrees/acceptance-coverage-ratchet/tests/features/interlock_acceptance_budget.feature",
       "title": "budget gate detects hand-edited (tampered) budget files",
       "symbols": [
+        "interlocks._atomic:atomic_write_bytes",
         "interlocks.acceptance_budget:compute_signature",
         "interlocks.acceptance_budget:derive_repo_secret",
         "interlocks.acceptance_budget:write_budget",
-        "interlocks.acceptance_trace_plugin:pytest_bdd_after_scenario"
+        "interlocks.acceptance_trace_plugin:pytest_bdd_after_scenario",
+        "interlocks.runner:capture"
       ]
     },
     "62233018162363bd": {
@@ -238,10 +248,12 @@
     }
   },
   "traced_symbols_index": [
+    "interlocks._atomic:atomic_write_bytes",
     "interlocks.acceptance_budget:compute_signature",
     "interlocks.acceptance_budget:derive_repo_secret",
     "interlocks.acceptance_budget:load_budget",
     "interlocks.acceptance_budget:write_budget",
-    "interlocks.acceptance_trace_plugin:pytest_bdd_after_scenario"
+    "interlocks.acceptance_trace_plugin:pytest_bdd_after_scenario",
+    "interlocks.runner:capture"
   ]
 }
