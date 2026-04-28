@@ -260,6 +260,7 @@ def test_strict_preset_resolves_blocking_gate_defaults(
     assert cfg.enforce_mutation is True
     assert cfg.mutation_ci_mode == "full"
     assert cfg.run_acceptance_in_check is True
+    assert cfg.require_acceptance is True
 
 
 def test_legacy_preset_resolves_ratcheting_defaults(

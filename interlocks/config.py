@@ -38,7 +38,7 @@ _SOURCE_PROJECT = "project-configured"
 _SUPPORTED_PRESETS: tuple[Preset, ...] = ("baseline", "strict", "legacy")
 _PRESET_DESCRIPTIONS: dict[Preset, str] = {
     "baseline": "adoption defaults; advisory CRAP; mutation off in CI; acceptance off in check",
-    "strict": "mature repo defaults; CRAP and mutation blocking; mutation full in CI",
+    "strict": "mature repo defaults; CRAP, mutation, and acceptance blocking; mutation full in CI",
     "legacy": "ratcheting defaults; permissive thresholds; advisory gates",
 }
 _PRESET_DEFAULTS: dict[Preset, dict[str, object]] = {
@@ -72,7 +72,7 @@ _PRESET_DEFAULTS: dict[Preset, dict[str, object]] = {
         "enforce_mutation": True,
         "mutation_ci_mode": "full",
         "run_acceptance_in_check": True,
-        "require_acceptance": False,
+        "require_acceptance": True,
     },
     "legacy": {
         "coverage_min": 0,

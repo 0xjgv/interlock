@@ -92,7 +92,7 @@ preset = "baseline"  # "baseline" | "strict" | "legacy"
 ```
 
 - `baseline` lowers first-adoption friction: advisory CRAP, relaxed thresholds, mutation off in CI, acceptance off in `check`.
-- `strict` is for mature repositories: stronger thresholds, blocking CRAP and mutation, mutation in CI, acceptance in `check`.
+- `strict` is for mature repositories: stronger thresholds, blocking CRAP and mutation, mutation in CI, acceptance in `check`, and required Gherkin coverage.
 - `legacy` is for ratcheting existing repositories: very permissive thresholds, advisory gates, mutation off in CI.
 
 `agent-safe` is intentionally unsupported. If configured, `interlocks doctor` reports it as an unsupported preset instead of resolving agent-specific defaults.
@@ -237,7 +237,7 @@ Runner detection order:
 3. `behave` declared as a dependency but not `pytest-bdd`.
 4. Default to pytest-bdd.
 
-Acceptance always runs in `interlocks ci` when a features directory exists. It is opt-in for `interlocks check` via `run_acceptance_in_check = true`. Set `require_acceptance = true` under `[tool.interlocks]` to make missing Gherkin coverage a `ci` failure (default: false). `check` enforces only when `run_acceptance_in_check = true`.
+Acceptance always runs in `interlocks ci` when a features directory exists. It is opt-in for `interlocks check` via `run_acceptance_in_check = true`. Set `require_acceptance = true` under `[tool.interlocks]` to make missing Gherkin coverage a stage failure; the `strict` preset enables this by default. `check` enforces only when `run_acceptance_in_check = true`.
 
 ## Bundled Tool Defaults
 
