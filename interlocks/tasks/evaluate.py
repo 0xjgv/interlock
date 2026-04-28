@@ -5,7 +5,6 @@ from __future__ import annotations
 import configparser
 import json
 import math
-import re
 import time
 from dataclasses import dataclass
 from functools import lru_cache
@@ -13,7 +12,7 @@ from pathlib import Path
 from typing import Any, Literal
 
 from interlocks import ui
-from interlocks.acceptance_status import feature_files as _shared_feature_files
+from interlocks.acceptance_symbols import iter_public_symbols
 from interlocks.config import InterlockConfig, coerce_float, load_optional_config
 from interlocks.defaults_path import has_project_config
 from interlocks.setup_state import (
@@ -25,8 +24,6 @@ from interlocks.setup_state import (
 Status = Literal["ok", "warn", "fail"]
 ClosureKind = Literal["task", "stage"]
 
-_REQ_MARKER = re.compile(r"(?:^|\s)@req-[A-Za-z0-9_.:-]+|#\s*req\s*:", re.IGNORECASE)
-_SCENARIO = re.compile(r"^Scenario(?: Outline)?:")
 _CONTRACT_TYPES = frozenset({"forbidden", "layers", "acyclic", "independence"})
 _ITEM_COUNT = 11
 _MAX_TOTAL = _ITEM_COUNT * 3
@@ -66,10 +63,15 @@ class CIEvidence:
 
 
 _EVALUATE = ClosurePath("interlocks evaluate", "task", "static config and metadata checklist")
-_ACCEPTANCE_TRACE = ClosurePath(
-    "interlocks evaluate",
+_ACCEPTANCE_BASELINE = ClosurePath(
+    "interlocks acceptance baseline",
     "task",
-    "traceability is feature metadata; interlocks acceptance only runs scenarios",
+    "seeds .interlocks/trace.json from a recorded acceptance run",
+)
+_ACCEPTANCE_RUN = ClosurePath(
+    "interlocks acceptance",
+    "task",
+    "executes Gherkin scenarios and refreshes the trace map",
 )
 _CI_STAGE = ClosurePath("interlocks ci", "stage", "PR-grade merge gate owner")
 _NIGHTLY_STAGE = ClosurePath("interlocks nightly", "stage", "long-running gate owner")
@@ -134,35 +136,6 @@ def evaluate(cfg: InterlockConfig) -> EvaluationReport:
     )
 
 
-def _feature_files(cfg: InterlockConfig) -> list[Path]:
-    return _shared_feature_files(cfg.features_dir)
-
-
-def _feature_scenarios_with_traceability(feature_file: Path) -> tuple[int, int]:
-    total = 0
-    traced = 0
-    pending_req = False
-
-    for line in feature_file.read_text(encoding="utf-8").splitlines():
-        stripped = line.strip()
-        has_req = _REQ_MARKER.search(stripped) is not None
-        if _SCENARIO.match(stripped):
-            total += 1
-            traced += int(pending_req or has_req)
-            pending_req = False
-            continue
-        if not stripped:
-            pending_req = False
-            continue
-        if has_req:
-            pending_req = True
-            continue
-        if stripped.startswith(("@", "#")):
-            continue
-        pending_req = False
-    return total, traced
-
-
 def _test_files(cfg: InterlockConfig) -> list[Path]:
     if not cfg.test_dir.is_dir():
         return []
@@ -201,49 +174,61 @@ def _importlinter_contracts(cfg: InterlockConfig) -> list[dict[str, object]]:
 
 
 def _acceptance_item(cfg: InterlockConfig) -> EvaluationItem:
-    feature_files = _feature_files(cfg)
-    scenario_total, traced = _traceability_totals(feature_files)
-    ci_wired = acceptance_scaffold_present(cfg)
-    detail = "feature files + traceability tags"
+    """Score acceptance via trace-map completeness (D10).
 
-    if not feature_files:
+    Spec scoring axis is 0-5; rescaled to the evaluator's existing 0-3 axis so
+    `_MAX_TOTAL = _ITEM_COUNT * 3` and the `_item()` status mapping
+    (`3 -> ok`, `0 -> fail`, else `warn`) stay consistent across every item:
+        full coverage + ci_wired -> 3   (spec 5)
+        non-empty proper subset  -> 2   (spec 3)
+        trace map exists, empty  -> 1   (spec 2)
+        no trace map (advisory)  -> 0   (spec 1)
+    """
+    if not _trace_map_exists(cfg):
         return _item(
             "acceptance",
             0,
-            detail,
-            "Run `interlocks init-acceptance` to scaffold feature files.",
-            closure=ClosurePath(
-                "interlocks init-acceptance", "task", "scaffolds acceptance feature files"
-            ),
+            f"No trace map at {cfg.relpath(cfg.acceptance_trace_path)}.",
+            "Run `interlocks acceptance baseline` to seed it.",
+            closure=_ACCEPTANCE_BASELINE,
         )
-    if scenario_total == 0:
+
+    ci_wired = acceptance_scaffold_present(cfg)
+    traced_count, public_count = _trace_map_completeness(cfg)
+    if public_count == 0:
+        return _item(
+            "acceptance",
+            3 if ci_wired else 1,
+            "No public symbols to trace.",
+            None
+            if ci_wired
+            else "Enable acceptance runner so `interlocks ci` can run feature scenarios.",
+            closure=None if ci_wired else _ACCEPTANCE_RUN,
+        )
+    if traced_count == public_count and ci_wired:
+        return _item(
+            "acceptance",
+            3,
+            f"Trace map covers all {public_count} public symbol(s). CI wired.",
+        )
+    if traced_count == 0:
         return _item(
             "acceptance",
             1,
-            detail,
-            f"Add at least one Scenario under {cfg.features_dir_arg or 'features/'}.",
-            closure=_ACCEPTANCE_TRACE,
+            "Trace map exists but no symbols recorded.",
+            "Run `interlocks acceptance` to populate the trace map.",
+            closure=_ACCEPTANCE_RUN,
         )
-    if traced == scenario_total and ci_wired:
-        return _item("acceptance", 3, detail)
-    if not ci_wired:
-        return _item(
-            "acceptance",
-            1,
-            detail,
-            "Enable acceptance runner so `interlocks ci` can run feature scenarios.",
-            closure=ClosurePath(
-                "interlocks acceptance", "task", "executes Gherkin scenarios outside evaluate"
-            ),
+    detail = f"{traced_count}/{public_count} public symbol(s) traced."
+    next_action = (
+        "Enable acceptance runner so `interlocks ci` can run feature scenarios."
+        if not ci_wired
+        else (
+            "Add scenarios for the remaining symbols or run "
+            "`interlocks acceptance baseline --force` after writing them."
         )
-    missing = scenario_total - traced
-    return _item(
-        "acceptance",
-        2 if traced else 1,
-        detail,
-        f"Add @req-* tags or # req: comments to {missing} acceptance scenario(s).",
-        closure=_ACCEPTANCE_TRACE,
     )
+    return _item("acceptance", 2, detail, next_action, closure=_ACCEPTANCE_RUN)
 
 
 def _unit_tests_item(cfg: InterlockConfig) -> EvaluationItem:
@@ -543,14 +528,34 @@ def _format_action(item: EvaluationItem) -> str:
     )
 
 
-def _traceability_totals(feature_files: list[Path]) -> tuple[int, int]:
-    total = 0
-    traced = 0
-    for feature_file in feature_files:
-        file_total, file_traced = _feature_scenarios_with_traceability(feature_file)
-        total += file_total
-        traced += file_traced
-    return total, traced
+def _trace_map_exists(cfg: InterlockConfig) -> bool:
+    """True when ``cfg.acceptance_trace_path`` points at a readable JSON file."""
+    return cfg.acceptance_trace_path.is_file()
+
+
+def _trace_map_completeness(cfg: InterlockConfig) -> tuple[int, int]:
+    """Return ``(traced_count, public_count)`` for the trace-map gate.
+
+    ``traced_count`` is the count of public symbols (per ``iter_public_symbols``)
+    that appear in ``traced_symbols_index``; ``public_count`` is the size of
+    the public surface itself. On missing or unreadable trace map, returns
+    ``(0, 0)``; the caller is expected to branch on ``_trace_map_exists`` first
+    to distinguish "no trace map" from "trace map present but empty".
+    """
+    public_keys = {f"{qualname}:{attr}" for qualname, attr in iter_public_symbols(cfg)}
+    public_count = len(public_keys)
+    try:
+        data = json.loads(cfg.acceptance_trace_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return 0, public_count
+    if not isinstance(data, dict):
+        return 0, public_count
+    traced_index = data.get("traced_symbols_index")
+    if not isinstance(traced_index, list):
+        return 0, public_count
+    traced_keys = {entry for entry in traced_index if isinstance(entry, str)}
+    traced_count = len(traced_keys & public_keys)
+    return traced_count, public_count
 
 
 def _read_ci_evidence(cfg: InterlockConfig) -> CIEvidence | None:
@@ -584,14 +589,18 @@ def _complexity_score_action(cfg: InterlockConfig) -> tuple[int, str | None]:
     has_crap = _positive_finite(cfg.crap_max)
     ci_wired = _complexity_ci_wired()
 
-    if has_thresholds and has_crap and cfg.enforce_crap and ci_wired:
-        return 3, None
     if not has_thresholds or not has_crap:
-        score = 1 if has_thresholds or has_crap else 0
-        return score, "Set positive complexity_max_* and crap_max thresholds."
+        return _complexity_thresholds_missing(has_thresholds, has_crap)
     if not cfg.enforce_crap:
         return 2 if ci_wired else 1, "Set enforce_crap = true."
-    return 2, "Wire task_complexity() and cmd_crap() into `interlocks ci`."
+    if not ci_wired:
+        return 2, "Wire task_complexity() and cmd_crap() into `interlocks ci`."
+    return 3, None
+
+
+def _complexity_thresholds_missing(has_thresholds: bool, has_crap: bool) -> tuple[int, str]:
+    score = 1 if has_thresholds or has_crap else 0
+    return score, "Set positive complexity_max_* and crap_max thresholds."
 
 
 def _complexity_ci_wired() -> bool:

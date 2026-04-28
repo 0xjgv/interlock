@@ -32,7 +32,7 @@ _PYPROJECT = textwrap.dedent(
     reportMissingTypeStubs = false
 
     [tool.coverage.run]
-    source = ["interlocks"]
+    source = ["tmppkg"]
     branch = true
 
     [tool.coverage.report]
@@ -41,7 +41,7 @@ _PYPROJECT = textwrap.dedent(
     """
 )
 
-_INIT_SRC = '"""Tmp project package."""\n\nfrom interlocks.core import add\n\n__all__ = ["add"]\n'
+_INIT_SRC = '"""Tmp project package."""\n\nfrom tmppkg.core import add\n\n__all__ = ["add"]\n'
 
 _SRC = textwrap.dedent(
     '''\
@@ -59,7 +59,7 @@ _TEST_SRC = textwrap.dedent(
 
     import unittest
 
-    from interlocks.core import add
+    from tmppkg.core import add
 
 
     class TestAdd(unittest.TestCase):
@@ -88,8 +88,8 @@ def tmp_project(make_tmp_project: TmpProjectFactory) -> Path:
     return make_tmp_project(
         pyproject=_PYPROJECT,
         src_files={
-            "interlocks/__init__.py": _INIT_SRC,
-            "interlocks/core.py": _SRC,
+            "tmppkg/__init__.py": _INIT_SRC,
+            "tmppkg/core.py": _SRC,
         },
         test_files={
             "__init__.py": "",
@@ -130,7 +130,7 @@ def test_ci_passes_on_clean_project(tmp_project: Path) -> None:
     ids=["format", "lint"],
 )
 def test_ci_fails_on_violation(tmp_project: Path, dirty_src: str, expected_fragment: str) -> None:
-    (tmp_project / "interlocks" / "core.py").write_text(dirty_src, encoding="utf-8")
+    (tmp_project / "tmppkg" / "core.py").write_text(dirty_src, encoding="utf-8")
 
     result = _run_ci(tmp_project)
 

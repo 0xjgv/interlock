@@ -13,13 +13,14 @@ import json
 import os
 import re
 import signal
-import tempfile
-from contextlib import contextmanager, suppress
-from pathlib import Path
+from contextlib import contextmanager
 from typing import TYPE_CHECKING
+
+from interlocks._atomic import atomic_write_bytes
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
+    from pathlib import Path
     from types import FrameType
 
 _MUTMUT_HEADER = re.compile(r"^\[tool\.mutmut\]\s*$", re.MULTILINE)
@@ -80,20 +81,6 @@ def _rewrite(text: str, new_paths: list[str]) -> str:
     return text[:body_start] + replaced + text[body_end:]
 
 
-def _atomic_write(path: Path, data: bytes) -> None:
-    directory = path.parent
-    fd, tmp_name = tempfile.mkstemp(prefix=path.name + ".", suffix=".tmp", dir=str(directory))
-    try:
-        with os.fdopen(fd, "wb") as f:
-            f.write(data)
-        with suppress(FileNotFoundError):
-            Path(tmp_name).chmod(path.stat().st_mode)
-        Path(tmp_name).replace(path)
-    except BaseException:
-        Path(tmp_name).unlink(missing_ok=True)
-        raise
-
-
 @contextmanager
 def patched_mutmut_paths(pyproject_path: Path, new_paths: list[str]) -> Iterator[None]:
     """Temporarily set ``[tool.mutmut].paths_to_mutate`` to ``new_paths``.
@@ -112,7 +99,7 @@ def patched_mutmut_paths(pyproject_path: Path, new_paths: list[str]) -> Iterator
         if restored:
             return
         restored = True
-        _atomic_write(pyproject_path, original)
+        atomic_write_bytes(pyproject_path, original)
 
     prev_sigterm = signal.getsignal(signal.SIGTERM)
     prev_sigint = signal.getsignal(signal.SIGINT)
@@ -136,7 +123,7 @@ def patched_mutmut_paths(pyproject_path: Path, new_paths: list[str]) -> Iterator
         pass
 
     atexit.register(_restore)
-    _atomic_write(pyproject_path, patched)
+    atomic_write_bytes(pyproject_path, patched)
     try:
         yield
     finally:

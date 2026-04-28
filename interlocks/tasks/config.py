@@ -94,6 +94,8 @@ _RESOLVED_RENDERERS: dict[str, Callable[[InterlockConfig], object]] = {
     ),
     "audit_severity_threshold": lambda cfg: cfg.audit_severity_threshold or "(none)",
     "ci_evidence_path": lambda cfg: cfg.relpath(cfg.ci_evidence_path),
+    "acceptance_trace_path": lambda cfg: cfg.relpath(cfg.acceptance_trace_path),
+    "acceptance_budget_path": lambda cfg: cfg.relpath(cfg.acceptance_budget_path),
 }
 
 

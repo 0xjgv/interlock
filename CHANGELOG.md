@@ -13,6 +13,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `check` with `run_acceptance_in_check = true`) fail when Gherkin acceptance
   coverage is missing. Default `false` preserves existing baseline/legacy behavior;
   strict preset enables it.
+- `interlocks acceptance baseline` + `interlocks acceptance status` subcommands.
+  `interlocks ci` now enforces a monotonic acceptance budget on the *set* of
+  untraced public symbols once `.interlocks/acceptance_budget.json` exists. The
+  budget is signed and tamper-detection is built-in (hand-edits that grow
+  `untraced` fail with `budget tampering detected`). `interlocks acceptance` also
+  writes `.interlocks/trace.json` (scenario → public-symbol map) via a bundled
+  pytest plugin; commit it for reproducibility.
+
+### Changed
+
+- `interlocks evaluate` traceability sub-score is now driven by
+  `.interlocks/trace.json` (trace-map completeness). The previous `# req:` /
+  `@req-*` marker scoring is removed. Markers remain in feature files as advisory
+  metadata; nothing parses them.
+
+### Removed
+
+- Superseded prior unmerged proposals `acceptance-budget-ratchet` and
+  `behavior-id-acceptance-gate`; both archived without applying.
 
 ## [0.1.2] - 2026-04-27
 

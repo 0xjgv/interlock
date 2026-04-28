@@ -239,6 +239,21 @@ Runner detection order:
 
 Acceptance always runs in `interlocks ci` when a features directory exists. It is opt-in for `interlocks check` via `run_acceptance_in_check = true`. Set `require_acceptance = true` under `[tool.interlocks]` to make missing Gherkin coverage a stage failure; the `strict` preset enables this by default. `check` enforces only when `run_acceptance_in_check = true`.
 
+### Acceptance Coverage Budget
+
+`require_acceptance` proves scenarios *exist*; the budget gate proves new public surface in `src_dir` has covering scenarios. It is monotonic on the *set* of untraced public symbols — adding a new public symbol without a covering scenario fails `interlocks ci`. Closing scenarios shrinks the budget automatically.
+
+How it works:
+
+- `interlocks acceptance` runs scenarios with a pytest plugin that records entered public symbols per scenario into `.interlocks/trace.json`. Commit this trace map for reproducibility.
+- `interlocks acceptance baseline` seeds `.interlocks/acceptance_budget.json` with the current set of untraced public symbols. Pass `--force` to overwrite an existing budget; the command refuses to run when the trace map is stale relative to `src_dir`.
+- `interlocks acceptance status` is a read-only summary: scenario count, traced symbol count, untraced count, delta vs. budget. Names the behave gap when applicable.
+- `interlocks ci` enforces the budget once `.interlocks/acceptance_budget.json` exists. New untraced symbols fail with up to 20 entries listed; the gate is silent when the set is unchanged. `interlocks check` enforces only when `run_acceptance_in_check = true`.
+
+Anti-evasion: the budget file is signed against a repo-derived secret. Hand-edits that grow `untraced` are detected and fail with `budget tampering detected`; re-baseline with `interlocks acceptance baseline --force` after writing scenarios.
+
+Behave gap: when `acceptance_runner = "behave"`, the trace plugin does not load and the budget gate is dark. `interlocks acceptance status` names this. pytest-bdd is the supported runner for the budget gate.
+
 ## Bundled Tool Defaults
 
 When the target project has no config for a given tool, interlocks injects its bundled default.

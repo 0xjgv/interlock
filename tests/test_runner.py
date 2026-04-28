@@ -266,3 +266,77 @@ def test_dump_failure_caps_long_stderr_in_run_tasks(
     assert "err-199" in out
     assert "err-100" not in out
     assert "lines omitted" in out
+
+
+def test_task_env_threaded_to_subprocess(capsys: pytest.CaptureFixture[str]) -> None:
+    """`Task.env` overrides land in the child process layered over `os.environ`.
+
+    Section 4.1 — acceptance task uses this hook to ship `INTERLOCKS_TRACE`
+    to the pytest child without leaking signals into other parallel
+    siblings via `os.environ` mutation. The probe exits 0 only when the
+    expected marker is visible in the child env; ``run_tasks`` swallows
+    stdout on success, so we read the rc-derived row status instead.
+    """
+    task = Task(
+        "EnvProbe",
+        [
+            sys.executable,
+            "-c",
+            "import os, sys; sys.exit(0 if os.environ.get('MARKER') == 'hello-from-task' else 7)",
+        ],
+        env={"MARKER": "hello-from-task"},
+    )
+    run_tasks([task])
+    out = _strip(capsys.readouterr().out)
+    assert _row_has(out, "envprobe", "ok")
+
+
+def test_task_env_does_not_leak_into_unrelated_tasks(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """A Task with `env=` must not pollute sibling tasks running in parallel.
+
+    Section 4 — Approach B's whole point over Approach A is no env-leak
+    across the `run_tasks` boundary. Sibling tasks see only their own
+    overrides plus the inherited `os.environ`.
+    """
+    polluter = Task(
+        "Polluter",
+        [
+            sys.executable,
+            "-c",
+            "import os, sys; sys.exit(0 if os.environ.get('MARKER') == 'set' else 1)",
+        ],
+        env={"MARKER": "set"},
+    )
+    observer = Task(
+        "Observer",
+        [
+            sys.executable,
+            "-c",
+            "import os, sys; sys.exit(0 if 'MARKER' not in os.environ else 1)",
+        ],
+    )
+    run_tasks([polluter, observer])
+    out = _strip(capsys.readouterr().out)
+    assert _row_has(out, "polluter", "ok")
+    assert _row_has(out, "observer", "ok")
+
+
+def test_task_env_works_under_verbose_streamed(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """`Task.env` is honored on the verbose streamed code path too."""
+    monkeypatch.setattr("interlocks.runner.VERBOSE", True)
+    task = Task(
+        "EnvVerbose",
+        [
+            sys.executable,
+            "-c",
+            "import os; print('MARKER=' + os.environ.get('MARKER', 'missing'))",
+        ],
+        env={"MARKER": "verbose-hello"},
+    )
+    run_tasks([task])
+    out = _strip(capsys.readouterr().out)
+    assert "MARKER=verbose-hello" in out
