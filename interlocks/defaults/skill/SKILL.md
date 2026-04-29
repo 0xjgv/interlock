@@ -24,7 +24,10 @@ Prefer `uvx --from interlocks il <cmd>` over project install. Zero-config, no ve
 uvx --from interlocks il check
 uvx --from interlocks il ci
 uvx --from interlocks il config
+uvx --from interlocks il setup --check
 ```
+
+Use `il setup` for local onboarding: hooks, agent docs, bundled Claude skill. Use `il setup --check` for read-only verification; use `il doctor` for full project readiness.
 
 `il` is the short alias (`interlocks`/`ilocks`/`ilock`/`ils`/`il` all work). Drop to bare `interlocks <cmd>` only when the project lists `interlocks` as a dev dep.
 
@@ -49,7 +52,7 @@ Branch on intent:
 - **Pre-commit** → automated via hook. If missing, run `uvx --from interlocks il pre-commit`.
 - **Pre-PR / verifying CI parity** → `uvx --from interlocks il ci`. Adds coverage, CRAP, audit, deps, arch.
 - **Investigating one failure** → run the single gate: `il lint`, `il typecheck`, `il coverage`, etc.
-- **Setting up a fresh repo** → `il doctor` → `il init` (greenfield only) → `il setup-hooks` → `il agents`.
+- **Setting up a fresh repo** → `il doctor` → `il init` (greenfield only) → `il setup` → `il setup --check`.
 - **Long-running gates** → `il nightly` (full coverage + mutation).
 
 ## Reading the output

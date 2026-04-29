@@ -12,16 +12,19 @@ from pathlib import Path
 
 from interlocks.defaults_path import path as defaults_path
 from interlocks.runner import ok, section, warn_skip
-
-_TARGETS: tuple[str, ...] = ("AGENTS.md", "CLAUDE.md")
+from interlocks.setup_state import AGENT_DOCS
 
 
 def cmd_agents() -> None:
     section("Register interlocks in agent docs")
+    install_agent_docs(Path.cwd())
+
+
+def install_agent_docs(project_root: Path | None = None) -> None:
     block = defaults_path("agents_block.md").read_text(encoding="utf-8")
-    cwd = Path.cwd()
-    for name in _TARGETS:
-        _ensure_block(cwd / name, block)
+    root = project_root or Path.cwd()
+    for name in AGENT_DOCS:
+        _ensure_block(root / name, block)
 
 
 def _ensure_block(path: Path, block: str) -> None:

@@ -43,6 +43,7 @@ from interlocks.tasks.init import cmd_init
 from interlocks.tasks.init_acceptance import cmd_init_acceptance
 from interlocks.tasks.lint import cmd_lint
 from interlocks.tasks.mutation import cmd_mutation
+from interlocks.tasks.setup import cmd_setup
 from interlocks.tasks.setup_skill import cmd_setup_skill
 from interlocks.tasks.stats import cmd_trust
 from interlocks.tasks.test import cmd_test
@@ -307,6 +308,7 @@ TASK_GROUPS: list[tuple[str, dict[str, tuple[Callable[..., None], str]]]] = [
                 "Show all [tool.interlocks] keys with defaults and current values",
             ),
             "doctor": (cmd_doctor, "Preflight diagnostic: paths, tools, venv"),
+            "setup": (cmd_setup, "Install/check hooks, agent docs, and Claude skill"),
             "init": (cmd_init, "Scaffold a greenfield pyproject.toml + tests/ in CWD"),
             "agents": (
                 cmd_agents,

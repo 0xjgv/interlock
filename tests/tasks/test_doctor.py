@@ -244,7 +244,9 @@ def test_doctor_flags_missing_hooks_under_existing_git_or_claude(
     (tmp_path / ".claude").mkdir()
 
     out = _run_cmd_doctor(tmp_path, monkeypatch, capsys)
-    assert "Run `interlocks setup-hooks`" in out
+    assert "Run `interlocks setup`" in out
+    assert "[agent docs]" in out
+    assert "[claude skill]" in out
 
 
 def test_doctor_detects_ci_workflow(
@@ -308,6 +310,14 @@ def test_doctor_ready_state_when_all_artifacts_wired(
     features = tmp_path / "tests" / "features"
     features.mkdir(parents=True)
     (features / "probe.feature").write_text("Feature: probe\n", encoding="utf-8")
+    (tmp_path / "AGENTS.md").write_text("Use interlocks check.\n", encoding="utf-8")
+    (tmp_path / "CLAUDE.md").write_text("Use interlocks check.\n", encoding="utf-8")
+
+    from interlocks.defaults_path import path as defaults_path
+
+    skill = tmp_path / ".claude" / "skills" / "interlocks" / "SKILL.md"
+    skill.parent.mkdir(parents=True)
+    skill.write_bytes(defaults_path("skill/SKILL.md").read_bytes())
 
     out = _run_cmd_doctor(tmp_path, monkeypatch, capsys)
     assert "status                 ready" in out

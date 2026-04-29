@@ -12,7 +12,8 @@ Tests live in `tests/`, with focused task and stage coverage under `tests/tasks/
 - `uv run interlocks ci` - read-only CI parity suite: format-check, lint, complexity, deps, typecheck, coverage, arch, acceptance, audit (warn-skip on network), CRAP, optional mutation per `mutation_ci_mode`. Writes `.interlocks/ci.json` timing evidence.
 - `uv run interlocks nightly` - long-running gates: coverage, audit, mutation (blocking on `mutation_min_score`).
 - `uv run interlocks pre-commit` - staged-file checks used by the git hook.
-- `uv run interlocks setup-hooks` - installs the repository git hooks.
+- `uv run interlocks setup` - installs or refreshes local hooks, agent docs, and bundled Claude skill.
+- `uv run interlocks setup --check` - verifies local integrations without writing.
 - `uv run interlocks doctor` - readiness diagnostic; static inspection only.
 - `uv run interlocks evaluate` - read-only 8-check quality scorecard (0–24).
 - `uv run interlocks help` / `interlocks config` / `interlocks presets` - resolved thresholds, full config key list, preset selector.

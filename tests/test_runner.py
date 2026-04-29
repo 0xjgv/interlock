@@ -83,7 +83,7 @@ def test_run_tasks_streams_in_completion_order(
 ) -> None:
     """Fast task should emit its row before the slow task's row."""
     marker = tmp_path / "fast_done"
-    slow_code = _WAIT_FOR_MARKER.format(path=str(marker))
+    slow_code = _WAIT_FOR_MARKER.format(path=str(marker)) + "time.sleep(0.05)\n"
     fast_code = _SIGNAL_MARKER.format(path=str(marker))
     tasks = [
         _python_task("Slow", slow_code),

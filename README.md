@@ -5,6 +5,7 @@ Adopt one Python quality loop across a repository or an organization:
 ```bash
 pipx install interlocks       # or: uv tool install interlocks
 cd your-python-project
+interlocks setup                # local hooks, agent docs, Claude skill
 interlocks doctor               # readiness, detected config, blockers, next steps
 interlocks check                # local edit loop
 interlocks ci                   # CI parity
@@ -24,18 +25,27 @@ uv tool install interlocks
 
 Every underlying tool ships with the CLI. No per-project dev dependency list is required just to try the standard loop.
 
-### 2. Diagnose Readiness
+### 2. Install Local Integrations
 
 ```bash
 cd your-python-project
+interlocks setup
+interlocks setup --check
+```
+
+`setup` idempotently installs local feedback loops: git pre-commit hook, Claude Code Stop hook, `AGENTS.md` / `CLAUDE.md` interlocks block, and bundled Claude skill at `.claude/skills/interlocks/SKILL.md`. `setup --check` is read-only and exits non-zero when any local integration is missing or stale.
+
+### 3. Diagnose Readiness
+
+```bash
 interlocks doctor
 ```
 
-`doctor` is the safe first command. It performs static local inspection only: nearest `pyproject.toml`, detected source/test/features paths, runner, invoker, active preset, resolved gate values, PATH visibility, blockers, warnings, and shortest next steps. It does not run tests, typecheck, coverage, mutation, dependency audit, or network checks.
+`doctor` performs static local inspection only: nearest `pyproject.toml`, detected source/test/features paths, runner, invoker, active preset, resolved gate values, PATH visibility, blockers, warnings, local integration state, and shortest next steps. It does not run tests, typecheck, coverage, mutation, dependency audit, or network checks.
 
 If the repository is ready, `doctor` points you at `interlocks check` and CI wiring. If it is blocked, it prioritizes the minimum setup fixes first, such as `interlocks init`, missing paths, unreadable config, unsupported presets, or missing runnable tool resolution.
 
-### 3. Run Local Checks
+### 4. Run Local Checks
 
 ```bash
 interlocks check
@@ -43,7 +53,7 @@ interlocks check
 
 `check` runs the local edit loop: fix, format, typecheck, tests, optional acceptance tests, advisory dependency hygiene, cached CRAP feedback when fresh coverage exists, and the suppressions report. It is the command to run after edits before pushing.
 
-### 4. Wire CI
+### 5. Wire CI
 
 The direct CI command is:
 
@@ -175,10 +185,11 @@ Run `interlocks presets set baseline` to set a project preset from the CLI.
 | `interlocks ci` | Pull requests and protected branches | format-check, lint, complexity, deps, typecheck, coverage, arch, acceptance -> CRAP -> optional mutation (per `mutation_ci_mode`); writes `.interlocks/ci.json` timing evidence |
 | `interlocks nightly` | Scheduled jobs | coverage -> audit (warn-skips on transient pip-audit failures) -> mutation, always blocking on `mutation_min_score` |
 | `interlocks post-edit` | Editor/agent hook interface | advisory ruff fix + format on changed Python files |
-| `interlocks setup-hooks` | Convenience installer | writes hooks that call `interlocks pre-commit` and `interlocks post-edit` |
+| `interlocks setup` | Local onboarding | installs/checks hooks, agent docs, and Claude skill |
+| `interlocks setup-hooks` | Narrow hook installer | writes hooks that call `interlocks pre-commit` and `interlocks post-edit` |
 | `interlocks clean` | Local cleanup | removes caches, build artifacts, coverage output, mutation state, and `__pycache__/` |
 
-`interlocks pre-commit` and `interlocks post-edit` are the stable hook interfaces. `interlocks setup-hooks` is a convenience command that installs a git pre-commit hook and merges a Claude Code Stop hook; rerunning it is idempotent.
+`interlocks pre-commit` and `interlocks post-edit` are the stable hook interfaces. `interlocks setup` is the default local onboarding command. `interlocks setup --check` verifies hooks, agent docs, and the Claude skill without writing. Narrow commands (`setup-hooks`, `agents`, `setup-skill`) remain available as escape hatches.
 
 `mutation_ci_mode` picks how `interlocks ci` invokes mutmut:
 
@@ -222,6 +233,7 @@ Utility:
 
 - `config`: list every `[tool.interlocks]` key with type, default, description, and current resolved value (read-only). Single source of truth for agents driving setup.
 - `doctor`: adoption diagnostic. Exempt from the `pyproject.toml` preflight gate.
+- `setup`: install hooks, agent docs, and Claude skill. `setup --check` verifies them read-only.
 - `help`: command list plus detected paths, active preset, and thresholds.
 - `presets`: show preset options, current values, copyable config, and set a project preset with `interlocks presets set <preset>`.
 - `version`: print the installed interlocks version.
@@ -267,6 +279,8 @@ When the target project has no config for a given tool, interlocks injects its b
 | `bdd_example.feature` | `init-acceptance` | none | direct copy |
 | `bdd_test_example.py` | `init-acceptance` | none | direct copy |
 | `bdd_conftest.py` | `init-acceptance` | none | direct copy |
+| `agents_block.md` | `setup`, `agents` | existing `interlocks` doc reference | appended/created |
+| `skill/SKILL.md` | `setup`, `setup-skill` | byte match at `.claude/skills/interlocks/SKILL.md` | direct copy |
 | `scaffold_pyproject.toml` | `init` | none | read plus `{project_name}` substitution |
 | `scaffold_test_example.py` | `init` | none | direct copy |
 
@@ -281,18 +295,23 @@ interlocks pre-commit
 interlocks post-edit
 ```
 
-Use the convenience installer when you want interlocks to write the common hooks:
+Use the default local onboarding command when you want interlocks to write common integrations:
 
 ```bash
-interlocks setup-hooks
+interlocks setup
+interlocks setup --check
 ```
 
 It installs:
 
 - `.git/hooks/pre-commit`: runs `interlocks pre-commit`. Skip with `git commit --no-verify` when necessary.
 - `.claude/settings.json` Stop hook: runs `interlocks post-edit` after Claude Code sessions and preserves existing Stop hooks.
+- `AGENTS.md` / `CLAUDE.md`: appends the interlocks guidance block when no interlocks reference exists.
+- `.claude/skills/interlocks/SKILL.md`: installs the bundled Claude skill.
 
-Both reference the Python that installed interlocks, so reinstall hooks after switching install locations or interpreters.
+`interlocks setup --check` verifies those same artifacts without writing. Use `interlocks doctor` for full project readiness. Narrow commands (`setup-hooks`, `agents`, `setup-skill`) remain available when you want one integration only.
+
+Hooks reference the Python that installed interlocks, so rerun `interlocks setup` after switching install locations or interpreters.
 
 ## Inspiration
 

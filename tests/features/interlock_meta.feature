@@ -1,7 +1,7 @@
 @meta
 Feature: interlocks meta commands
   As a user adopting interlocks in a fresh project
-  I want the meta commands (acceptance, init-acceptance, setup-hooks) to behave safely
+  I want the meta commands (acceptance, init-acceptance, setup-hooks, setup-skill) to behave safely
   So that bootstrapping a repo is predictable end-to-end
 
   @smoke

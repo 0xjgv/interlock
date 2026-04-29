@@ -1,12 +1,12 @@
 """Tests for interlocks.stages.setup_hooks."""
 
 import json
+import os
 import tempfile
 import unittest
 from pathlib import Path
-from unittest.mock import patch
 
-from interlocks.stages.setup_hooks import _ensure_stop_hook
+from interlocks.hook_setup import _ensure_stop_hook
 
 
 class TestSetupHooks(unittest.TestCase):
@@ -153,8 +153,12 @@ class TestSetupHooks(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
-            with patch("interlocks.stages.setup_hooks.Path", lambda value: root / value):
+            previous_cwd = Path.cwd()
+            os.chdir(root)
+            try:
                 cmd_hooks()
+            finally:
+                os.chdir(previous_cwd)
 
             pre_commit = (root / ".git/hooks/pre-commit").read_text(encoding="utf-8")
             settings = json.loads((root / ".claude/settings.json").read_text(encoding="utf-8"))

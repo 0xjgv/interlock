@@ -8,12 +8,15 @@ so detection and installation stay in lockstep.
 from __future__ import annotations
 
 import json
+from dataclasses import dataclass
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 from interlocks.acceptance_status import AcceptanceStatus, classify_acceptance, feature_files
+from interlocks.defaults_path import path as defaults_path
 
 if TYPE_CHECKING:
-    from pathlib import Path
+    from collections.abc import Callable
 
     from interlocks.config import InterlockConfig
 
@@ -23,6 +26,30 @@ CI_ACTION_NEEDLES: tuple[str, ...] = ("0xjgv/interlocks@", "interlocks/interlock
 
 _CI_LOCAL_NEEDLE = "interlocks ci"
 _CI_WORKFLOW_NEEDLES: tuple[str, ...] = (_CI_LOCAL_NEEDLE, *CI_ACTION_NEEDLES)
+AGENT_DOCS: tuple[str, ...] = ("AGENTS.md", "CLAUDE.md")
+SKILL_DEST = Path(".claude/skills/interlocks/SKILL.md")
+
+
+@dataclass(frozen=True)
+class SetupArtifact:
+    label: str
+    target: str
+    detector: Callable[[Path], bool]
+    installed_detail: str = "installed"
+
+
+@dataclass(frozen=True)
+class SetupArtifactStatus:
+    artifact: SetupArtifact
+    installed: bool
+
+    @property
+    def label(self) -> str:
+        return self.artifact.label
+
+    @property
+    def target(self) -> str:
+        return self.artifact.target
 
 
 def iter_workflow_bodies(project_root: Path) -> list[str]:
@@ -97,6 +124,42 @@ def ci_workflow_present(project_root: Path) -> bool:
         any(needle in body for needle in _CI_WORKFLOW_NEEDLES)
         for body in iter_workflow_bodies(project_root)
     )
+
+
+def agent_docs_registered(project_root: Path) -> bool:
+    """True when both agent docs exist and already mention ``interlocks``."""
+    return all(_doc_references_interlocks(project_root / name) for name in AGENT_DOCS)
+
+
+def _doc_references_interlocks(path: Path) -> bool:
+    try:
+        return "interlocks" in path.read_text(encoding="utf-8").lower()
+    except OSError:
+        return False
+
+
+def skill_installed(project_root: Path) -> bool:
+    """True when the local Claude skill byte-matches the bundled SKILL.md."""
+    skill_path = project_root / SKILL_DEST
+    try:
+        return skill_path.read_bytes() == defaults_path("skill/SKILL.md").read_bytes()
+    except OSError:
+        return False
+
+
+SETUP_ARTIFACTS: tuple[SetupArtifact, ...] = (
+    SetupArtifact("git hook", ".git/hooks/pre-commit", pre_commit_hook_installed),
+    SetupArtifact("claude hook", ".claude/settings.json → Stop", claude_stop_hook_installed),
+    SetupArtifact("agent docs", "AGENTS.md / CLAUDE.md", agent_docs_registered, "registered"),
+    SetupArtifact("claude skill", str(SKILL_DEST), skill_installed),
+)
+
+
+def setup_artifact_statuses(project_root: Path) -> list[SetupArtifactStatus]:
+    return [
+        SetupArtifactStatus(artifact, artifact.detector(project_root))
+        for artifact in SETUP_ARTIFACTS
+    ]
 
 
 def acceptance_scaffold_present(cfg: InterlockConfig) -> bool:

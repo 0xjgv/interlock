@@ -20,9 +20,8 @@ from interlocks.detect import expected_target_interpreter
 from interlocks.setup_state import (
     acceptance_scaffold_present,
     ci_workflow_present,
-    claude_stop_hook_installed,
     interlock_config_block_present,
-    pre_commit_hook_installed,
+    setup_artifact_statuses,
 )
 
 if TYPE_CHECKING:
@@ -173,8 +172,7 @@ def _collect_setup_rows(
         _src_dir_row(cfg),
         _test_dir_row(cfg),
         _venv_row(cfg),
-        _git_hook_row(project_root),
-        _claude_hook_row(project_root),
+        *_local_integration_rows(project_root),
         _ci_workflow_row(project_root),
         _acceptance_row(cfg),
     ])
@@ -221,24 +219,28 @@ def _venv_row(cfg: InterlockConfig) -> CheckRow:
     return CheckRow("venv", target, "missing", "warn")
 
 
-def _git_hook_row(project_root: Path) -> CheckRow:
-    target = ".git/hooks/pre-commit"
-    if not (project_root / ".git").exists():
-        return CheckRow("git hook", target, _INERT_DETAIL, "warn")
-    if pre_commit_hook_installed(project_root):
-        return CheckRow("git hook", target, "installed", "ok")
-    return CheckRow("git hook", target, "run `interlocks setup-hooks`", "warn")
+def _local_integration_rows(project_root: Path) -> list[CheckRow]:
+    rows: list[CheckRow] = []
+    for status in setup_artifact_statuses(project_root):
+        if _is_inert_setup_artifact(project_root, status.label):
+            rows.append(CheckRow(status.label, status.target, _INERT_DETAIL, "warn"))
+            continue
+        if status.installed:
+            rows.append(
+                CheckRow(status.label, status.target, status.artifact.installed_detail, "ok")
+            )
+            continue
+        rows.append(CheckRow(status.label, status.target, "run `interlocks setup`", "warn"))
+    return rows
 
 
-def _claude_hook_row(project_root: Path) -> CheckRow:
-    target = ".claude/settings.json → Stop"
-    claude_dir = project_root / ".claude"
-    settings = claude_dir / "settings.json"
-    if not claude_dir.is_dir() and not settings.is_file():
-        return CheckRow("claude hook", target, _INERT_DETAIL, "warn")
-    if claude_stop_hook_installed(project_root):
-        return CheckRow("claude hook", target, "installed", "ok")
-    return CheckRow("claude hook", target, "run `interlocks setup-hooks`", "warn")
+def _is_inert_setup_artifact(project_root: Path, label: str) -> bool:
+    if label == "git hook":
+        return not (project_root / ".git").exists()
+    if label == "claude hook":
+        claude_dir = project_root / ".claude"
+        return not claude_dir.is_dir() and not (claude_dir / "settings.json").is_file()
+    return False
 
 
 def _ci_workflow_row(project_root: Path) -> CheckRow:
@@ -271,7 +273,10 @@ def _next_steps(rows: list[CheckRow], is_blocked: bool) -> list[str]:
     steps = [
         step
         for labels, step in (
-            (("git hook", "claude hook"), "Run `interlocks setup-hooks` to wire feedback loops."),
+            (
+                ("git hook", "claude hook", "agent docs", "claude skill"),
+                "Run `interlocks setup` to install hooks, agent docs, and the Claude skill.",
+            ),
             (
                 ("interlocks cfg", "preset"),
                 "Run `interlocks presets` to pick a preset (baseline, strict, legacy).",
