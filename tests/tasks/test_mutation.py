@@ -441,6 +441,8 @@ def test_cmd_mutation_full_run_uses_run_subcommand(
 
     assert captured_argv, "expected _run_mutmut to be called"
     assert captured_argv[0][-1] == "run"
+
+
 # ─────────────── live progress pulse (`_run_mutmut`) ───────────────────
 
 
