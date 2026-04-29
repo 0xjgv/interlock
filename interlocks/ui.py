@@ -19,9 +19,9 @@ if TYPE_CHECKING:
 
 State = Literal["ok", "fail", "warn"]
 
-LABEL_WIDTH = 14
-_WIDTH_MIN = 60
-_WIDTH_MAX = 100
+LABEL_WIDTH = 12
+_WIDTH_MIN = 50
+_WIDTH_MAX = 65
 
 _GREEN = "\033[32m"
 _RED = "\033[31m"
@@ -46,7 +46,7 @@ def is_quiet() -> bool:
 
 
 def _term_width() -> int:
-    """Terminal width clamped to [60, 100]."""
+    """Terminal width clamped to [50, 65]."""
     cols = shutil.get_terminal_size(fallback=(80, 24)).columns
     return max(_WIDTH_MIN, min(_WIDTH_MAX, cols))
 
@@ -58,7 +58,7 @@ def _c(code: str, text: str) -> str:
 
 
 def banner(cfg: InterlockConfig) -> None:
-    """One-line stage banner: `interlocks vX  ·  preset=Y  ·  runner=Z  ·  invoker=W`."""
+    """One-line stage banner: `interlocks vX · preset=Y · runner=Z · invoker=W`."""
     if is_quiet():
         return
     preset = cfg.preset or "none"
@@ -68,7 +68,7 @@ def banner(cfg: InterlockConfig) -> None:
         f"runner={cfg.test_runner}",
         f"invoker={cfg.test_invoker}",
     ]
-    print(_c(_DIM, "  ·  ".join(parts)))
+    print(_c(_DIM, " · ".join(parts)))
 
 
 def command_banner(command: str, cfg: InterlockConfig | None = None) -> None:
@@ -82,7 +82,7 @@ def command_banner(command: str, cfg: InterlockConfig | None = None) -> None:
             f"runner={cfg.test_runner}",
             f"invoker={cfg.test_invoker}",
         ])
-    print(_c(_DIM, "  ·  ".join(parts)))
+    print(_c(_DIM, " · ".join(parts)))
 
 
 def section(name: str) -> None:
@@ -92,7 +92,7 @@ def section(name: str) -> None:
     width = _term_width()
     prefix = f"── {name} "
     fill = max(3, width - len(prefix))
-    print(f"\n{prefix}{'─' * fill}")
+    print(f"{prefix}{'─' * fill}")
 
 
 def row(
@@ -116,23 +116,23 @@ def row(
     label_tag = f"[{label}]"
     status_txt = _c(color, status)
     detail_txt = _c(_DIM, detail) if detail else ""
-    # Status pinned right; detail (if any) sits left of it with a two-space gap.
-    suffix = f"{detail_txt}  {status_txt}" if detail_txt else status_txt
+    # Status pinned right; detail (if any) sits left of it with a one-space gap.
+    suffix = f"{detail_txt} {status_txt}" if detail_txt else status_txt
     suffix_len = _plain_len(suffix)
-    prefix = f"  {label_tag:<{LABEL_WIDTH}}  "
-    used = len(prefix) + len(command) + 2 + suffix_len
+    prefix = f"  {label_tag:<{LABEL_WIDTH}} "
+    used = len(prefix) + len(command) + 1 + suffix_len
     if used <= width:
         padding = " " * (width - len(prefix) - len(command) - suffix_len)
         print(f"{prefix}{command}{padding}{suffix}")
         return
     # Truncate command to fit
-    max_cmd = max(10, width - len(prefix) - suffix_len - 3)
+    max_cmd = max(10, width - len(prefix) - suffix_len - 2)
     trimmed = command[: max_cmd - 1] + "…" if len(command) > max_cmd else command
     padding = " " * max(1, width - len(prefix) - len(trimmed) - suffix_len)
     print(f"{prefix}{trimmed}{padding}{suffix}")
 
 
-def kv_block(pairs: list[tuple[str, str]], *, indent: str = "  ", gap: int = 2) -> None:
+def kv_block(pairs: list[tuple[str, str]], *, indent: str = "  ", gap: int = 1) -> None:
     """Aligned `key    value` block. Empty `pairs` is a no-op."""
     if not pairs:
         return

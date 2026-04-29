@@ -121,9 +121,9 @@ def _format_key_row(
     key: ConfigKeyDoc, name_width: int, type_width: int, default_width: int
 ) -> str:
     return (
-        f"    {key.name:<{name_width}}  "
-        f"{key.type:<{type_width}}  "
-        f"{key.default:<{default_width}}  "
+        f"    {key.name:<{name_width}} "
+        f"{key.type:<{type_width}} "
+        f"{key.default:<{default_width}} "
         f"{key.description}"
     )
 

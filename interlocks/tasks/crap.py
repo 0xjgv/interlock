@@ -69,7 +69,7 @@ def cmd_crap() -> None:
 def cmd_crap_cached_advisory() -> None:
     """Print fast advisory CRAP output from fresh cached coverage, or a skip hint."""
     cfg = load_config()
-    command = f"CRAP --max={cfg.crap_max} (cached)"
+    command = f"CRAP --max={cfg.crap_max}"
     cov_cache = Path(".coverage")
     if not cov_cache.exists():
         ui.row("crap", command, "skipped", detail="no coverage cache", state="warn")
@@ -91,8 +91,13 @@ def cmd_crap_cached_advisory() -> None:
     if not offenders:
         ui.row("crap", command, "ok", state="ok")
         return
-    fail_command = f"CRAP --max={cfg.crap_max} (cached advisory)"
-    ui.row("crap", fail_command, f"{len(offenders)} function(s) exceed", state="fail")
+    ui.row(
+        "crap",
+        command,
+        f"{len(offenders)} function(s) exceed",
+        detail="cached advisory",
+        state="warn",
+    )
     for row in offenders[:_CRAP_ADVISORY_LIMIT]:
         _print_offender(row)
     if len(offenders) > _CRAP_ADVISORY_LIMIT:

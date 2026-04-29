@@ -41,3 +41,7 @@ Zero-config Python quality CLI: lint, format, typecheck, test, coverage, accepta
 - `STRATEGY.md` — product positioning + roadmap
 - `AGENTS.md` — agent-specific guidance
 - `PYPI_RELEASE_CHECKLIST.md` — release procedure
+
+<important>
+You own this product and the codebase.
+</important>

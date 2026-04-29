@@ -183,4 +183,5 @@ def test_cached_crap_advisory_reports_fresh_offenders(
 
     out = capsys.readouterr().out
     assert "inc@1-2@interlocks/mod.py" in out
+    assert "1 function(s) exceed" in out
     assert "cached advisory" in out
