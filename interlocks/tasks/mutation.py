@@ -40,6 +40,34 @@ def _mutant_in_changed(mutant_key: str, changed: set[str]) -> bool:
     return any(c == rel or c.endswith("/" + rel) for c in changed)
 
 
+def _dir_prefix(d: str) -> str:
+    """Project-relative dir → ``"d/"`` slash-prefix; root layout (``""``/``"."``) → ``""``."""
+    return "" if d in ("", ".") else f"{d}/"
+
+
+def _changed_to_globs(changed: set[str], src_dir: str, test_dir: str) -> list[str]:
+    """`{"interlocks/tasks/foo.py"}` + `src_dir="interlocks"` -> `["interlocks.tasks.foo.*"]`.
+
+    Filters out paths under ``test_dir`` and (when set) outside ``src_dir`` so test
+    files don't leak into mutmut. Root layouts (``src_dir`` ``""``/``"."``) admit
+    any ``*.py`` outside the test tree. Each glob matches mutmut keys like
+    ``<module>.x_<func>__mutmut_<n>`` via fnmatch.
+    """
+    src_prefix = _dir_prefix(src_dir)
+    test_prefix = _dir_prefix(test_dir)
+    out: list[str] = []
+    for path in sorted(changed):
+        if not path.endswith(".py"):
+            continue
+        if test_prefix and path.startswith(test_prefix):
+            continue
+        if src_prefix and not path.startswith(src_prefix):
+            continue
+        module = path[:-3].replace("/", ".")
+        out.append(f"{module}.*")
+    return out
+
+
 def _is_spinner_line(line: str) -> bool:
     s = line.lstrip()
     return bool(s) and s[0] in _BRAILLE_SPINNER
@@ -69,8 +97,10 @@ def _ensure_log_path() -> Path:
 
 
 def _run_mutmut(mutmut: list[str], timeout: int) -> tuple[bool, Path]:
-    """Run `mutmut run`, SIGTERM after `timeout`. Capture+filter output.
+    """Run mutmut, SIGTERM after `timeout`. Capture+filter output.
 
+    ``mutmut`` is the full argv (callers supply ``run`` and any module globs in
+    the correct order — mutmut requires ``run`` BEFORE positional globs).
     Full mutmut stream is mirrored to ``.interlocks/mutation.log`` so noisy lines
     (spinner ticks, fork ``DeprecationWarning``) can be hidden by default while
     remaining recoverable on failure. ``--verbose`` passes through unfiltered;
@@ -102,7 +132,7 @@ def _run_mutmut(mutmut: list[str], timeout: int) -> tuple[bool, Path]:
     completed = True
     with log_path.open("w", encoding="utf-8") as log:
         proc = subprocess.Popen(
-            [*mutmut, "run"],
+            mutmut,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             text=True,
@@ -178,6 +208,24 @@ def _report_mutation(
     return failed
 
 
+def _resolve_changed_globs(
+    cfg: InterlockConfig, *, changed_only: bool
+) -> tuple[list[str] | None, set[str] | None]:
+    """Translate ``--changed-only`` into module globs + the underlying changed set.
+
+    Returns ``(globs, changed)``:
+      - ``(None, None)`` when full-run mode (no incremental scoping).
+      - ``([], changed)`` when incremental mode but no src files changed (caller
+        warn-skips).
+      - ``([glob, ...], changed)`` for the normal incremental path.
+    """
+    if not changed_only:
+        return None, None
+    changed = changed_py_files_vs(cfg.mutation_since_ref)
+    globs = _changed_to_globs(changed, cfg.src_dir_arg, cfg.test_dir_arg)
+    return globs, changed
+
+
 def cmd_mutation(
     *, changed_only: bool | None = None, min_score_default: float | None = None
 ) -> None:
@@ -207,9 +255,14 @@ def cmd_mutation(
     timeout = int(arg_value("--max-runtime=", str(cfg.mutation_max_runtime)))
     min_score = _resolve_min_score(cfg, default=min_score_default)
     changed_flag = changed_only if changed_only is not None else "--changed-only" in sys.argv
-    changed = changed_py_files_vs(cfg.mutation_since_ref) if changed_flag else None
+    globs, changed = _resolve_changed_globs(cfg, changed_only=changed_flag)
+    if globs == []:
+        warn_skip(f"mutation: no changed src files vs {cfg.mutation_since_ref}")
+        return
+    if globs and not ui.is_quiet():
+        print(f"  mutating {len(globs)} module(s) changed vs {cfg.mutation_since_ref}")
 
-    completed, log_path = _run_mutmut(python_m("mutmut"), timeout)
+    completed, log_path = _run_mutmut([*python_m("mutmut"), "run", *(globs or [])], timeout)
 
     summary = read_mutation_summary()
     if summary is None:
