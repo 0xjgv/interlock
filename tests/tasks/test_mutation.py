@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import io
 import subprocess
 import sys
 import textwrap
@@ -272,20 +273,34 @@ def primed_coverage_xml(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Call
 
 def test_changed_to_globs_drops_tests() -> None:
     """Test paths under tests/ never become mutmut globs."""
-    globs = _changed_to_globs({"interlocks/tasks/foo.py", "tests/test_x.py"}, "interlocks")
+    globs = _changed_to_globs(
+        {"interlocks/tasks/foo.py", "tests/test_x.py"}, "interlocks", "tests"
+    )
     assert globs == ["interlocks.tasks.foo.*"]
 
 
 def test_changed_to_globs_handles_init() -> None:
     """`__init__.py` paths translate to dotted module globs without losing the name."""
-    globs = _changed_to_globs({"interlocks/__init__.py"}, "interlocks")
+    globs = _changed_to_globs({"interlocks/__init__.py"}, "interlocks", "tests")
     assert globs == ["interlocks.__init__.*"]
 
 
 def test_changed_to_globs_returns_empty_when_no_src_files() -> None:
     """Diff with only test-tree paths produces no globs (caller will skip)."""
-    globs = _changed_to_globs({"tests/x.py"}, "interlocks")
+    globs = _changed_to_globs({"tests/x.py"}, "interlocks", "tests")
     assert globs == []
+
+
+def test_changed_to_globs_root_layout_keeps_top_level_modules() -> None:
+    """`src_dir == "."` (root layout) → top-level *.py files become globs, tests excluded."""
+    globs = _changed_to_globs({"my_mod.py", "tests/test_x.py"}, ".", "tests")
+    assert globs == ["my_mod.*"]
+
+
+def test_changed_to_globs_empty_src_dir_treated_as_root() -> None:
+    """Empty ``src_dir`` behaves like ``"."`` — top-level files mutate, tests skipped."""
+    globs = _changed_to_globs({"a.py", "tests/test_a.py"}, "", "tests")
+    assert globs == ["a.*"]
 
 
 # ─────────────── cmd_mutation incremental wiring ─────────────────────
@@ -318,7 +333,7 @@ def test_cmd_mutation_passes_globs_to_mutmut(
     primed_coverage_xml: Callable[[str], Path],
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """`--changed-only` with src diff → mutmut argv carries module globs."""
+    """`--changed-only` with src diff → mutmut argv has `run` BEFORE module globs."""
     primed_coverage_xml('<?xml version="1.0" ?><coverage line-rate="1.0"></coverage>')
     monkeypatch.chdir(tmp_project)
     monkeypatch.setattr(
@@ -344,5 +359,80 @@ def test_cmd_mutation_passes_globs_to_mutmut(
     assert captured_argv, "expected _run_mutmut to be called"
     argv = captured_argv[0]
     assert "mutmut" in " ".join(argv)
-    # globs sorted by _changed_to_globs; both modules surface as trailing args.
-    assert argv[-2:] == ["mypkg.mod.*", "mypkg.other.*"]
+    # mutmut requires `run` BEFORE positional globs; globs sorted by _changed_to_globs.
+    assert "run" in argv
+    run_idx = argv.index("run")
+    assert argv[run_idx + 1 :] == ["mypkg.mod.*", "mypkg.other.*"]
+
+
+def test_cmd_mutation_invokes_popen_with_run_then_globs(
+    tmp_project: Path,
+    primed_coverage_xml: Callable[[str], Path],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """End-to-end argv guard: subprocess.Popen receives `... run <glob1> <glob2>`.
+
+    Catches the prior ordering bug where `run` was appended AFTER globs (which
+    mutmut would parse as `mutmut <globs> run` — invalid).
+    """
+    primed_coverage_xml('<?xml version="1.0" ?><coverage line-rate="1.0"></coverage>')
+    monkeypatch.chdir(tmp_project)
+    monkeypatch.setattr(
+        mutation_mod,
+        "changed_py_files_vs",
+        lambda _ref: {"mypkg/mod.py", "mypkg/other.py"},
+    )
+
+    captured: dict[str, list[str]] = {}
+
+    class _FakeProc:
+        stdout = io.StringIO("")
+
+        def wait(self, timeout: int | None = None) -> int:
+            return 0
+
+        def terminate(self) -> None:  # pragma: no cover - never timed out
+            pass
+
+        def kill(self) -> None:  # pragma: no cover - never timed out
+            pass
+
+    def _fake_popen(argv: list[str], **_kwargs: object) -> _FakeProc:
+        captured["argv"] = argv
+        return _FakeProc()
+
+    monkeypatch.setattr(mutation_mod.subprocess, "Popen", _fake_popen)
+    monkeypatch.setattr(mutation_mod, "read_mutation_summary", lambda: None)
+    monkeypatch.setattr(sys, "argv", ["interlocks", "mutation", "--min-coverage=0"])
+
+    cmd_mutation(changed_only=True)
+
+    argv = captured["argv"]
+    assert "run" in argv
+    run_idx = argv.index("run")
+    assert argv[run_idx + 1 :] == ["mypkg.mod.*", "mypkg.other.*"]
+
+
+def test_cmd_mutation_full_run_uses_run_subcommand(
+    tmp_project: Path,
+    primed_coverage_xml: Callable[[str], Path],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Non-incremental path still passes `run` to mutmut (no trailing globs)."""
+    primed_coverage_xml('<?xml version="1.0" ?><coverage line-rate="1.0"></coverage>')
+    monkeypatch.chdir(tmp_project)
+
+    captured_argv: list[list[str]] = []
+
+    def _spy_run(argv: list[str], _timeout: int) -> tuple[bool, Path]:
+        captured_argv.append(argv)
+        return True, tmp_project / ".interlocks" / "mutation.log"
+
+    monkeypatch.setattr(mutation_mod, "_run_mutmut", _spy_run)
+    monkeypatch.setattr(mutation_mod, "read_mutation_summary", lambda: None)
+    monkeypatch.setattr(sys, "argv", ["interlocks", "mutation", "--min-coverage=0"])
+
+    cmd_mutation(changed_only=False)
+
+    assert captured_argv, "expected _run_mutmut to be called"
+    assert captured_argv[0][-1] == "run"
