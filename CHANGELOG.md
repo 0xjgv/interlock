@@ -9,10 +9,49 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- `require_acceptance` config key — when set to `true`, `interlocks ci` (and
-  `check` with `run_acceptance_in_check = true`) fail when Gherkin acceptance
-  coverage is missing. Default `false` preserves existing baseline/legacy behavior;
-  strict preset enables it.
+- `interlocks evaluate` — read-only static quality checklist scoring 8
+  automatable checks (acceptance, unit-tests, coverage, mutation, complexity,
+  deps, security, ci) for a 0–24 verdict with gap-closure commands and
+  rationale. Preflight-exempt; runs no tests/audits/mutation/network calls.
+- `interlocks deps-freshness` — explicit package-index check for outdated
+  dependencies. Not in default PR CI; opt in via `evaluate_dependency_freshness`.
+- `mutation_ci_mode = "off" | "incremental" | "full"` — selects how
+  `interlocks ci` invokes mutmut. `incremental` restricts survivor reporting to
+  files changed vs `mutation_since_ref` (default `origin/main`); `full` runs the
+  whole suite; `off` (default) skips. Nightly always runs full + score gate.
+- `mutation_since_ref` config key — base ref for `incremental` mutation diffs.
+- `.interlocks/ci.json` — `interlocks ci` writes timing evidence consumed by
+  the `evaluate` PR-speed score.
+- `audit_severity_threshold`, `pr_ci_runtime_budget_seconds`,
+  `pr_ci_evidence_max_age_hours`, `ci_evidence_path`,
+  `evaluate_dependency_freshness`, `dependency_freshness_command`,
+  `dependency_freshness_stage` config keys — make `evaluate` policy explicit.
+- `require_acceptance` config key — when `true`, `interlocks ci` (and `check`
+  with `run_acceptance_in_check = true`) fail when Gherkin acceptance coverage
+  is missing. Default `false` preserves existing baseline/legacy behavior;
+  `strict` preset enables it.
+- Registered behavior coverage — public behavior IDs in
+  `interlocks/behavior_coverage.py` are gated by `# req: <id>` or `@req-<id>`
+  Gherkin markers under `require_acceptance = true`. Stale or duplicate
+  markers fail with actionable remediation. Downstream projects with no
+  registry keep zero-config behavior.
+- Advisory acceptance trace evidence — `INTERLOCKS_ACCEPTANCE_TRACE=1`
+  collects runtime public-symbol evidence; failures are diagnostic-only and
+  do not change exit codes in this release.
+- `acceptance_status` module — single source of truth for acceptance
+  readiness (`disabled`, `optional_missing`, `missing_features_dir`,
+  `missing_feature_files`, `missing_scenarios`, `runnable`) reused by
+  `acceptance`, `ci`, `check`, and `evaluate`.
+
+### Changed
+
+- `interlocks ci` — runs `audit` between deps and tests with
+  `allow_network_skip=True` so transient pip-audit/network failures
+  warn-skip; real vulns still fail.
+- `interlocks nightly` — runs `audit` between coverage and mutation with
+  the same warn-skip semantics.
+- Stages call `cmd_mutation(changed_only=..., min_score_default=...)`
+  directly instead of mutating `sys.argv` across module boundaries.
 
 ## [0.1.2] - 2026-04-27
 

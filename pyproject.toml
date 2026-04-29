@@ -18,10 +18,10 @@ dependencies = [
     "coverage>=7.13.5",
     "deptry>=0.25.1",
     "import-linter>=2.11",
-    "lizard>=1.21.6",
     "interlock-mutmut>=3.5.0",
+    "lizard>=1.22.1",
     "pip-audit>=2.7",
-    "ruff>=0.15.11",
+    "ruff>=0.15.12",
 ]
 
 [project.urls]

@@ -211,7 +211,7 @@ Advanced gates:
 - `crap --max=N [--changed-only]`: CRAP complexity x coverage gate. Blocking depends on `enforce_crap`.
 - `mutation --max-runtime=N [--min-coverage=N] [--min-score=N] [--changed-only]`: mutmut. Advisory unless `enforce_mutation = true` or `--min-score=` is passed.
 - `trust [--refresh] [--no-trend]`: actionable trust report combining coverage, CRAP, mutation, suspicious-test AST inspection, recent git diff, and next actions. `--refresh` runs coverage first with `--min=0`.
-- `evaluate`: static quality checklist; reports gap-closure command, task/stage kind, and rationale without running tests, audits, mutation, or package-index lookups.
+- `evaluate`: static quality checklist scoring 8 automatable checks (acceptance, unit-tests, coverage, mutation, complexity, deps, security, ci) for a 0–24 verdict. Reports gap-closure command, task/stage kind, and rationale without running tests, audits, mutation, or package-index lookups. Three checks read explicit policy: `evaluate_dependency_freshness` (deps-freshness), `audit_severity_threshold` (audit-severity), `pr_ci_runtime_budget_seconds` + `.interlocks/ci.json` (pr-speed).
 
 Scaffolding:
 

@@ -27,6 +27,7 @@ dist/
 .claude/worktrees/
 .claude/commands/
 .claude/skills/
+.claude/*.lock
 .humanlayer/
 openspec/
 .codex/
