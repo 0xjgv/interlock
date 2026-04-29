@@ -8,6 +8,37 @@ from pathlib import Path
 
 import pytest
 
+ROOT_DIR_ARTIFACTS = (
+    ".ruff_cache",
+    "build",
+    "dist",
+    "htmlcov",
+    "mutants",
+    ".mutmut-cache",
+    ".pytest_cache",
+    ".import_linter_cache",
+    ".mypy_cache",
+    ".interlocks",
+    "wheels",
+)
+
+ROOT_FILE_ARTIFACTS = (
+    ".coverage",
+    "mutmut-junit.xml",
+    "coverage.xml",
+)
+
+ROOT_ARTIFACTS = ROOT_DIR_ARTIFACTS + ROOT_FILE_ARTIFACTS
+
+RECURSIVE_ARTIFACTS = (
+    "pkg/__pycache__",
+    "pkg/pkg.egg-info",
+    "pkg/module.pyc",
+    "pkg/module.pyo",
+)
+
+SENTINELS = ("src/app.py", "data/raw")
+
 
 @pytest.fixture
 def tmp_project(tmp_path: Path) -> Path:
@@ -16,14 +47,22 @@ def tmp_project(tmp_path: Path) -> Path:
         '[project]\nname = "tmpproj"\nversion = "0.0.1"\nrequires-python = ">=3.13"\n',
         encoding="utf-8",
     )
-    for d in (".ruff_cache", "__pycache__", "htmlcov", "build", "dist", ".mutmut-cache"):
-        (tmp_path / d).mkdir()
-    (tmp_path / ".ruff_cache" / "junk").write_text("x", encoding="utf-8")
-    (tmp_path / ".coverage").write_text("", encoding="utf-8")
-    (tmp_path / "mutmut-junit.xml").write_text("<x/>", encoding="utf-8")
-    nested = tmp_path / "pkg" / "__pycache__"
+    for d in ROOT_DIR_ARTIFACTS:
+        path = tmp_path / d
+        path.mkdir()
+        (path / "junk").write_text("x", encoding="utf-8")
+    for f in ROOT_FILE_ARTIFACTS:
+        (tmp_path / f).write_text("x", encoding="utf-8")
+    pkg = tmp_path / "pkg"
+    nested = pkg / "__pycache__"
     nested.mkdir(parents=True)
     (nested / "foo.pyc").write_text("", encoding="utf-8")
+    (pkg / "pkg.egg-info").mkdir()
+    (pkg / "module.pyc").write_text("", encoding="utf-8")
+    (pkg / "module.pyo").write_text("", encoding="utf-8")
+    (tmp_path / "src").mkdir()
+    (tmp_path / "src" / "app.py").write_text("print('keep')\n", encoding="utf-8")
+    (tmp_path / "data" / "raw").mkdir(parents=True)
     return tmp_path
 
 
@@ -38,18 +77,10 @@ def test_clean_removes_cache_artifacts(tmp_project: Path) -> None:
 
     assert result.returncode == 0, f"stdout={result.stdout}\nstderr={result.stderr}"
     assert "Cleaning Up" in result.stdout
-    for name in (
-        ".ruff_cache",
-        "__pycache__",
-        "htmlcov",
-        "build",
-        "dist",
-        ".mutmut-cache",
-        ".coverage",
-        "mutmut-junit.xml",
-    ):
+    for name in (*ROOT_ARTIFACTS, *RECURSIVE_ARTIFACTS):
         assert not (tmp_project / name).exists(), f"{name} still present"
-    assert not (tmp_project / "pkg" / "__pycache__").exists()
+    for name in SENTINELS:
+        assert (tmp_project / name).exists(), f"{name} missing"
 
 
 def test_clean_is_idempotent(tmp_project: Path) -> None:
@@ -69,19 +100,10 @@ def test_clean_in_process_removes_artifacts(
     from interlocks.stages import clean as clean_mod
 
     monkeypatch.chdir(tmp_project)
-    # Stub the ruff subprocess — we only care about the filesystem cleanup path.
     monkeypatch.setattr(clean_mod, "run", lambda *a, **k: None)
     clean_mod.cmd_clean()
 
-    for name in (
-        ".ruff_cache",
-        "__pycache__",
-        "htmlcov",
-        "build",
-        "dist",
-        ".mutmut-cache",
-        ".coverage",
-        "mutmut-junit.xml",
-    ):
+    for name in (*ROOT_ARTIFACTS, *RECURSIVE_ARTIFACTS):
         assert not (tmp_project / name).exists(), f"{name} still present"
-    assert not (tmp_project / "pkg" / "__pycache__").exists()
+    for name in SENTINELS:
+        assert (tmp_project / name).exists(), f"{name} missing"

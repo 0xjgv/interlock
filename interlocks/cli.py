@@ -282,7 +282,7 @@ TASK_GROUPS: list[tuple[str, dict[str, tuple[Callable[..., None], str]]]] = [
             "nightly": (cmd_nightly, "Long-running gates: coverage + mutation (blocking)"),
             "post-edit": (cmd_post_edit, "Format if source files changed (Claude Code hook)"),
             "setup-hooks": (cmd_hooks, "Install git pre-commit and Claude Stop hooks"),
-            "clean": (cmd_clean, "Remove cache and build artifacts"),
+            "clean": (cmd_clean, "Remove cache, build, coverage, and generated artifacts"),
         },
     ),
     (
