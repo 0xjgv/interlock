@@ -153,6 +153,26 @@ def test_task_pre_cmds_run_before_main_command(tmp_path: Path) -> None:
     assert marker.read_text() == "1"
 
 
+def test_pre_cmd_failure_dump_names_failed_pre_cmd(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    marker = tmp_path / "touched.txt"
+    pre = [
+        sys.executable,
+        "-c",
+        f"open({str(marker)!r}, 'w').write('1'); raise SystemExit(5)",
+    ]
+    main = [sys.executable, "-c", "print('main should not run')"]
+    task = Task("Compound", main, pre_cmds=(pre,))
+
+    with pytest.raises(SystemExit):
+        run_tasks([task])
+
+    out = _strip(capsys.readouterr().out)
+    assert f"Command failed: {' '.join(pre)}" in out
+    assert f"Command failed: {' '.join(main)}" not in out
+
+
 def test_run_tasks_preserves_output_on_failure(capsys: pytest.CaptureFixture[str]) -> None:
     """Stdout and stderr both surface in the failure dump block."""
     task = _python_task(

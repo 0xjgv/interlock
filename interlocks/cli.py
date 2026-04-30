@@ -76,6 +76,18 @@ def cmd_help() -> None:
     ui.command_footer(start)
 
 
+def cmd_task_help(task_name: str) -> None:
+    start = time.monotonic()
+    cfg = load_optional_config()
+    _, description = TASKS[task_name]
+    ui.command_banner("help", cfg)
+    ui.section("Usage")
+    print(f"  Usage: interlocks {task_name}")
+    ui.section("Command")
+    print(f"  [{task_name}]  {description}{_alias_suffix(task_name)}")
+    ui.command_footer(start)
+
+
 _TOOL_INTERLOCK_HEADER = re.compile(r"^\[tool\.interlocks\]\s*$", re.MULTILINE)
 _NEXT_HEADER = re.compile(r"^\[", re.MULTILINE)
 _PRESET_LINE = re.compile(r"^(?P<indent>[ \t]*)preset\s*=.*$", re.MULTILINE)
@@ -354,7 +366,8 @@ TASKS: dict[str, tuple[Callable[..., None], str]] = {
 
 
 def main() -> None:
-    args = [a for a in sys.argv[1:] if not a.startswith("-")]
+    raw_args = sys.argv[1:]
+    args = [a for a in raw_args if not a.startswith("-")]
 
     if not args:
         cmd_help()
@@ -366,6 +379,10 @@ def main() -> None:
         print(f"Unknown command: {requested}", file=sys.stderr)
         cmd_help()
         sys.exit(1)
+
+    if any(a in ("-h", "--help") for a in raw_args):
+        cmd_task_help(task_name)
+        return
 
     preflight(task_name)
     TASKS[task_name][0]()

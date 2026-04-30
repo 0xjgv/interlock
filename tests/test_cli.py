@@ -317,6 +317,25 @@ def test_main_dispatches_known_command(
     assert "Usage: interlocks <command>" in capsys.readouterr().out
 
 
+def test_main_command_help_does_not_dispatch_task(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    calls: list[str] = []
+
+    def fake() -> None:
+        calls.append("ran")
+
+    monkeypatch.setitem(TASKS, "coverage", (fake, "Tests with coverage threshold (--min=N)"))
+    monkeypatch.setattr(sys, "argv", ["interlocks", "coverage", "--help"])
+
+    main()
+
+    assert calls == []
+    out = capsys.readouterr().out
+    assert "Usage: interlocks coverage" in out
+    assert "[coverage]" in out
+
+
 def test_main_dispatches_alias_to_canonical(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
