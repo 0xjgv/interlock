@@ -1,6 +1,6 @@
 # PyPI Release Runbook
 
-Internal release notes for publishing both packages from this repo.
+Maintainer-only release notes for publishing both packages from this repo.
 
 ## Packages
 
@@ -9,7 +9,7 @@ Internal release notes for publishing both packages from this repo.
 | `interlocks-mutmut` | vendored mutmut fork template | `vendor/mutmut-fork/pyproject.toml` | `release-mutmut.yml` | `mutmut-vX.Y.Z` |
 | `interlocks` | root CLI package | `pyproject.toml` | `release.yml` | `vX.Y.Z` |
 
-`interlocks` depends on `interlocks-mutmut`, so publish `interlocks-mutmut` first when bumping the mutmut fork.
+`interlocks` currently depends on `interlock-mutmut`. Before publishing the mutmut fork, confirm the root dependency, vendored template name, workflow publisher URLs, PyPI/TestPyPI project names, and smoke-test install command all use the same distribution name.
 
 ## One-time setup
 
@@ -105,7 +105,7 @@ git status --short --branch
 git log -1 --oneline
 ```
 
-## Publish `interlocks-mutmut`
+## Publish the mutmut fork
 
 ### TestPyPI
 
@@ -137,9 +137,11 @@ gh run watch "$(gh run list --workflow release-mutmut.yml --limit 1 --json datab
 
 ### Smoke-test PyPI package
 
+Use the confirmed mutmut fork distribution name from the naming check above.
+
 ```bash
 uv venv /tmp/interlocks-mutmut-smoke
-uv pip install --python /tmp/interlocks-mutmut-smoke/bin/python interlocks-mutmut
+uv pip install --python /tmp/interlocks-mutmut-smoke/bin/python <mutmut-fork-distribution>
 /tmp/interlocks-mutmut-smoke/bin/python -c 'import mutmut; print(mutmut.__version__)'
 /tmp/interlocks-mutmut-smoke/bin/mutmut --help
 ```
@@ -209,8 +211,10 @@ mkdir -p "${smoke_dir}/.git"
 
 ## Verify published versions
 
+Use the confirmed mutmut fork distribution name from the naming check above.
+
 ```bash
-python -m pip index versions interlocks-mutmut
+python -m pip index versions <mutmut-fork-distribution>
 python -m pip index versions interlocks
 gh release view "mutmut-v${version}"
 gh release view "v${version}"
@@ -231,4 +235,4 @@ gh run watch <run-id> --exit-status
 - `workflow_dispatch` publishes to TestPyPI.
 - Production tag pushes publish to PyPI and create GitHub release assets.
 - PyPI versions are immutable; bump package version before retrying a completed publish.
-- `interlocks-mutmut` keeps import path and CLI as `mutmut`, while distribution name is `interlocks-mutmut`.
+- The mutmut fork keeps import path and CLI as `mutmut`; only the distribution name differs.

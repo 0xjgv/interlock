@@ -4,13 +4,13 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>interlocks — Quality gates for AI-authored Python PRs.</title>
+  <title>interlocks — One Python quality loop for repos and teams.</title>
   <meta name="description"
-    content="interlocks gives AI-era Python repos one deterministic quality loop: lint, typecheck, tests, coverage, mutation, dependency hygiene, architecture checks, and audit locally and in CI." />
+    content="interlocks gives Python repos one deterministic quality loop: lint, typecheck, tests, coverage, mutation, dependency hygiene, architecture checks, and audit locally and in CI." />
   <meta property="og:title"
-    content="interlocks — Quality gates for AI-authored Python PRs." />
+    content="interlocks — One Python quality loop for repos and teams." />
   <meta property="og:description"
-    content="AI made code cheap. interlocks makes Python PRs trustworthy with the same deterministic gate locally, in hooks, and in CI." />
+    content="interlocks standardizes Python quality gates across local edits, hooks, and CI, with deterministic evidence for human- and AI-authored PRs." />
   <link rel="icon"
     href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' fill='%23000'/%3E%3Ctext x='8' y='12' font-family='monospace' font-size='11' font-weight='700' fill='%23e6e600' text-anchor='middle'%3EI%3C/text%3E%3C/svg%3E" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -942,12 +942,12 @@
     <section class="hero" aria-labelledby="hero-title">
       <div class="hero-grid">
         <div class="hero-copy">
-          <p class="eyebrow">Quality gates for AI-authored Python PRs</p>
-          <h1 id="hero-title">AI made code cheap. Interlocks makes Python PRs trustworthy.
+          <p class="eyebrow">Python quality gates for repos and teams</p>
+          <h1 id="hero-title">One deterministic quality loop for every Python PR.
           </h1>
-          <p class="lede">One deterministic quality loop for AI-era Python repos: lint,
-            typecheck, test, coverage, mutation, deps, architecture, and audit. Same
-            gate locally, in hooks, and in CI.</p>
+          <p class="lede">Standardize lint, typecheck, test, coverage, mutation, deps,
+            architecture, and audit across local edits, hooks, and CI. Stronger evidence
+            for human- and AI-authored code.</p>
           <div class="copy-wrap">
             <div class="install-cmd">
               <code id="quickstart-cmd">uvx --from interlocks il doctor</code>
@@ -1025,9 +1025,8 @@
 
     <section class="quote-panel" aria-label="Positioning">
       <div class="section-inner">
-        <blockquote>&ldquo;AI writes the PR. Interlocks decides if it deserves
-          review.&rdquo;</blockquote>
-        <p>Human review cannot be the quality floor when agents ship code fast.
+        <blockquote>&ldquo;One command tells every repo where the quality bar is.&rdquo;</blockquote>
+        <p>Human review cannot be the quality floor when teams and agents ship code fast.
           Deterministic gates catch fake confidence before it reaches CI or customers.</p>
       </div>
     </section>
@@ -1048,7 +1047,7 @@
           </div>
         </div>
         <pre class="shell-body"><span class="shell-row"><span class="prompt">$</span> il check</span>
-<span class="shell-row">interlocks v0.1.2  ·  preset=baseline  ·  runner=pytest  ·  invoker=uv</span>
+<span class="shell-row">interlocks v0.1.3  ·  preset=baseline  ·  runner=pytest  ·  invoker=uv</span>
 <span class="shell-row shell-muted"></span>
 <span class="shell-row shell-muted">── Quality Checks ──────────────────────────────────────────</span>
 <span class="shell-row">  [fix]         ruff check --fix                      <span class="shell-ok">ok</span></span>
@@ -1132,7 +1131,7 @@
         <p>Required PR gate for repo-wide verification.</p>
         <ul class="checks-list">
           <li>lint + format check</li>
-          <li>complexity, deps, typecheck</li>
+          <li>complexity, audit, deps, typecheck</li>
           <li>coverage, CRAP, arch, acceptance</li>
         </ul>
       </article>
@@ -1152,7 +1151,7 @@
       </article>
       <article class="pipeline-card">
         <h3>Setup + maintenance</h3>
-        <code>il setup-hooks / il clean</code>
+        <code>il setup / il clean</code>
         <div class="pipeline-meta">
           <span class="status-pill info">SETUP</span>
           <span class="status-pill">UTILITY</span>
@@ -1350,8 +1349,8 @@
         <ul class="workflow-list">
           <li><span class="marker">1</span><span><code>il doctor</code> detects source,
               tests, runner, invoker, preset, thresholds.</span></li>
-          <li><span class="marker">2</span><span><code>il setup-hooks</code> wires git
-              pre-commit and Claude Code Stop hook.</span></li>
+          <li><span class="marker">2</span><span><code>il setup</code> wires local hooks,
+              agent docs, and the Claude skill.</span></li>
           <li><span class="marker">3</span><span><code>il check</code> gives local
               pass/fail before push.</span></li>
           <li><span class="marker">4</span><span>Reusable GitHub Action runs the CI
@@ -1421,7 +1420,7 @@
     <div class="section-divider" aria-hidden="true"></div>
 
     <footer class="site">
-      <span>interlocks v0.1.2 &middot; MIT</span>
+      <span>interlocks v0.1.3 &middot; MIT</span>
       <span>Python quality gates</span>
       <a href="https://github.com/0xjgv/interlocks">GitHub</a>
     </footer>

@@ -9,15 +9,15 @@ Tests live in `tests/`, with focused task and stage coverage under `tests/tasks/
 ## Build, Test, and Development Commands
 
 - `uv run interlocks check` - primary post-edit workflow: fix, format, typecheck, tests, suppressions report, and cached CRAP advisory.
-- `uv run interlocks ci` - read-only CI parity suite: format-check, lint, complexity, deps, typecheck, coverage, arch, acceptance, audit (warn-skip on network), CRAP, optional mutation per `mutation_ci_mode`. Writes `.interlocks/ci.json` timing evidence.
+- `uv run interlocks ci` - CI parity suite: format-check, lint, complexity, audit (warn-skip on network), deps, typecheck, coverage, arch, acceptance, CRAP, optional mutation per `mutation_ci_mode`. Writes `.interlocks/ci.json` timing evidence and coverage artifacts.
 - `uv run interlocks nightly` - long-running gates: coverage, audit, mutation (blocking on `mutation_min_score`).
 - `uv run interlocks pre-commit` - staged-file checks used by the git hook.
 - `uv run interlocks setup` - installs or refreshes local hooks, agent docs, and bundled Claude skill.
 - `uv run interlocks setup --check` - verifies local integrations without writing.
 - `uv run interlocks doctor` - readiness diagnostic; static inspection only.
-- `uv run interlocks evaluate` - read-only 8-check quality scorecard (0–24).
+- `uv run interlocks evaluate` - read-only 11-check quality scorecard (0–33).
 - `uv run interlocks help` / `interlocks config` / `interlocks presets` - resolved thresholds, full config key list, preset selector.
-- `uv run pytest -q` - direct pytest run, including pytest-bdd acceptance tests.
+- `uv run pytest -q` - direct repository test run, including this repo's pytest-bdd acceptance tests.
 
 ## Coding Style & Naming Conventions
 

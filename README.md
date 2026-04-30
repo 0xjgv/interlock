@@ -1,17 +1,23 @@
 # interlocks
 
-Adopt one Python quality loop across a repository or an organization:
+For DevEx and platform teams standardizing Python quality across repositories:
 
 ```bash
-pipx install interlocks       # or: uv tool install interlocks
 cd your-python-project
-interlocks setup                # local hooks, agent docs, Claude skill
-interlocks doctor               # readiness, detected config, blockers, next steps
-interlocks check                # local edit loop
-interlocks ci                   # CI parity
+uvx --from interlocks interlocks doctor  # try without installing
+pipx install interlocks                  # or: uv tool install interlocks
+interlocks setup                         # local hooks, agent docs, Claude skill
+interlocks check                         # local edit loop
+interlocks ci                            # CI parity
 ```
 
-interlocks bundles ruff, basedpyright, pytest, pytest-bdd, coverage, mutmut, deptry, import-linter, pip-audit, and lizard behind one CLI. New repositories can start with auto-detected paths and bundled tool defaults; mature repositories can opt into named presets or explicit `[tool.interlocks]` thresholds when they need stronger gates.
+interlocks gives one local/hook/CI command surface for ruff, basedpyright, coverage.py, mutmut, deptry, import-linter, pip-audit, and lizard, while driving the project's pytest/unittest tests and pytest-bdd or behave acceptance suite when available. New repositories can start with auto-detected paths and bundled tool defaults; mature repositories can opt into named presets or explicit `[tool.interlocks]` thresholds when they need stronger gates.
+
+## Who This Is For
+
+Use interlocks when you want one deterministic Python quality loop across a repo or an organization, especially when local checks, CI, and agent-authored PRs are drifting apart.
+
+It is not a hosted dashboard, a polyglot quality platform, or a replacement for project-owned tests. It standardizes the repeatable Python gates so humans and agents review against the same evidence.
 
 ## First-Run Adoption Loop
 
@@ -23,7 +29,7 @@ pipx install interlocks
 uv tool install interlocks
 ```
 
-Every underlying tool ships with the CLI. No per-project dev dependency list is required just to try the standard loop.
+The core quality tools ship with the CLI. Project-owned test runners and acceptance runners are invoked when the target repo already uses them.
 
 ### 2. Install Local Integrations
 
@@ -75,7 +81,7 @@ jobs:
   interlocks:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v4
       - uses: 0xjgv/interlocks@v1
 ```
 
@@ -91,6 +97,10 @@ When agents write most of the PRs, human review stops being the quality floor. D
 - `trust` combines those into one actionable report, so reviewers (human or LLM-based) have a stable ground truth.
 
 interlocks is complementary to LLM-based reviewers such as CodeRabbit, Greptile, or Diamond. They catch style, design, and intent. interlocks catches what is machine-verifiable: complexity, coverage, mutation survival, dependency hygiene, architectural drift. Runs in seconds, same command locally and in CI.
+
+## Before Interlocks
+
+Python quality often accretes as scattered Ruff, pyright, pytest, coverage, deptry, pip-audit, import-linter, and mutmut config. Local checks drift from protected-branch checks, and agent-written tests can look green while missing behavior. interlocks turns that sprawl into one repeatable gate with explicit thresholds and closure commands.
 
 ## Adoption Presets
 
@@ -182,7 +192,7 @@ Run `interlocks presets set baseline` to set a project preset from the CLI.
 |-------|------|-----------|
 | `interlocks check` | Local edit loop | fix -> format -> parallel(typecheck, test, acceptance when opted in) -> deps advisory -> cached CRAP advisory or refresh hint -> suppressions |
 | `interlocks pre-commit` | Git pre-commit hook | fix/format staged Python files, re-stage, typecheck, tests when source changed |
-| `interlocks ci` | Pull requests and protected branches | format-check, lint, complexity, deps, typecheck, coverage, arch, acceptance -> CRAP -> optional mutation (per `mutation_ci_mode`); writes `.interlocks/ci.json` timing evidence |
+| `interlocks ci` | Pull requests and protected branches | format-check, lint, complexity, audit, deps, typecheck, coverage, arch, acceptance -> CRAP -> optional mutation (per `mutation_ci_mode`); writes `.interlocks/ci.json` timing evidence |
 | `interlocks nightly` | Scheduled jobs | coverage -> audit (warn-skips on transient pip-audit failures) -> mutation, always blocking on `mutation_min_score` |
 | `interlocks post-edit` | Editor/agent hook interface | advisory ruff fix + format on changed Python files |
 | `interlocks setup` | Local onboarding | installs/checks hooks, agent docs, and Claude skill |
@@ -222,7 +232,7 @@ Advanced gates:
 - `crap --max=N [--changed-only]`: CRAP complexity x coverage gate. Blocking depends on `enforce_crap`.
 - `mutation --max-runtime=N [--min-coverage=N] [--min-score=N] [--changed-only]`: mutmut. Advisory unless `enforce_mutation = true` or `--min-score=` is passed.
 - `trust [--refresh] [--no-trend]`: actionable trust report combining coverage, CRAP, mutation, suspicious-test AST inspection, recent git diff, and next actions. `--refresh` runs coverage first with `--min=0`.
-- `evaluate`: static quality checklist scoring 8 automatable checks (acceptance, unit-tests, coverage, mutation, complexity, deps, security, ci) for a 0–24 verdict. Reports gap-closure command, task/stage kind, and rationale without running tests, audits, mutation, or package-index lookups. Three checks read explicit policy: `evaluate_dependency_freshness` (deps-freshness), `audit_severity_threshold` (audit-severity), `pr_ci_runtime_budget_seconds` + `.interlocks/ci.json` (pr-speed).
+- `evaluate`: static quality checklist scoring 11 automatable checks (acceptance, unit-tests, coverage, mutation, complexity, deps, deps-freshness, security, audit-severity, pr-speed, ci) for a 0–33 verdict. Reports gap-closure command, task/stage kind, and rationale without running tests, audits, mutation, or package-index lookups. Three checks read explicit policy: `evaluate_dependency_freshness` (deps-freshness), `audit_severity_threshold` (audit-severity), `pr_ci_runtime_budget_seconds` + `.interlocks/ci.json` (pr-speed).
 
 Scaffolding:
 
@@ -318,6 +328,8 @@ Hooks reference the Python that installed interlocks, so rerun `interlocks setup
 Inspired by [Uncle Bob Martin](https://x.com/unclebobmartin/status/2047661738456121506?s=20). Since *Clean Code*, we tend to forget the fundamentals — clean code, deterministic gates, fast feedback. These fundamentals are back stronger than ever, especially as agents write more of the code.
 
 ## Maintainer Release Process
+
+Maintainer-only release details live in [PYPI_RELEASE_CHECKLIST.md](./PYPI_RELEASE_CHECKLIST.md).
 
 Package identity:
 
