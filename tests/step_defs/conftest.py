@@ -17,6 +17,9 @@ _TMP_PYPROJECT = textwrap.dedent(
     version = "0"
     requires-python = ">=3.13"
 
+    [dependency-groups]
+    dev = ["pytest>=9"]
+
     [tool.ruff]
     target-version = "py313"
     line-length = 99

@@ -487,19 +487,34 @@ class InterlockConfig:
         return self.relpath(self.features_dir)
 
 
-def invoker_prefix(cfg: InterlockConfig) -> list[str]:
-    """Argv prefix for invoking a Python module under the configured invoker.
+COVERAGE_REQUIREMENT = "coverage>=7.13.5"
 
-    Prefers the target project's ``.venv/bin/python`` when ``invoker == "python"``, so
-    tools run against the project's own dependencies rather than pipx's venv. Falls
-    back to ``sys.executable`` when the project has no in-tree venv.
+
+def python_command_prefix(cfg: InterlockConfig) -> list[str]:
+    """Argv prefix for the target project's Python executable.
+
+    ``uv`` projects execute through ``uv run python`` so project dependencies are
+    active. Non-uv projects prefer an in-tree venv and only fall back to the
+    current interpreter when no target venv exists.
     """
     if cfg.test_invoker == "uv":
-        return ["uv", "run"]
+        return ["uv", "run", "python"]
     venv_python = detect_target_interpreter(cfg.project_root)
     if venv_python is not None:
-        return [str(venv_python), "-m"]
-    return [sys.executable, "-m"]
+        return [str(venv_python)]
+    return [sys.executable]
+
+
+def invoker_prefix(cfg: InterlockConfig) -> list[str]:
+    """Argv prefix for invoking a Python module in the target project."""
+    return [*python_command_prefix(cfg), "-m"]
+
+
+def coverage_invoker_prefix(cfg: InterlockConfig) -> list[str]:
+    """Argv prefix for Coverage.py while preserving target-project dependencies."""
+    if cfg.test_invoker == "uv":
+        return ["uv", "run", "--with", COVERAGE_REQUIREMENT, "python", "-m"]
+    return invoker_prefix(cfg)
 
 
 def _runner_argv(cfg: InterlockConfig) -> list[str]:
@@ -518,7 +533,14 @@ def build_coverage_test_command(
     cfg: InterlockConfig, *, coverage_args: tuple[str, ...] = ()
 ) -> list[str]:
     """Build ``coverage run [coverage_args] -m <runner> ...`` using the configured invoker."""
-    return [*invoker_prefix(cfg), "coverage", "run", *coverage_args, "-m", *_runner_argv(cfg)]
+    return [
+        *coverage_invoker_prefix(cfg),
+        "coverage",
+        "run",
+        *coverage_args,
+        "-m",
+        *_runner_argv(cfg),
+    ]
 
 
 def load_config(start: Path | None = None) -> InterlockConfig:

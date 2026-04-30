@@ -7,21 +7,17 @@ from pathlib import Path
 
 import pytest
 
-from interlocks import detect
 from interlocks.config import load_config
 from interlocks.detect import (
     detect_src_dir,
     detect_test_dir,
     detect_test_invoker,
-    detect_test_runner,
 )
 
 
 @pytest.fixture
 def project(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     monkeypatch.chdir(tmp_path)
-    # Force pytest-importability probe to fail unless a test opts in.
-    monkeypatch.setattr(detect, "_pytest_importable", lambda: False)
     return tmp_path
 
 
@@ -101,12 +97,6 @@ def test_no_signals_no_importable_falls_back_to_unittest(project: Path) -> None:
 
 def test_empty_repo_falls_back_to_unittest(project: Path) -> None:
     assert _runner_for(project) == "unittest"
-
-
-def test_pytest_importable_selects_pytest(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.chdir(tmp_path)
-    monkeypatch.setattr(detect, "_pytest_importable", lambda: True)
-    assert detect_test_runner(tmp_path, {}, tmp_path / "tests") == "pytest"
 
 
 def test_pytest_like_substring_does_not_match(project: Path) -> None:

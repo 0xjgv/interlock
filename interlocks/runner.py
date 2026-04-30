@@ -181,6 +181,7 @@ class RunResult:
     stdout: str
     stderr: str
     elapsed: float
+    failed_cmd: list[str] | None = None
 
 
 def run(task: Task, *, no_exit: bool = False) -> None:
@@ -224,14 +225,21 @@ def _execute(task: Task) -> RunResult:
     stdout_parts: list[str] = []
     stderr_parts: list[str] = []
     rc = 0
+    failed_cmd: list[str] | None = None
     for cmd in (*task.pre_cmds, task.cmd):
         rc, out, err = _run_one(cmd, task.description, env=task.env)
         stdout_parts.append(out)
         stderr_parts.append(err)
         if rc != 0:
+            failed_cmd = cmd
             break
     return RunResult(
-        task, rc, "".join(stdout_parts), "".join(stderr_parts), time.monotonic() - start
+        task,
+        rc,
+        "".join(stdout_parts),
+        "".join(stderr_parts),
+        time.monotonic() - start,
+        failed_cmd,
     )
 
 
@@ -341,7 +349,8 @@ def _dump_failure(result: RunResult, *, titled: bool) -> None:
     with _PRINT_LOCK:
         if titled:
             print(f"\n--- {task.description} output ---")
-        print(f"{_c(RED)}Command failed: {' '.join(task.cmd)}{_c(RESET)}")
+        failed_cmd = result.failed_cmd or task.cmd
+        print(f"{_c(RED)}Command failed: {' '.join(failed_cmd)}{_c(RESET)}")
         if result.stdout:
             print(_truncate_dump(result.stdout), end="")
         if result.stderr:

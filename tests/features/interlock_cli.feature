@@ -50,6 +50,14 @@ Feature: interlocks CLI surface area
     Then the output does not contain "command=help"
     And the output does not contain "── "
 
+  # req: cli-command-help
+  Scenario: command-specific help is non-destructive
+    Given I run "interlocks coverage --help"
+    Then the output contains "Usage: interlocks coverage"
+    And the output contains "[coverage]"
+    And the output does not contain "coverage report --fail-under"
+    And the output does not contain "failed"
+
   # req: cli-config
   Scenario: Agent reads config reference
     Given I run "interlocks config"

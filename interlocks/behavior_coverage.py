@@ -112,6 +112,12 @@ INTERLOCKS_BEHAVIORS: tuple[Behavior, ...] = (
     ),
     Behavior("cli-quiet", "cli", "quiet flag suppresses banner chrome", "interlocks.cli:main"),
     Behavior(
+        "cli-command-help",
+        "cli",
+        "command-specific help is non-destructive",
+        "interlocks.cli:main",
+    ),
+    Behavior(
         "cli-config",
         "config",
         "config command prints resolved interlocks settings",
@@ -240,6 +246,12 @@ INTERLOCKS_BEHAVIORS: tuple[Behavior, ...] = (
         "task",
         "coverage enforces coverage threshold",
         "interlocks.tasks.coverage:cmd_coverage",
+    ),
+    Behavior(
+        "task-coverage-uv-injection",
+        "task",
+        "coverage injects Coverage.py for uv-managed projects",
+        "interlocks.tasks.coverage:task_coverage",
     ),
     Behavior(
         "task-crap",

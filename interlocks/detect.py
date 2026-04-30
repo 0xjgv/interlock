@@ -6,13 +6,11 @@ All helpers are pure — they take the pre-loaded ``pyproject`` dict and the dis
 Test-runner detection order (first match wins):
   1. Pytest config: ``[tool.pytest.*]``, ``pytest.ini``, ``pytest.cfg``, ``<test_dir>/conftest.py``
   2. ``pytest`` declared in project / dep-group / uv dependencies
-  3. Pytest importable in the current interpreter
-  4. Otherwise: unittest
+  3. Otherwise: unittest
 """
 
 from __future__ import annotations
 
-import importlib.util
 import os
 import re
 from typing import TYPE_CHECKING, Any
@@ -43,10 +41,6 @@ _SKIP_SRC_DIRS = frozenset({
     "env",
     "node_modules",
 })
-
-
-def _pytest_importable() -> bool:
-    return importlib.util.find_spec("pytest") is not None
 
 
 def _has_pytest_config(project_root: Path, pyproject: dict[str, Any], test_dir: Path) -> bool:
@@ -81,8 +75,6 @@ def detect_test_runner(
     if _has_pytest_config(project_root, pyproject, test_dir):
         return "pytest"
     if _deps_mention_pytest(pyproject):
-        return "pytest"
-    if _pytest_importable():
         return "pytest"
     return "unittest"
 

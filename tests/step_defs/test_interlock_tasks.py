@@ -17,9 +17,11 @@ import time
 from dataclasses import dataclass
 from pathlib import Path
 
+import pytest
 from pytest_bdd import given, parsers, scenarios, then, when
 
 from interlocks.behavior_coverage import INTERLOCKS_REGISTRY
+from interlocks.config import COVERAGE_REQUIREMENT, clear_cache
 
 scenarios(str(Path(__file__).parent.parent / "features" / "interlock_tasks.feature"))
 
@@ -202,6 +204,11 @@ def _make_coverage(root: Path) -> None:
     _make_trivial_package(root, _COV_PYPROJECT)
 
 
+def _make_uv_coverage(root: Path) -> None:
+    _make_coverage(root)
+    (root / "uv.lock").write_text("", encoding="utf-8")
+
+
 def _make_crap(root: Path) -> None:
     """Crap needs `.coverage` on disk before the gate runs."""
     _make_trivial_package(root, _CRAP_PYPROJECT)
@@ -317,6 +324,7 @@ _BEHAVIOR_ATTRIBUTION_PYPROJECT = textwrap.dedent(
     [tool.interlocks]
     src_dir = "pkg"
     test_dir = "tests"
+    test_runner = "pytest"
     features_dir = "tests/features"
     require_acceptance = true
     enforce_behavior_attribution = true
@@ -414,6 +422,7 @@ _LAYOUTS = {
     "deps": _make_deps,
     "arch": _make_arch,
     "coverage": _make_coverage,
+    "uv-coverage": _make_uv_coverage,
     "crap": _make_crap,
     "mutation": _make_mutation,
     "mutation-incremental-empty": _make_mutation_incremental_empty,
@@ -432,6 +441,11 @@ _LAYOUTS = {
 class CliResult:
     rc: int
     output: str
+
+
+@dataclass(frozen=True)
+class CoverageCommands:
+    commands: tuple[list[str], ...]
 
 
 # ─────────────── Given/When/Then ─────────────────────
@@ -467,6 +481,20 @@ def _run_in_project(cmd: str, project_root: Path) -> CliResult:
     return CliResult(rc=result.returncode, output=result.stdout + result.stderr)
 
 
+@when(parsers.parse('I inspect "{cmd}" in that project'), target_fixture="coverage_commands")
+def _inspect_task(
+    cmd: str, project_root: Path, monkeypatch: pytest.MonkeyPatch
+) -> CoverageCommands:
+    assert cmd == "interlocks coverage"
+    from interlocks.tasks.coverage import task_coverage
+
+    monkeypatch.chdir(project_root)
+    monkeypatch.setattr(sys, "argv", ["interlocks", "coverage"])
+    clear_cache()
+    task = task_coverage()
+    return CoverageCommands(commands=(*task.pre_cmds, task.cmd))
+
+
 @then("the exit code is 0")
 def _rc_zero(cli_result: CliResult) -> None:
     assert cli_result.rc == 0, f"rc={cli_result.rc}\n{cli_result.output}"
@@ -487,3 +515,19 @@ def _rc_zero_or_output(needle: str, cli_result: CliResult) -> None:
 @then(parsers.parse('the output contains "{needle}"'))
 def _output_contains(needle: str, cli_result: CliResult) -> None:
     assert needle in cli_result.output, f"expected {needle!r} in output; got:\n{cli_result.output}"
+
+
+@then("the coverage commands inject Coverage.py through uv")
+def _coverage_uses_uv_with(coverage_commands: CoverageCommands) -> None:
+    expected_prefix = ["uv", "run", "--with", COVERAGE_REQUIREMENT, "python", "-m", "coverage"]
+    assert all(cmd[:7] == expected_prefix for cmd in coverage_commands.commands), (
+        f"expected all coverage commands to use uv injection; got {coverage_commands.commands!r}"
+    )
+
+
+@then(parsers.parse('the coverage commands do not call "{forbidden}"'))
+def _coverage_commands_do_not_call(forbidden: str, coverage_commands: CoverageCommands) -> None:
+    rendered = [" ".join(cmd) for cmd in coverage_commands.commands]
+    assert all(forbidden not in cmd for cmd in rendered), (
+        f"did not expect {forbidden!r} in commands; got {rendered!r}"
+    )

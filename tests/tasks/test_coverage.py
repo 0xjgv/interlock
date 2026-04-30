@@ -103,6 +103,10 @@ def _rcfile_flag(cmd: list[str]) -> str | None:
     return next((a for a in cmd if a.startswith("--rcfile=")), None)
 
 
+def _coverage_run_cmd(pre_cmds: tuple[list[str], ...]) -> list[str]:
+    return next(cmd for cmd in pre_cmds if "coverage" in cmd and "run" in cmd)
+
+
 def test_coverage_injects_bundled_rcfile_in_bare_project(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -113,7 +117,7 @@ def test_coverage_injects_bundled_rcfile_in_bare_project(
     monkeypatch.chdir(tmp_path)
     monkeypatch.setattr(sys, "argv", ["interlocks", "coverage"])
     task = task_coverage()
-    for cmd in (task.cmd, task.pre_cmds[0]):
+    for cmd in (task.cmd, _coverage_run_cmd(task.pre_cmds)):
         flag = _rcfile_flag(cmd)
         assert flag is not None
         assert Path(flag.split("=", 1)[1]).name == "coveragerc"
@@ -129,7 +133,7 @@ def test_coverage_omits_rcfile_when_project_has_tool_coverage(
     monkeypatch.setattr(sys, "argv", ["interlocks", "coverage"])
     task = task_coverage()
     assert _rcfile_flag(task.cmd) is None
-    assert _rcfile_flag(task.pre_cmds[0]) is None
+    assert _rcfile_flag(_coverage_run_cmd(task.pre_cmds)) is None
 
 
 def test_coverage_omits_rcfile_with_coveragerc_sidecar(
@@ -144,7 +148,43 @@ def test_coverage_omits_rcfile_with_coveragerc_sidecar(
     monkeypatch.setattr(sys, "argv", ["interlocks", "coverage"])
     task = task_coverage()
     assert _rcfile_flag(task.cmd) is None
-    assert _rcfile_flag(task.pre_cmds[0]) is None
+    assert _rcfile_flag(_coverage_run_cmd(task.pre_cmds)) is None
+
+
+def test_coverage_uv_injects_coverage_without_project_dependency(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """uv projects get Coverage.py via `--with`, not from a project console script."""
+    from interlocks.config import COVERAGE_REQUIREMENT
+    from interlocks.tasks.coverage import task_coverage
+
+    (tmp_path / "pyproject.toml").write_text(_BARE_PYPROJECT, encoding="utf-8")
+    (tmp_path / "uv.lock").write_text("", encoding="utf-8")
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(sys, "argv", ["interlocks", "coverage"])
+
+    task = task_coverage()
+
+    assert task.pre_cmds == (_coverage_run_cmd(task.pre_cmds),)
+    for cmd in (task.cmd, task.pre_cmds[0]):
+        assert cmd[:6] == ["uv", "run", "--with", COVERAGE_REQUIREMENT, "python", "-m"]
+        assert "uv run coverage" not in " ".join(cmd)
+
+
+def test_coverage_non_uv_preflights_target_coverage_import(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from interlocks.tasks.coverage import task_coverage
+
+    (tmp_path / "pyproject.toml").write_text(_BARE_PYPROJECT, encoding="utf-8")
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(sys, "argv", ["interlocks", "coverage"])
+
+    task = task_coverage()
+
+    assert len(task.pre_cmds) == 2
+    assert task.pre_cmds[0][:2] == [sys.executable, "-c"]
+    assert "Coverage.py is not importable" in task.pre_cmds[0][2]
 
 
 def test_coverage_default_min_pct_uses_cfg(

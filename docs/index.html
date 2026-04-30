@@ -963,9 +963,8 @@
             </div>
           </div>
           <div class="also-works" aria-label="Also works">
-            <span class="chip">pipx run --spec interlocks il doctor</span>
-            <span class="chip">interlocks doctor</span>
-            <span class="chip">alias: il</span>
+            <span class="chip">then: uvx --from interlocks il check</span>
+            <span class="chip">adopt: interlocks setup</span>
             <span class="chip">package: interlocks</span>
           </div>
         </div>
@@ -1010,8 +1009,8 @@
               <dt>next</dt>
               <dd>
                 <ul class="next-commands">
-                  <li><code>il setup-hooks</code></li>
                   <li><code>il check</code></li>
+                  <li><code>il setup</code></li>
                   <li><code>il ci</code></li>
                 </ul>
               </dd>
@@ -1089,9 +1088,9 @@
     <div class="section-divider" aria-hidden="true"></div>
 
     <h2 class="section-title" id="stages">Quality loop</h2>
-    <p class="section-intro"><code>doctor</code> diagnoses the repo, <code>check</code>
-      guards local edits, hooks catch staged changes, CI blocks merges, and nightly
-      mutation finds weak tests.</p>
+    <p class="section-intro">Evaluate first with <code>doctor</code>, then <code>check</code>.
+      Adopt permanently with <code>setup</code> only after the gate proves useful; CI and
+      nightly keep the same evidence running after merge.</p>
     <div class="pipeline">
       <article class="pipeline-card">
         <h3>After edits</h3>
@@ -1422,6 +1421,7 @@
     <footer class="site">
       <span>interlocks v0.1.3 &middot; MIT</span>
       <span>Python quality gates</span>
+      <a href="https://pypi.org/project/interlocks/">PyPI v0.1.3</a>
       <a href="https://github.com/0xjgv/interlocks">GitHub</a>
     </footer>
     <div class="section-divider" aria-hidden="true"></div>

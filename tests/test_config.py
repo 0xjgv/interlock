@@ -10,6 +10,7 @@ from pathlib import Path
 import pytest
 
 from interlocks.config import (
+    COVERAGE_REQUIREMENT,
     InterlockConfig,
     build_coverage_test_command,
     build_test_command,
@@ -475,7 +476,7 @@ def test_build_test_command_pytest_appends_pytest_args() -> None:
 
 def test_build_test_command_uv_pytest() -> None:
     cfg = _cfg(test_invoker="uv")
-    assert build_test_command(cfg) == ["uv", "run", "pytest", "tests", "-q"]
+    assert build_test_command(cfg) == ["uv", "run", "python", "-m", "pytest", "tests", "-q"]
 
 
 def test_build_test_command_unittest_discover() -> None:
@@ -503,6 +504,10 @@ def test_build_coverage_test_command_uv() -> None:
     assert build_coverage_test_command(cfg) == [
         "uv",
         "run",
+        "--with",
+        COVERAGE_REQUIREMENT,
+        "python",
+        "-m",
         "coverage",
         "run",
         "-m",
@@ -512,6 +517,7 @@ def test_build_coverage_test_command_uv() -> None:
         "tests",
         "-q",
     ]
+    assert "uv run coverage" not in " ".join(build_coverage_test_command(cfg))
 
 
 # ─────────────── target-venv interpreter resolution ─────────────────
@@ -545,4 +551,4 @@ def test_invoker_prefix_falls_back_to_sys_executable_when_no_venv(tmp_path: Path
 def test_invoker_prefix_uv_ignores_target_venv(tmp_path: Path) -> None:
     _make_stub_venv_python(tmp_path)
     cfg = _cfg(project_root=tmp_path, test_invoker="uv")
-    assert invoker_prefix(cfg) == ["uv", "run"]
+    assert invoker_prefix(cfg) == ["uv", "run", "python", "-m"]

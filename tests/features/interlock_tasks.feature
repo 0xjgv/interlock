@@ -31,6 +31,13 @@ Feature: interlocks task commands run against a real tmp project
     Then the exit code is 0
     And the output contains "[coverage]"
 
+  # req: task-coverage-uv-injection
+  Scenario: uv coverage uses Interlocks-supplied Coverage.py
+    Given a tmp project with layout "uv-coverage"
+    When I inspect "interlocks coverage" in that project
+    Then the coverage commands inject Coverage.py through uv
+    And the coverage commands do not call "uv run coverage"
+
   # req: task-crap
   Scenario: crap passes when no function exceeds the threshold
     Given a tmp project with layout "crap"
