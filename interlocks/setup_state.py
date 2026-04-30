@@ -126,16 +126,26 @@ def ci_workflow_present(project_root: Path) -> bool:
     )
 
 
+_CHECK_NEEDLES: tuple[str, ...] = ("interlocks check", "il check")
+
+
 def agent_docs_registered(project_root: Path) -> bool:
-    """True when both agent docs exist and already mention ``interlocks``."""
-    return all(_doc_references_interlocks(project_root / name) for name in AGENT_DOCS)
+    """True when both agent docs reference ``interlocks check`` or ``il check``."""
+    return all(doc_references_check_stage(project_root / name) for name in AGENT_DOCS)
 
 
-def _doc_references_interlocks(path: Path) -> bool:
+def doc_references_check_stage(path: Path) -> bool:
+    """True when ``path`` documents the ``interlocks check`` or ``il check`` stage."""
     try:
-        return "interlocks" in path.read_text(encoding="utf-8").lower()
+        return text_references_check_stage(path.read_text(encoding="utf-8"))
     except OSError:
         return False
+
+
+def text_references_check_stage(text: str) -> bool:
+    """True when ``text`` mentions the human-invoked check stage (case-insensitive)."""
+    lowered = text.lower()
+    return any(needle in lowered for needle in _CHECK_NEEDLES)
 
 
 def skill_installed(project_root: Path) -> bool:

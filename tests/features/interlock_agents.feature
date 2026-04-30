@@ -25,9 +25,19 @@ Feature: Register interlocks usage via `interlocks agents`
     And "CLAUDE.md" contains "interlocks check"
 
   # req: agents-idempotent
-  Scenario: Existing interlocks references are preserved unchanged
+  Scenario: Docs that already document the check stage are preserved unchanged
+    Given a directory with AGENTS.md "already runs interlocks check" and CLAUDE.md "uses il check"
+    When I run "interlocks agents" there
+    Then the command exits successfully
+    And "AGENTS.md" equals "already runs interlocks check"
+    And "CLAUDE.md" equals "uses il check"
+
+  # req: agents-append-when-stage-missing
+  Scenario: Stale interlocks-only mentions still get the canonical block appended
     Given a directory with AGENTS.md "see interlocks docs" and CLAUDE.md "uses interlocks"
     When I run "interlocks agents" there
     Then the command exits successfully
-    And "AGENTS.md" equals "see interlocks docs"
-    And "CLAUDE.md" equals "uses interlocks"
+    And "AGENTS.md" starts with "see interlocks docs"
+    And "AGENTS.md" contains "interlocks check"
+    And "CLAUDE.md" starts with "uses interlocks"
+    And "CLAUDE.md" contains "interlocks check"

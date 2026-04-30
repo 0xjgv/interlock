@@ -162,7 +162,13 @@ INTERLOCKS_BEHAVIORS: tuple[Behavior, ...] = (
     Behavior(
         "agents-idempotent",
         "agents",
-        "agents leaves docs unchanged when an interlocks reference already exists",
+        "agents leaves docs unchanged when the check stage is already documented",
+        "interlocks.tasks.agents:cmd_agents",
+    ),
+    Behavior(
+        "agents-append-when-stage-missing",
+        "agents",
+        "agents appends the canonical block when docs mention interlocks but not the check stage",
         "interlocks.tasks.agents:cmd_agents",
     ),
     Behavior(

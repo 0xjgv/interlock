@@ -12,7 +12,7 @@ from pathlib import Path
 
 from interlocks.defaults_path import path as defaults_path
 from interlocks.runner import ok, section, warn_skip
-from interlocks.setup_state import AGENT_DOCS
+from interlocks.setup_state import AGENT_DOCS, text_references_check_stage
 
 
 def cmd_agents() -> None:
@@ -33,8 +33,8 @@ def _ensure_block(path: Path, block: str) -> None:
         ok(f"created {path.name} with interlocks block")
         return
     text = path.read_text(encoding="utf-8")
-    if "interlocks" in text.lower():
-        warn_skip(f"{path.name} already references interlocks — skipped")
+    if text_references_check_stage(text):
+        warn_skip(f"{path.name} already documents interlocks check — skipped")
         return
     suffix = "" if text.endswith("\n") else "\n"
     path.write_text(f"{text}{suffix}\n{block}", encoding="utf-8")

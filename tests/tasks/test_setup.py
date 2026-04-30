@@ -63,8 +63,8 @@ def test_setup_installs_hooks_agent_docs_and_skill(
         for hook in hooks
     )
 
-    assert "interlocks" in (tmp_path / "AGENTS.md").read_text(encoding="utf-8").lower()
-    assert "interlocks" in (tmp_path / "CLAUDE.md").read_text(encoding="utf-8").lower()
+    assert "interlocks check" in (tmp_path / "AGENTS.md").read_text(encoding="utf-8").lower()
+    assert "interlocks check" in (tmp_path / "CLAUDE.md").read_text(encoding="utf-8").lower()
 
     from interlocks.defaults_path import path as defaults_path
 
