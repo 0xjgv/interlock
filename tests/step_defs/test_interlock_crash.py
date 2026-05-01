@@ -142,6 +142,7 @@ def _run_with_inject(subcmd: str, target: str, crash_session: CrashSession) -> C
     _write_minimal_project(crash_session.project_root)
     env = _base_env(crash_session)
     env["INTERLOCKS_CRASH_INJECT"] = target
+    env["INTERLOCKS_CRASH_REPORTS"] = "on"
     return _invoke(crash_session, subcmd.split(), env)
 
 
