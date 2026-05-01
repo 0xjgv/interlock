@@ -19,6 +19,7 @@ from interlocks.tasks.crap import cmd_crap_cached_advisory
 from interlocks.tasks.deps import task_deps
 from interlocks.tasks.fix import cmd_fix
 from interlocks.tasks.format import cmd_format
+from interlocks.tasks.no_telemetry_imports import task_no_telemetry_imports
 from interlocks.tasks.test import task_test
 from interlocks.tasks.typecheck import task_typecheck
 
@@ -38,7 +39,7 @@ def cmd_check() -> None:
         cmd_fix()
         cmd_format()
         ui.section("Parallel")
-        parallel = [task_typecheck()]
+        parallel = [task_typecheck(), task_no_telemetry_imports()]
         test_task = task_test()
         if test_task is None:
             warn_skip("test: no test dir detected — run `interlocks init` to scaffold tests/")

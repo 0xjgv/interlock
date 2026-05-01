@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `interlocks behavior-attribution` — acceptance-time gate that traces
+  public-symbol calls during pytest-bdd / behave runs and verifies each
+  Gherkin scenario actually exercises the public symbol claimed by its
+  `# req: <id>` registry entry. Stale, missing, or misattributed
+  attributions fail with actionable remediation.
+- `interlocks <cmd> --help` (and `-h`) — prints command-specific usage
+  without running the gate.
+
+### Changed
+
+- `coverage` — uv-managed projects no longer need `coverage` as a project
+  dependency; Interlocks injects `coverage>=7.13.5` via `uv run --with`.
+  Non-uv projects get a clear preflight error when `coverage` isn't
+  importable in the target Python environment.
+- Test-runner detection no longer probes `pytest` importability in the
+  current interpreter; only `[tool.pytest.*]` / `pytest.ini` /
+  `pytest.cfg` / `<test_dir>/conftest.py` and declared deps are
+  considered.
+- `interlocks setup` / `setup --check` — agent-doc detection now requires
+  the doc to mention `interlocks check` (or `il check`), not just the
+  substring `interlocks`. Stale hand-written references no longer count
+  as installed and are refreshed on `setup`.
+
+### Fixed
+
+- Failure dumps now name the actual failed pre-command (e.g. the coverage
+  preflight) rather than always printing the main `task.cmd`.
+
 ## [0.1.3] - 2026-04-29
 
 ### Added

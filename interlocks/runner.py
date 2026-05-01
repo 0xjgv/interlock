@@ -16,7 +16,7 @@ from pathlib import Path
 from typing import IO, NoReturn
 
 from interlocks import ui
-from interlocks.config import InterlockConfigError, load_config, require_pyproject
+from interlocks.config import InterlockUserError, load_config, require_pyproject
 
 # Re-exported for historical callers (e.g. tasks/stats.py).
 GREEN = "\033[32m"
@@ -150,7 +150,7 @@ def preflight(command: str) -> None:
         return
     try:
         require_pyproject(load_config())
-    except InterlockConfigError as exc:
+    except InterlockUserError as exc:
         print(f"interlocks: {exc}", file=sys.stderr)
         sys.exit(2)
 

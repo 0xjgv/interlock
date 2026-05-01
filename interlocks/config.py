@@ -29,6 +29,7 @@ TestInvoker = Literal["python", "uv"]
 AcceptanceRunner = Literal["pytest-bdd", "behave", "off"]
 MutationCIMode = Literal["off", "incremental", "full"]
 AuditSeverityThreshold = Literal["low", "medium", "high", "critical"]
+CrashReports = Literal["off", "on", "auto"]
 Preset = Literal["baseline", "strict", "legacy"]
 
 _SOURCE_AUTO = "auto-detected"
@@ -235,6 +236,13 @@ CONFIG_KEYS: tuple[ConfigKeyDoc, ...] = (
         "Gates",
     ),
     ConfigKeyDoc(
+        "crash_reports",
+        "off|on|auto",
+        "auto",
+        "Surface CLI crash reports via browser URL",
+        "Gates",
+    ),
+    ConfigKeyDoc(
         "mutation_min_coverage",
         "float",
         "70.0",
@@ -343,7 +351,15 @@ CONFIG_KEY_GROUP_ORDER: tuple[ConfigKeyGroup, ...] = (
 )
 
 
-class InterlockConfigError(Exception):
+class InterlockUserError(Exception):
+    """Base class for user-input errors surfaced at the CLI boundary.
+
+    User-input errors print a clean message and exit 2 — they are not crashes
+    and MUST NOT be captured by the crash reporter.
+    """
+
+
+class InterlockConfigError(InterlockUserError):
     """Raised when project configuration is missing or malformed."""
 
 
@@ -417,6 +433,13 @@ def _audit_severity_threshold_override(table: dict[str, Any]) -> AuditSeverityTh
     return None
 
 
+def _crash_reports_override(table: dict[str, Any]) -> CrashReports | None:
+    value = table.get("crash_reports")
+    if value in ("off", "on", "auto"):
+        return value
+    return None
+
+
 @dataclass(frozen=True)
 class InterlockConfig:
     project_root: Path
@@ -451,6 +474,7 @@ class InterlockConfig:
     dependency_freshness_command: str = "interlocks deps-freshness"
     dependency_freshness_stage: str = "interlocks nightly"
     audit_severity_threshold: AuditSeverityThreshold | None = None
+    crash_reports: CrashReports = "auto"
     pr_ci_runtime_budget_seconds: int = 0
     pr_ci_evidence_max_age_hours: int = 24
     ci_evidence_path: Path = Path(".interlocks/ci.json")
@@ -601,6 +625,7 @@ def _load_config_cached(project_root: Path) -> InterlockConfig:
         _resolve_flags(table)
     )
     audit_severity_threshold = _audit_severity_threshold_override(table)
+    crash_reports = _crash_reports_override(table) or InterlockConfig.crash_reports
     thresholds = _threshold_overrides(table)
     if "enforce_behavior_attribution" not in thresholds:
         thresholds["enforce_behavior_attribution"] = _default_enforce_behavior_attribution(
@@ -645,6 +670,7 @@ def _load_config_cached(project_root: Path) -> InterlockConfig:
         dependency_freshness_command=dependency_freshness_command,
         dependency_freshness_stage=dependency_freshness_stage,
         audit_severity_threshold=audit_severity_threshold,
+        crash_reports=crash_reports,
         ci_evidence_path=ci_evidence_path,
         value_sources=_complete_value_sources(value_sources, table, overrides=overrides),
         unsupported_presets=unsupported_presets,
@@ -704,6 +730,7 @@ _ENUM_PARSERS = {
     "acceptance_runner": _acceptance_runner_override,
     "mutation_ci_mode": _mutation_ci_mode_override,
     "audit_severity_threshold": _audit_severity_threshold_override,
+    "crash_reports": _crash_reports_override,
 }
 
 
@@ -782,6 +809,7 @@ def _complete_value_sources(
         "dependency_freshness_command",
         "dependency_freshness_stage",
         "audit_severity_threshold",
+        "crash_reports",
         "pr_ci_runtime_budget_seconds",
         "pr_ci_evidence_max_age_hours",
         "ci_evidence_path",

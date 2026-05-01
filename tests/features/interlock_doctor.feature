@@ -21,3 +21,9 @@ Feature: interlocks doctor adoption diagnostic
     Then the output contains "[pyproject]"
     And the output contains "[src dir]"
     And the output contains "[ci workflow]"
+
+  # req: doctor-crash-reports
+  Scenario: Setup Checklist surfaces the crash-reports cache state
+    Given I run "interlocks doctor"
+    Then the output contains "[crash reports]"
+    And the output contains "consent:"

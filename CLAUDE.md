@@ -50,3 +50,10 @@ You own this product and the codebase.
 - Precedence: CLI flag > `[tool.interlocks]` > bundled defaults in `interlocks/defaults/`
 - Project's own `[tool.<tool>]` or sidecar (`ruff.toml`, `.coveragerc`, `pyrightconfig.json`, `.importlinter`) replaces the bundled default for that tool
 </important>
+
+<important if="you are touching crash handling or the boundary in interlocks/cli.py">
+- `interlocks/cli.py::main` is the SINGLE crash boundary — wraps task dispatch in `CrashBoundary`. Do not install `sys.excepthook`, do not wrap `try/except Exception` around full-task dispatch, do not add a second boundary anywhere
+- `interlocks/crash/transport.py` is the only place that renders a payload to a URL. Do NOT add `socket`, `urllib.request`, `http.client`, `requests`, `httpx`, `sentry_sdk`, or `posthog` to any file under `interlocks/crash/` — `interlocks no-telemetry-imports` blocks regressions, and `tests/test_crash_transport.py` enforces this via source introspection
+- Capture path failures must NEVER mask the original exception (invariant I6). Reporter errors print one `(crash reporter failed: ...)` line to stderr; the original exception still re-raises and produces the canonical Python traceback
+- Payload fields are an allowlist defined in `interlocks/crash/payload.py`. Never widen it without updating `SECURITY.md` and the negative test in `tests/test_crash_payload.py`
+</important>

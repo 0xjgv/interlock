@@ -122,7 +122,7 @@ preset = "baseline"  # "baseline" | "strict" | "legacy"
 Nothing is required. `interlocks` walks up from CWD to the nearest `pyproject.toml` and auto-detects:
 
 - project root: first directory with `pyproject.toml`
-- test runner: pytest if pytest config/deps/imports are present, otherwise unittest
+- test runner: pytest if pytest config or declared deps are present, otherwise unittest
 - test dir: first existing of `tests/`, `test/`, `src/tests/`
 - source dir: build-backend declarations, package layouts, `src/<pkg>`, top-level packages, or the project root
 - test invoker: `uv run` when `uv.lock` exists, else `python -m`
@@ -228,7 +228,7 @@ Hygiene:
 
 Advanced gates:
 
-- `coverage --min=N`: coverage.py with fail-under. `--min=N` overrides `coverage_min`.
+- `coverage --min=N`: coverage.py with fail-under. `--min=N` overrides `coverage_min`. uv-managed projects get Coverage.py injected via `uv run --with`; no project dep required.
 - `crap --max=N [--changed-only]`: CRAP complexity x coverage gate. Blocking depends on `enforce_crap`.
 - `mutation --max-runtime=N [--min-coverage=N] [--min-score=N] [--changed-only]`: mutmut. Advisory unless `enforce_mutation = true` or `--min-score=` is passed.
 - `trust [--refresh] [--no-trend]`: actionable trust report combining coverage, CRAP, mutation, suspicious-test AST inspection, recent git diff, and next actions. `--refresh` runs coverage first with `--min=0`.
@@ -322,6 +322,43 @@ It installs:
 `interlocks setup --check` verifies those same artifacts without writing. Use `interlocks doctor` for full project readiness. Narrow commands (`setup-hooks`, `agents`, `setup-skill`) remain available when you want one integration only.
 
 Hooks reference the Python that installed interlocks, so rerun `interlocks setup` after switching install locations or interpreters.
+
+## Crash Reporting
+
+When interlocks itself crashes, the CLI prints a pre-filled GitHub Issues URL to stderr alongside the canonical Python traceback. The URL opens in your default browser if one is available; the URL on stderr is the contract, browser-open is convenience. **interlocks never opens a network connection of its own** — only your browser does, only if you choose to follow the link.
+
+What gets captured:
+
+- interlocks version, Python version, platform (`uname -s`/`uname -m`)
+- subcommand that crashed (e.g. `check`, `lint`)
+- exception type name
+- traceback frames inside `interlocks/` (third-party frames collapse to `<external frames: N>`)
+- UTC timestamp, CI boolean (from `CI` env), 16-hex fingerprint
+
+What does **NOT** leave the machine — by construction:
+
+- No source code, file contents, or local variables
+- No environment variables or `sys.argv` values
+- No hostnames, usernames, or absolute paths (paths are scrubbed to `~/...` or project-relative)
+- No automatic HTTP requests — `socket`, `urllib.request`, `http.client`, `requests`, `httpx` are forbidden in `interlocks/crash/transport.py` and enforced by an introspection test
+
+How to opt out:
+
+```toml
+[tool.interlocks]
+crash_reports = "off"
+```
+
+Or per-invocation: `INTERLOCKS_CRASH_REPORTS=off interlocks <command>`. The env var beats config; config beats the default. The default (`"auto"`) suppresses the URL on CI and surfaces it locally.
+
+Where local files live:
+
+- `~/.cache/interlocks/crashes/<fingerprint>.json` — full payload, mode 0600 in mode 0700 dir
+- `~/.cache/interlocks/crashes/dedup.json` — 30-day fingerprint window so repeat crashes do not re-prompt
+
+Inspect cache state any time with `interlocks doctor` (look for the `[crash reports]` row) or directly with `ls ~/.cache/interlocks/crashes/`.
+
+To share a crash manually, attach the payload JSON to your issue or paste relevant fields. The same fields are pre-filled in the URL body the browser opens.
 
 ## Inspiration
 

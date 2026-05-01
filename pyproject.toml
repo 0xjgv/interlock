@@ -88,6 +88,7 @@ markers = [
     # Acceptance feature areas (pytest-bdd auto-promotes Gherkin tags to markers).
     "agents: agent-doc registration acceptance scenarios",
     "cli: CLI surface acceptance scenarios",
+    "crash: crash boundary acceptance scenarios",
     "doctor: doctor diagnostic acceptance scenarios",
     "init: greenfield scaffolding acceptance scenarios",
     "meta: meta-command (acceptance/init-acceptance/setup-hooks) scenarios",

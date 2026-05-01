@@ -12,10 +12,12 @@ import sys
 import time
 import tomllib
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 from interlocks import ui
 from interlocks.config import find_project_root, kv_with_source, load_config
+from interlocks.crash.storage import cache_dir as _crash_cache_dir
 from interlocks.detect import expected_target_interpreter
 from interlocks.setup_state import (
     acceptance_scaffold_present,
@@ -175,6 +177,7 @@ def _collect_setup_rows(
         *_local_integration_rows(project_root),
         _ci_workflow_row(project_root),
         _acceptance_row(cfg),
+        _crash_reports_row(cfg),
     ])
     return rows
 
@@ -259,6 +262,35 @@ def _acceptance_row(cfg: InterlockConfig) -> CheckRow:
     if cfg.acceptance_runner is not None:
         return CheckRow("acceptance", features_target, "run `interlocks init-acceptance`", "warn")
     return CheckRow("acceptance", features_target, "not wired", "warn")
+
+
+def _crash_reports_row(cfg: InterlockConfig) -> CheckRow:
+    """Surface the crash-reports cache: count, consent, last-seen.
+
+    Reads ``~/.cache/interlocks/crashes/`` (XDG_CACHE_HOME-aware) without
+    importing transport — we don't want doctor to lazily pull in the browser
+    machinery just to count files.
+    """
+    consent = cfg.crash_reports
+    target = "~/.cache/interlocks/crashes/"
+    try:
+        directory = _crash_cache_dir()
+    except OSError:
+        return CheckRow("crash reports", target, f"cache unreadable (consent: {consent})", "warn")
+
+    files = sorted(directory.glob("*.json"))
+    count = len(files)
+    if count == 0:
+        return CheckRow("crash reports", target, f"0 cached (consent: {consent})", "ok")
+
+    last_mtime = max(f.stat().st_mtime for f in files)
+    last_seen = datetime.fromtimestamp(last_mtime, tz=UTC).strftime("%Y-%m-%d")
+    return CheckRow(
+        "crash reports",
+        target,
+        f"{count} cached (consent: {consent}, last seen: {last_seen})",
+        "ok",
+    )
 
 
 def _render_setup_checklist(rows: list[CheckRow]) -> None:

@@ -14,7 +14,7 @@ if TYPE_CHECKING:
     from interlocks.config import InterlockConfig
 
 BehaviorKind = Literal[
-    "cli", "config", "stage", "task", "doctor", "init", "meta", "evaluate", "agents"
+    "cli", "config", "stage", "task", "doctor", "init", "meta", "evaluate", "agents", "crash"
 ]
 
 _ID_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.:-]*")
@@ -124,6 +124,12 @@ INTERLOCKS_BEHAVIORS: tuple[Behavior, ...] = (
         "interlocks.cli:main",
     ),
     Behavior(
+        "cli-help-crash-reports",
+        "cli",
+        "help surfaces the crash_reports key and cache directory",
+        "interlocks.cli:main",
+    ),
+    Behavior(
         "cli-evaluate-guidance",
         "evaluate",
         "evaluate prints actionable closure guidance",
@@ -139,6 +145,12 @@ INTERLOCKS_BEHAVIORS: tuple[Behavior, ...] = (
         "doctor-setup-checklist",
         "doctor",
         "doctor reports setup checklist gaps",
+        "interlocks.tasks.doctor:cmd_doctor",
+    ),
+    Behavior(
+        "doctor-crash-reports",
+        "doctor",
+        "doctor surfaces the local crash-reports cache and consent",
         "interlocks.tasks.doctor:cmd_doctor",
     ),
     Behavior(
@@ -318,6 +330,42 @@ INTERLOCKS_BEHAVIORS: tuple[Behavior, ...] = (
         "task",
         "behavior-attribution flags a behavior symbol that no claiming scenario reached",
         "interlocks.tasks.behavior_attribution:cmd_behavior_attribution",
+    ),
+    Behavior(
+        "crash-boundary-prints-issue-url",
+        "crash",
+        "internal crash captures and prints a GitHub issue URL with the original traceback",
+        "interlocks.crash.boundary:CrashBoundary",
+    ),
+    Behavior(
+        "crash-user-error-no-capture",
+        "crash",
+        "user-facing config errors print a clean line and do not capture or open a URL",
+        "interlocks.crash.boundary:CrashBoundary",
+    ),
+    Behavior(
+        "crash-consent-off-suppresses-transport",
+        "crash",
+        "INTERLOCKS_CRASH_REPORTS=off suppresses the URL but still writes a local crash file",
+        "interlocks.crash.consent:ConsentGate",
+    ),
+    Behavior(
+        "crash-dedup-suppresses-transport",
+        "crash",
+        "a repeated crash within the 30-day dedup window does not re-print the URL",
+        "interlocks.crash.storage:should_suppress_transport",
+    ),
+    Behavior(
+        "crash-gate-failure-no-capture",
+        "crash",
+        "a subprocess gate failure exits via SystemExit without entering capture",
+        "interlocks.crash.boundary:CrashBoundary",
+    ),
+    Behavior(
+        "task-no-telemetry-imports",
+        "task",
+        "no-telemetry-imports flags banned telemetry SDK imports in interlocks/",
+        "interlocks.tasks.no_telemetry_imports:cmd_no_telemetry_imports",
     ),
 )
 

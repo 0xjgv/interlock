@@ -86,6 +86,10 @@ Focus on three bets until adoption proves a broader roadmap:
 
 Defer hosted dashboards, mutation sophistication, multi-platform hook adapters, PR review bots, and exception workflows until real users ask for them.
 
+## Crash Reporting (Rejected: Default-On Sentry/PostHog)
+
+We considered shipping a third-party error-reporting SDK (Sentry or PostHog) wired in by default and rejected it. The CLI is a quality-gate tool that runs against private repos, on developer laptops and CI runners controlled by other organizations; a default-on SDK that captures locals, `sys.argv`, env vars, or hostnames would leak source-adjacent context to a vendor we do not control, even with allowlist filters that drift over time. It would also make adoption strictly harder — every new buyer with a security review would have to re-justify a network egress that the tool does not need to function. The shipped reporter is an in-process boundary that prints a pre-filled GitHub Issues URL to stderr and lets the user's browser handle the (optional) network egress. interlocks itself never opens a network connection; the regression fence in `interlocks no-telemetry-imports` keeps that property under continuous enforcement. Design rationale and the allowlisted payload schema live in `SECURITY.md` and `openspec/changes/add-crash-reporter/`.
+
 ## OSS vs Business
 
 Launch the CLI as open source. A local developer quality tool needs trust, easy installation, and low-friction experimentation. `uvx` and `pipx run` should let teams try it immediately before deciding whether to install it permanently. OSS is the adoption wedge and credibility layer.

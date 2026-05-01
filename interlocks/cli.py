@@ -18,6 +18,7 @@ from interlocks.config import (
     preset_description,
     supported_presets,
 )
+from interlocks.crash import CrashBoundary
 from interlocks.runner import fail_skip, ok, preflight
 from interlocks.stages.check import cmd_check
 from interlocks.stages.ci import cmd_ci
@@ -44,6 +45,7 @@ from interlocks.tasks.init import cmd_init
 from interlocks.tasks.init_acceptance import cmd_init_acceptance
 from interlocks.tasks.lint import cmd_lint
 from interlocks.tasks.mutation import cmd_mutation
+from interlocks.tasks.no_telemetry_imports import cmd_no_telemetry_imports
 from interlocks.tasks.setup import cmd_setup
 from interlocks.tasks.setup_skill import cmd_setup_skill
 from interlocks.tasks.stats import cmd_trust
@@ -267,6 +269,10 @@ def _print_detected_block(cfg: InterlockConfig | None) -> None:
         ("run_mutation_in_ci", str(cfg.run_mutation_in_ci)),
         ("enforce_mutation", str(cfg.enforce_mutation)),
     ])
+    ui.section("Crash Reports")
+    print("  Local cache: ~/.cache/interlocks/crashes/")
+    crash_reports_value = f"{cfg.crash_reports}  (off|on|auto; INTERLOCKS_CRASH_REPORTS overrides)"
+    ui.kv_block([("crash_reports", crash_reports_value)])
 
 
 TASK_GROUPS: list[tuple[str, dict[str, tuple[Callable[..., None], str]]]] = [
@@ -302,6 +308,10 @@ TASK_GROUPS: list[tuple[str, dict[str, tuple[Callable[..., None], str]]]] = [
             "mutation": (
                 cmd_mutation,
                 "Mutation testing via mutmut (advisory; see `interlocks nightly`)",
+            ),
+            "no-telemetry-imports": (
+                cmd_no_telemetry_imports,
+                "Forbid telemetry-SDK imports in interlocks/ (regression fence)",
             ),
         },
     ),
@@ -385,7 +395,10 @@ def main() -> None:
         return
 
     preflight(task_name)
-    TASKS[task_name][0]()
+    boundary = CrashBoundary(subcommand=task_name)
+    with boundary:
+        boundary.maybe_inject_for_test()
+        TASKS[task_name][0]()
 
 
 if __name__ == "__main__":
