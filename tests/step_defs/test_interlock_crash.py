@@ -80,35 +80,34 @@ def _invoke(session: CrashSession, args: list[str], env: dict[str, str]) -> Cras
     return run
 
 
+def _read_available_pty(master_fd: int) -> bytes | None:
+    try:
+        data = os.read(master_fd, 4096)
+    except OSError as exc:
+        if exc.errno == errno.EIO:
+            return None
+        raise
+    return data or None
+
+
+def _drain_ready_pty(master_fd: int, chunks: list[bytes]) -> None:
+    while select.select([master_fd], [], [], 0)[0]:
+        data = _read_available_pty(master_fd)
+        if data is None:
+            return
+        chunks.append(data)
+
+
 def _read_pty(master_fd: int, proc: subprocess.Popen[bytes]) -> str:
     chunks: list[bytes] = []
-    while True:
-        ready, _, _ = select.select([master_fd], [], [], 0.1)
-        if master_fd in ready:
-            try:
-                data = os.read(master_fd, 4096)
-            except OSError as exc:
-                if exc.errno == errno.EIO:
-                    break
-                raise
-            if not data:
-                break
-            chunks.append(data)
-        if proc.poll() is not None:
-            while True:
-                ready, _, _ = select.select([master_fd], [], [], 0)
-                if master_fd not in ready:
-                    break
-                try:
-                    data = os.read(master_fd, 4096)
-                except OSError as exc:
-                    if exc.errno == errno.EIO:
-                        break
-                    raise
-                if not data:
-                    break
-                chunks.append(data)
+    while proc.poll() is None:
+        if master_fd not in select.select([master_fd], [], [], 0.1)[0]:
+            continue
+        data = _read_available_pty(master_fd)
+        if data is None:
             break
+        chunks.append(data)
+    _drain_ready_pty(master_fd, chunks)
     return b"".join(chunks).decode(errors="replace")
 
 
