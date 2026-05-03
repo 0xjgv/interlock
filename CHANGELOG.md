@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.5] - 2026-05-03
+
+### Changed
+
+- Crash reporting now prompts interactively before opening a pre-filled GitHub
+  issue URL, replacing the previous environment-variable consent switch.
+- Crash handling documentation and acceptance coverage now describe the
+  prompt-first flow and declined-report local file behavior.
+
 ## [0.1.4] - 2026-05-01
 
 ### Added
