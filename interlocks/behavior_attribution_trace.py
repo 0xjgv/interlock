@@ -35,6 +35,7 @@ _EVENTS_PATH: Path | None = None
 _PREVIOUS_TRACE: Any = None
 _FAILURE: str | None = None
 _PATCHED_RUN: Callable[..., Any] | None = None
+_PATCHED_POPEN: Callable[..., Any] | None = None
 
 
 def pytest_configure(config: object) -> None:
@@ -124,42 +125,51 @@ def _tracer(
 
 
 def _install_subprocess_probe(public_symbols: tuple[str, ...], events_path: Path | None) -> None:
-    global _PATCHED_RUN  # noqa: PLW0603
+    global _PATCHED_POPEN, _PATCHED_RUN  # noqa: PLW0603
     if events_path is None:
         return
     if _PATCHED_RUN is None or subprocess.run is not _PATCHED_RUN:
-        _PATCHED_RUN = _subprocess_run_probe(subprocess.run, public_symbols, events_path)
+        _PATCHED_RUN = _subprocess_launcher_probe(subprocess.run, public_symbols, events_path)
         subprocess.run = _PATCHED_RUN  # type: ignore[method-assign]
-        return
-    _set_probe(public_symbols, events_path)
+    else:
+        _set_probe(_PATCHED_RUN, public_symbols, events_path)
+    if _PATCHED_POPEN is None or subprocess.Popen is not _PATCHED_POPEN:
+        _PATCHED_POPEN = _subprocess_launcher_probe(subprocess.Popen, public_symbols, events_path)
+        subprocess.Popen = _PATCHED_POPEN  # type: ignore[assignment]
+    else:
+        _set_probe(_PATCHED_POPEN, public_symbols, events_path)
 
 
-def _subprocess_run_probe(
-    original_run: Callable[..., Any],
+def _subprocess_launcher_probe(
+    original_launcher: Callable[..., Any],
     public_symbols: tuple[str, ...],
     events_path: Path,
 ) -> Callable[..., Any]:
-    state = _set_probe(public_symbols, events_path)
+    state = _set_probe(None, public_symbols, events_path)
 
-    def run(*args: Any, **kwargs: Any) -> Any:
+    def launch(*args: Any, **kwargs: Any) -> Any:
         command = _subprocess_command(args, kwargs)
         if not _supports_python_sitecustomize(command):
-            return original_run(*args, **kwargs)
+            return original_launcher(*args, **kwargs)
         public_symbols = state.get("public_symbols")
         events_path = state.get("events_path")
         if not isinstance(public_symbols, tuple) or not isinstance(events_path, Path):
-            return original_run(*args, **kwargs)
+            return original_launcher(*args, **kwargs)
         env = _probe_env(kwargs.get("env"), public_symbols, events_path)
         if env is not None:
             kwargs["env"] = env
-        return original_run(*args, **kwargs)
+        return original_launcher(*args, **kwargs)
 
-    run._interlocks_behavior_attribution_probe = state  # type: ignore[attr-defined]
-    return run
+    launch._interlocks_behavior_attribution_probe = state  # type: ignore[attr-defined]
+    return launch
 
 
-def _set_probe(public_symbols: tuple[str, ...], events_path: Path) -> dict[str, object]:
-    existing = getattr(_PATCHED_RUN, "_interlocks_behavior_attribution_probe", None)
+def _set_probe(
+    launcher: Callable[..., Any] | None,
+    public_symbols: tuple[str, ...],
+    events_path: Path,
+) -> dict[str, object]:
+    existing = getattr(launcher, "_interlocks_behavior_attribution_probe", None)
     state: dict[str, object] = existing if isinstance(existing, dict) else {}
     state["public_symbols"] = public_symbols
     state["events_path"] = events_path

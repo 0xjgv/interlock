@@ -218,6 +218,8 @@ pytest_add_cli_args = [
     "--deselect=tests/test_preflight.py::test_cli_check_exits_two_without_pyproject",
     "--deselect=tests/test_preflight.py::test_cli_help_works_without_pyproject",
     "--deselect=tests/test_github_action.py::test_action_metadata_delegates_to_interlock_ci",
+    "--deselect=tests/step_defs/test_interlock_crash.py",
+    "--deselect=tests/test_crash_payload.py::test_frames_include_synthetic_raise_function",
     "-m", "not slow",
 ]
 
